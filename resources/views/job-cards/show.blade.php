@@ -22,7 +22,7 @@
                 <a href="{{ route('billing.show', $jobCard->id) }}" 
                    class="px-4 py-2 bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500/20 transition flex items-center gap-1.5 shadow-sm">
                     <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
-                    <span>View Invoice ({{ capitalize($jobCard->bill->status) }})</span>
+                    <span>View Invoice ({{ ucfirst($jobCard->bill->status) }})</span>
                 </a>
             @else
                 <a href="{{ route('billing.workspace', $jobCard->id) }}" 
@@ -362,7 +362,7 @@
     <div class="absolute inset-0 overflow-hidden">
         <div class="absolute inset-0 bg-slate-955/75 transition-opacity" onclick="document.getElementById('edit-job-details-drawer').classList.add('hidden')"></div>
 
-        <div class pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
             <div class="pointer-events-auto w-screen max-w-md">
                 <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
                     <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
@@ -416,11 +416,3 @@
     </div>
 </div>
 @endsection
-
-@php
-if (!function_exists('capitalize')) {
-    function capitalize($str) {
-        return ucfirst($str);
-    }
-}
-@endphp
