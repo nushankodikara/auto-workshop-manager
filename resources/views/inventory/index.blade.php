@@ -10,20 +10,22 @@
         <!-- Search bar -->
         <form action="{{ route('inventory.index') }}" method="GET" class="w-full md:max-w-md flex gap-2">
             <input type="text" name="search" value="{{ $search }}" placeholder="Search by part name or SKU..."
-                   class="flex-1 px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-650 focus:outline-none focus:border-indigo-500 text-sm">
-            <button type="submit" class="px-4 py-2 bg-slate-850 hover:bg-slate-800 border border-slate-750 rounded-lg text-xs font-semibold">
-                Search
+                   class="flex-1 px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary text-sm">
+            <button type="submit" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                <span>Search</span>
             </button>
             @if($search)
-                <a href="{{ route('inventory.index') }}" class="px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-350 flex items-center">
+                <a href="{{ route('inventory.index') }}" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-305 flex items-center">
                     Reset
                 </a>
             @endif
         </form>
 
         <button onclick="document.getElementById('create-part-drawer').classList.remove('hidden')"
-                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-sm transition">
-            + Add New Part
+                class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add New Part</span>
         </button>
     </div>
 
@@ -32,10 +34,10 @@
         
         <!-- Left: Inventory List Table -->
         <div class="lg:col-span-2 space-y-6">
-            <div class="glass-card rounded-2xl overflow-hidden border border-slate-900">
+            <div class="app-card rounded-2xl overflow-hidden shadow-xs">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
-                        <tr class="bg-slate-900/60 border-b border-slate-850/80 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                        <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                             <th class="py-4 px-6">Part Name</th>
                             <th class="py-4 px-6">SKU</th>
                             <th class="py-4 px-6">Available Stock</th>
@@ -43,29 +45,31 @@
                             <th class="py-4 px-6 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-850/60">
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
                         @forelse($items as $item)
-                            <tr class="hover:bg-slate-900/40 transition">
-                                <td class="py-4 px-6 font-semibold text-slate-200">
+                            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-900/40 transition">
+                                <td class="py-4 px-6 font-semibold text-slate-850 dark:text-slate-200">
                                     {{ $item->name }}
                                 </td>
-                                <td class="py-4 px-6 text-slate-450 font-mono text-xs">{{ $item->sku }}</td>
+                                <td class="py-4 px-6 text-slate-500 font-mono text-xs">{{ $item->sku }}</td>
                                 <td class="py-4 px-6">
                                     @if($item->quantity < 10)
-                                        <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-semibold">
+                                        <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20 text-xs font-semibold">
                                             {{ $item->quantity }} {{ $item->unit }} (Low)
                                         </span>
                                     @else
-                                        <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+                                        <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 text-xs font-semibold">
                                             {{ $item->quantity }} {{ $item->unit }}
                                         </span>
                                     @endif
                                 </td>
-                                <td class="py-4 px-6 text-slate-300 font-medium">${{ number_format($item->price, 2) }}</td>
-                                <td class="py-4 px-6 text-right space-x-2">
+                                <td class="py-4 px-6 text-slate-700 dark:text-slate-300 font-medium font-mono">
+                                    {{ config('app.currency', '$') }}{{ number_format($item->price, 2) }}
+                                </td>
+                                <td class="py-4 px-6 text-right">
                                     <!-- Adjust Stock trigger -->
                                     <button onclick="openAdjustmentModal({{ $item->id }}, '{{ $item->name }}', '{{ $item->unit }}')"
-                                            class="text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded transition">
+                                            class="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded transition hover:bg-primary hover:text-white">
                                         Adjust Stock
                                     </button>
                                 </td>
@@ -88,29 +92,30 @@
         </div>
 
         <!-- Right: Recent Stock Movements Logs -->
-        <div class="glass-card rounded-2xl p-6">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800/80 pb-3 mb-4">
-                📋 Stock Transaction Logs
+        <div class="app-card rounded-2xl p-6 shadow-xs h-fit">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-primary"></i>
+                <span>Stock Transaction Logs</span>
             </h3>
 
             <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                 @forelse($recentMovements as $mov)
-                    <div class="p-3 bg-slate-900/40 rounded-xl border border-slate-850/80 text-xs">
+                    <div class="p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
                         <div class="flex items-center justify-between">
-                            <span class="font-semibold text-slate-250">{{ $mov->inventory->name }}</span>
-                            <span class="font-bold {{ $mov->quantity >= 0 ? 'text-green-400' : 'text-red-400' }}">
+                            <span class="font-semibold text-slate-800 dark:text-slate-200 capitalize">{{ $mov->inventory->name }}</span>
+                            <span class="font-bold {{ $mov->quantity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                                 {{ $mov->quantity >= 0 ? '+' : '' }}{{ $mov->quantity }} {{ $mov->inventory->unit }}
                             </span>
                         </div>
-                        <div class="text-[10px] text-slate-500 mt-1 capitalize">
+                        <div class="text-[10px] text-slate-500 mt-1 capitalize leading-relaxed">
                             Type: {{ $mov->type }} • {{ $mov->notes ?? 'Manual update' }}
                         </div>
-                        <div class="text-[9px] text-slate-600 mt-2 text-right">
+                        <div class="text-[9px] text-slate-450 mt-2 text-right">
                             {{ $mov->created_at->diffForHumans() }}
                         </div>
                     </div>
                 @empty
-                    <div class="text-slate-650 text-xs text-center py-4">
+                    <div class="text-slate-500 text-xs text-center py-4">
                         No transactions recorded.
                     </div>
                 @endforelse
@@ -128,9 +133,12 @@
 
         <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
             <div class="pointer-events-auto w-screen max-w-md">
-                <div class="flex h-full flex-col overflow-y-scroll bg-slate-900 border-l border-slate-800 shadow-xl">
-                    <div class="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-                        <h2 class="text-lg font-bold text-slate-200">Add Inventory Part</h2>
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="package-plus" class="w-5 h-5 text-primary"></i>
+                            <span>Add Inventory Part</span>
+                        </h2>
                         <button onclick="document.getElementById('create-part-drawer').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
                     </div>
 
@@ -139,47 +147,47 @@
 
                         <!-- Part Name -->
                         <div>
-                            <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Part Name</label>
+                            <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Part Name</label>
                             <input type="text" name="name" id="name" required placeholder="Engine Oil 5W-30"
-                                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
                         <!-- SKU -->
                         <div>
-                            <label for="sku" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">SKU Code</label>
+                            <label for="sku" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">SKU Code</label>
                             <input type="text" name="sku" id="sku" required placeholder="OIL-5W30-1L"
-                                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
                         <!-- Initial Quantity -->
                         <div>
-                            <label for="quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Initial Quantity</label>
+                            <label for="quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Initial Quantity</label>
                             <input type="number" name="quantity" id="quantity" required min="0" value="0"
-                                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
                         <!-- Unit Price -->
                         <div>
-                            <label for="price" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Unit Price ($)</label>
+                            <label for="price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Unit Price ({{ config('app.currency', '$') }})</label>
                             <input type="number" step="0.01" name="price" id="price" required value="0.00"
-                                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                         </div>
 
                         <!-- Unit -->
                         <div>
-                            <label for="unit" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Measurement Unit</label>
+                            <label for="unit" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Measurement Unit</label>
                             <input type="text" name="unit" id="unit" required placeholder="pcs, liters, meters" value="pcs"
-                                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
                         <!-- Buttons -->
-                        <div class="pt-4 border-t border-slate-800 flex gap-3">
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
                             <button type="submit"
-                                    class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition text-sm">
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
                                 Register Part
                             </button>
                             <button type="button" onclick="document.getElementById('create-part-drawer').classList.add('hidden')"
-                                    class="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg transition text-sm">
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-850 hover:bg-slate-350 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition text-sm">
                                 Cancel
                             </button>
                         </div>
@@ -196,9 +204,12 @@
     <div class="absolute inset-0 bg-slate-950/75" onclick="closeAdjustmentModal()"></div>
     
     <!-- Modal Card -->
-    <div class="glass-card w-full max-w-md rounded-2xl relative z-10 overflow-hidden shadow-2xl border border-slate-800">
-        <div class="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-200" id="adjustment-modal-title">Adjust Stock</h2>
+    <div class="app-card w-full max-w-md rounded-2xl relative z-10 overflow-hidden shadow-2xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5" id="adjustment-modal-title">
+                <i data-lucide="sliders" class="w-4 h-4 text-primary"></i>
+                <span>Adjust Stock</span>
+            </h2>
             <button onclick="closeAdjustmentModal()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
         </div>
 
@@ -207,9 +218,9 @@
             @method('PATCH')
 
             <div>
-                <label for="adjustment_type" class="block text-slate-500 mb-1">Adjustment Type</label>
+                <label for="adjustment_type" class="block text-slate-500 mb-1 font-semibold">Adjustment Type</label>
                 <select name="adjustment_type" id="adjustment_type" required
-                        class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500">
+                        class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary cursor-pointer">
                     <option value="in">Add Stock (+)</option>
                     <option value="out">Remove Stock (-)</option>
                     <option value="adjustment">Direct Override (=)</option>
@@ -217,24 +228,24 @@
             </div>
 
             <div>
-                <label for="adj_quantity" class="block text-slate-500 mb-1">Quantity (<span id="adj-unit-label">pcs</span>)</label>
+                <label for="adj_quantity" class="block text-slate-500 mb-1 font-semibold">Quantity (<span id="adj-unit-label">pcs</span>)</label>
                 <input type="number" name="quantity" id="adj_quantity" required min="1" value="1"
-                       class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500">
+                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary">
             </div>
 
             <div>
-                <label for="adj_notes" class="block text-slate-500 mb-1">Transaction Notes</label>
+                <label for="adj_notes" class="block text-slate-500 mb-1 font-semibold">Transaction Notes</label>
                 <textarea name="notes" id="adj_notes" rows="2" placeholder="Manual stock delivery or inventory count check..."
-                          class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500"></textarea>
+                          class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary"></textarea>
             </div>
 
             <!-- Buttons -->
-            <div class="pt-4 border-t border-slate-800 flex gap-2 justify-end">
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 justify-end">
                 <button type="button" onclick="closeAdjustmentModal()"
-                        class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-350 font-medium rounded-lg">
+                        class="py-2 px-3 bg-slate-200 dark:bg-slate-850 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg">
                     Cancel
                 </button>
-                <button type="submit" class="py-2 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg">
+                <button type="submit" class="py-2 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg">
                     Record Adjustment
                 </button>
             </div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,39 +9,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <style>
-        body {
-            font-family: 'Outfit', sans-serif;
+    <script>
+        const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
         }
-        .glass-card {
-            background: rgba(30, 41, 59, 0.4);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-    </style>
+        const accent = localStorage.getItem('accent') || 'blue';
+        document.documentElement.className = theme + ' accent-' + accent + ' h-full';
+    </script>
     
+    <script src="https://unpkg.com/lucide@latest"></script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full flex flex-col justify-center items-center p-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950/45 via-slate-950 to-slate-950">
+<body class="h-full flex flex-col justify-center items-center p-6 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
 
     <div class="w-full max-w-md">
         <!-- Brand Header -->
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
+            <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
                 {{ config('app.name', 'Auto Workshop Manager') }}
             </h1>
-            <p class="text-slate-500 text-sm mt-2">Manage mechanical, electrical and parts inventory</p>
+            <p class="text-slate-550 dark:text-slate-400 text-sm mt-2">Manage mechanical, electrical, and parts inventory</p>
         </div>
 
-        <!-- Glass card form -->
-        <div class="glass-card rounded-2xl p-8">
-            <h2 class="text-xl font-semibold text-slate-100 mb-6">Sign In</h2>
+        <!-- Corporate card form -->
+        <div class="app-card rounded-2xl p-8 shadow-sm">
+            <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-6">Sign In</h2>
 
             <!-- Errors -->
             @if ($errors->any())
-                <div class="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-                    <ul>
+                <div class="mb-4 p-3 rounded-lg bg-red-550/10 border border-red-500/20 text-red-650 dark:text-red-400 text-xs">
+                    <ul class="list-disc pl-4 space-y-1">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -53,34 +53,38 @@
                 @csrf
 
                 <div>
-                    <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Email Address</label>
-                    <input type="email" name="email" id="email" required value="{{ old('email') }}"
-                           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition text-sm">
+                    <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
+                    <input type="email" name="email" id="email" required value="{{ old('email') }}" placeholder="admin@totaldrivecare.com"
+                           class="w-full px-4 py-3 app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary transition text-sm">
                 </div>
 
                 <div>
-                    <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Password</label>
-                    <input type="password" name="password" id="password" required
-                           class="w-full px-4 py-3 bg-slate-900/50 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition text-sm">
+                    <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Password</label>
+                    <input type="password" name="password" id="password" required placeholder="••••••••"
+                           class="w-full px-4 py-3 app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary transition text-sm">
                 </div>
 
                 <div class="flex items-center">
-                    <input type="checkbox" name="remember" id="remember" class="h-4 w-4 bg-slate-900 border-slate-800 text-indigo-600 rounded focus:ring-0">
-                    <label for="remember" class="ml-2 text-xs text-slate-400">Remember me</label>
+                    <input type="checkbox" name="remember" id="remember" class="h-4 w-4 bg-white dark:bg-slate-950 border border-slate-350 dark:border-slate-800 text-primary rounded focus:ring-primary">
+                    <label for="remember" class="ml-2 text-xs text-slate-550 dark:text-slate-400">Remember me</label>
                 </div>
 
                 <button type="submit"
-                        class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm shadow-lg shadow-indigo-600/20">
-                    Sign In to Portal
+                        class="w-full py-3 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition-all text-sm shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <span>Sign In to Portal</span>
                 </button>
             </form>
         </div>
         
         <!-- Default login helper text for demo -->
         <div class="text-center mt-6">
-            <p class="text-xs text-slate-600">Demo Login: <span class="text-slate-500 font-mono">admin@workshop.com</span> / <span class="text-slate-500 font-mono">Password123!</span></p>
+            <p class="text-xs text-slate-450">Demo Credentials: <span class="text-slate-500 font-mono">admin@totaldrivecare.com</span> / <span class="text-slate-500 font-mono">Password123!</span></p>
         </div>
     </div>
 
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>

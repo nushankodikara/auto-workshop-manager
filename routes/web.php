@@ -20,15 +20,19 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::match(['get', 'post'], '/insights', [DashboardController::class, 'insights'])->name('dashboard.insights');
 
     // Job Cards Kanban & Allocation
     Route::get('/job-cards', [JobCardController::class, 'board'])->name('job-cards.board');
     Route::get('/job-cards/{jobCard}', [JobCardController::class, 'show'])->name('job-cards.show');
     Route::post('/job-cards', [JobCardController::class, 'store'])->name('job-cards.store');
+    Route::put('/job-cards/{jobCard}', [JobCardController::class, 'update'])->name('job-cards.update');
     Route::patch('/job-cards/{jobCard}/status', [JobCardController::class, 'updateStatus'])->name('job-cards.update-status');
     Route::post('/job-cards/{jobCard}/comments', [JobCardController::class, 'addComment'])->name('job-cards.comment');
     Route::post('/job-cards/{jobCard}/workers', [JobCardController::class, 'assignWorkers'])->name('job-cards.workers');
     Route::post('/job-cards/{jobCard}/parts', [JobCardController::class, 'allocateParts'])->name('job-cards.allocate-parts');
+    Route::post('/job-cards/{jobCard}/services', [JobCardController::class, 'addService'])->name('job-cards.add-service');
+    Route::delete('/job-cards/services/{service}', [JobCardController::class, 'deleteService'])->name('job-cards.delete-service');
 
     // Clients & Vehicles CRUD
     Route::get('/clients', [ClientVehicleController::class, 'clientsIndex'])->name('clients.index');
@@ -36,6 +40,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/clients', [ClientVehicleController::class, 'clientStore'])->name('clients.store');
     Route::put('/clients/{client}', [ClientVehicleController::class, 'clientUpdate'])->name('clients.update');
     Route::delete('/clients/{client}', [ClientVehicleController::class, 'clientDestroy'])->name('clients.destroy');
+    Route::get('/vehicles', [ClientVehicleController::class, 'vehiclesIndex'])->name('vehicles.index');
+    Route::get('/vehicles/{vehicle}/history', [ClientVehicleController::class, 'vehicleHistory'])->name('vehicles.history');
     Route::post('/vehicles', [ClientVehicleController::class, 'vehicleStore'])->name('vehicles.store');
     Route::put('/vehicles/{vehicle}', [ClientVehicleController::class, 'vehicleUpdate'])->name('vehicles.update');
     Route::delete('/vehicles/{vehicle}', [ClientVehicleController::class, 'vehicleDestroy'])->name('vehicles.destroy');
@@ -59,6 +65,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
     Route::get('/payroll/{payrollSlip}', [PayrollController::class, 'show'])->name('payroll.show');
     Route::patch('/payroll/{payrollSlip}/status', [PayrollController::class, 'updateStatus'])->name('payroll.update-status');
+
+    // Attendance Tracker
+    Route::post('/payroll/attendance', [PayrollController::class, 'attendanceStore'])->name('payroll.attendance.store');
+    Route::get('/payroll/attendance/user/{user}', [PayrollController::class, 'employeeAttendanceIndex'])->name('payroll.attendance.employee');
+    Route::post('/payroll/attendance/user/{user}', [PayrollController::class, 'employeeAttendanceStore'])->name('payroll.attendance.employee.store');
+
+    // Employee CRUD
+    Route::post('/employees', [PayrollController::class, 'employeeStore'])->name('employees.store');
+    Route::put('/employees/{user}', [PayrollController::class, 'employeeUpdate'])->name('employees.update');
+    Route::delete('/employees/{user}', [PayrollController::class, 'employeeDestroy'])->name('employees.destroy');
 
     // System Settings & Database Backups (Super Manager Only)
     Route::get('/settings', function () {

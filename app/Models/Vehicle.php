@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['client_id', 'make', 'model', 'year', 'plate_number', 'vin'])]
+#[Fillable(['client_id', 'make', 'model', 'year', 'plate_number', 'vin', 'mileage'])]
 class Vehicle extends Model
 {
     public function client()

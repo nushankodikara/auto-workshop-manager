@@ -15,6 +15,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+use App\Models\JobCardService;
+
 class JobCardController extends Controller
 {
     protected FitSmsService $smsService;
@@ -60,7 +62,8 @@ class JobCardController extends Controller
             'comments.user',
             'activities.user',
             'stockMovements.inventory',
-            'bill.items'
+            'bill.items',
+            'services'
         ]);
 
         $allWorkers = User::where('role', 'worker')->get();
@@ -79,6 +82,7 @@ class JobCardController extends Controller
             'shop_id' => 'required|exists:shops,id',
             'notes' => 'nullable|string',
             'estimated_cost' => 'required|numeric|min:0',
+            'mileage' => 'nullable|integer|min:0',
             'workers' => 'nullable|array',
             'workers.*' => 'exists:users,id',
         ]);
@@ -89,12 +93,21 @@ class JobCardController extends Controller
                 'shop_id' => $data['shop_id'],
                 'notes' => $data['notes'] ?? null,
                 'estimated_cost' => $data['estimated_cost'],
-                'status' => 'received-vehicle'
+                'status' => 'received-vehicle',
+                'mileage' => $data['mileage'] ?? null
             ]);
 
             // Attach workers if any
             if (!empty($data['workers'])) {
                 $jobCard->workers()->sync($data['workers']);
+            }
+
+            // Check and update vehicle mileage if higher
+            if (!empty($data['mileage'])) {
+                $vehicle = $jobCard->vehicle;
+                if ($data['mileage'] > ($vehicle->mileage ?? 0)) {
+                    $vehicle->update(['mileage' => $data['mileage']]);
+                }
             }
 
             // Create initial activity log
@@ -107,6 +120,44 @@ class JobCardController extends Controller
         });
 
         return back()->with('success', 'Job Card created successfully.');
+    }
+
+    /**
+     * Update Job Card details.
+     */
+    public function update(Request $request, JobCard $jobCard)
+    {
+        $data = $request->validate([
+            'notes' => 'nullable|string',
+            'estimated_cost' => 'required|numeric|min:0',
+            'mileage' => 'nullable|integer|min:0',
+        ]);
+
+        DB::transaction(function () use ($jobCard, $data) {
+            $jobCard->update([
+                'notes' => $data['notes'] ?? null,
+                'estimated_cost' => $data['estimated_cost'],
+                'mileage' => $data['mileage'] ?? null
+            ]);
+
+            // Check and update vehicle mileage if higher
+            if (!empty($data['mileage'])) {
+                $vehicle = $jobCard->vehicle;
+                if ($data['mileage'] > ($vehicle->mileage ?? 0)) {
+                    $vehicle->update(['mileage' => $data['mileage']]);
+                }
+            }
+
+            // Log activity
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'job_card_updated',
+                'details' => 'Job Card details updated: mileage, notes, or cost'
+            ]);
+        });
+
+        return back()->with('success', 'Job Card updated successfully.');
     }
 
     /**
@@ -244,5 +295,54 @@ class JobCardController extends Controller
         ]);
 
         return back()->with('success', 'Technicians updated.');
+    }
+
+    /**
+     * Add service/task to Job Card.
+     */
+    public function addService(Request $request, JobCard $jobCard)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string|max:500'
+        ]);
+
+        DB::transaction(function () use ($jobCard, $data) {
+            $service = $jobCard->services()->create($data);
+
+            // Log activity
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'service_added',
+                'details' => "Added service: '{$service->name}' for " . config('app.currency', '$') . number_format($service->price, 2)
+            ]);
+        });
+
+        return back()->with('success', 'Service operation added successfully.');
+    }
+
+    /**
+     * Delete service/task from Job Card.
+     */
+    public function deleteService(JobCardService $service)
+    {
+        $jobCardId = $service->job_card_id;
+        $serviceName = $service->name;
+
+        DB::transaction(function () use ($service, $jobCardId, $serviceName) {
+            $service->delete();
+
+            // Log activity
+            Activity::create([
+                'job_card_id' => $jobCardId,
+                'user_id' => Auth::id(),
+                'action' => 'service_removed',
+                'details' => "Removed service: '{$serviceName}'"
+            ]);
+        });
+
+        return back()->with('success', 'Service operation removed.');
     }
 }

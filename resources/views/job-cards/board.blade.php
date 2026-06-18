@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Job Cards Kanban')
+@section('title', 'Job Cards Board')
 
 @section('content')
 <div class="space-y-6">
@@ -8,13 +8,14 @@
     <!-- Board Header Actions -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500">Live Repair Workflow</h2>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">Live Repair Workflow</h2>
         </div>
         
         <!-- Toggle Create Drawer / Trigger -->
         <button onclick="document.getElementById('create-job-drawer').classList.remove('hidden')"
-                class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-sm transition transform hover:-translate-y-0.5 shadow-md shadow-indigo-600/10 self-start">
-            + Initialize Job Card
+                class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition shadow-sm flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Initialize Job Card</span>
         </button>
     </div>
 
@@ -24,20 +25,23 @@
         <!-- Column Loop -->
         @php
             $columns = [
-                'received-vehicle' => ['label' => '📥 Received', 'border' => 'border-slate-800', 'badge' => 'bg-slate-800 text-slate-400'],
-                'on-going' => ['label' => '⚙️ On-Going', 'border' => 'border-indigo-500/20', 'badge' => 'bg-indigo-500/10 text-indigo-400'],
-                'blocked' => ['label' => '⚠️ Blocked', 'border' => 'border-red-500/20', 'badge' => 'bg-red-500/10 text-red-400'],
-                'testing' => ['label' => '🧪 Testing', 'border' => 'border-blue-500/20', 'badge' => 'bg-blue-500/10 text-blue-400'],
-                'waiting-to-pickup' => ['label' => '📦 Ready to Pickup', 'border' => 'border-emerald-500/20', 'badge' => 'bg-emerald-500/10 text-emerald-400'],
+                'received-vehicle' => ['label' => 'Received', 'icon' => 'download', 'iconColor' => 'text-slate-550', 'border' => 'border-slate-200 dark:border-slate-800', 'badge' => 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'],
+                'on-going' => ['label' => 'Ongoing', 'icon' => 'wrench', 'iconColor' => 'text-primary', 'border' => 'border-primary/20', 'badge' => 'bg-primary/10 text-primary'],
+                'blocked' => ['label' => 'Blocked', 'icon' => 'alert-triangle', 'iconColor' => 'text-red-500', 'border' => 'border-red-500/20', 'badge' => 'bg-red-500/10 text-red-500'],
+                'testing' => ['label' => 'Testing', 'icon' => 'shield-alert', 'iconColor' => 'text-indigo-500', 'border' => 'border-indigo-500/20', 'badge' => 'bg-indigo-500/10 text-indigo-500'],
+                'waiting-to-pickup' => ['label' => 'Ready', 'icon' => 'check-square', 'iconColor' => 'text-green-600 dark:text-green-400', 'border' => 'border-green-500/20', 'badge' => 'bg-green-500/10 text-green-600 dark:text-green-400'],
             ];
         @endphp
 
         @foreach($columns as $statusKey => $col)
-            <div class="glass-card rounded-2xl p-4 border {{ $col['border'] }} flex flex-col min-h-[500px]">
+            <div class="app-card rounded-2xl p-4 flex flex-col min-h-[500px] shadow-xs">
                 <!-- Header -->
-                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800/80">
-                    <span class="text-sm font-semibold text-slate-200">{{ $col['label'] }}</span>
-                    <span class="text-xs px-2 py-0.5 rounded-full {{ $col['badge'] }} font-semibold">
+                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <span class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="{{ $col['icon'] }}" class="w-4 h-4 {{ $col['iconColor'] }}"></i>
+                        <span>{{ $col['label'] }}</span>
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded {{ $col['badge'] }} font-bold">
                         {{ $boardData[$statusKey]->count() }}
                     </span>
                 </div>
@@ -45,45 +49,45 @@
                 <!-- Cards list -->
                 <div class="space-y-3 flex-1 overflow-y-auto">
                     @forelse($boardData[$statusKey] as $jobCard)
-                        <div class="p-4 bg-slate-900/80 hover:bg-slate-900 border border-slate-800/60 rounded-xl transition shadow-sm flex flex-col justify-between group">
+                        <div class="p-4 bg-slate-50/50 hover:bg-slate-100/50 dark:bg-slate-950/40 dark:hover:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl transition shadow-xs flex flex-col justify-between group">
                             
                             <div>
                                 <!-- Card Header -->
                                 <div class="flex items-start justify-between gap-2">
-                                    <a href="{{ route('job-cards.show', $jobCard->id) }}" class="text-sm font-bold text-slate-200 hover:text-indigo-400 transition min-w-0">
+                                    <a href="{{ route('job-cards.show', $jobCard->id) }}" class="text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-primary transition min-w-0">
                                         #{{ str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }} - {{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }}
                                     </a>
                                 </div>
 
                                 <!-- Metadata -->
-                                <div class="text-[11px] text-slate-500 font-mono mt-1">
+                                <div class="text-[11px] text-slate-500 font-mono mt-1 leading-normal">
                                     {{ $jobCard->vehicle->plate_number }} • Client: {{ $jobCard->vehicle->client->name }}
                                 </div>
 
                                 <!-- Note snippet -->
-                                <p class="text-xs text-slate-400 mt-2 line-clamp-2">
+                                <p class="text-xs text-slate-550 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
                                     {{ $jobCard->notes ?? 'No job notes added.' }}
                                 </p>
                             </div>
 
                             <!-- Card Footer -->
-                            <div class="mt-4 pt-3 border-t border-slate-800/50 flex flex-col gap-2">
+                            <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800/50 flex flex-col gap-2">
                                 <!-- Technicians list -->
                                 <div class="flex flex-wrap gap-1">
                                     @forelse($jobCard->workers as $worker)
-                                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-medium capitalize">
+                                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold capitalize">
                                             {{ explode(' ', $worker->name)[0] }}
                                         </span>
                                     @empty
-                                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-medium">Unassigned</span>
+                                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-semibold uppercase tracking-wider">Unassigned</span>
                                     @endforelse
                                 </div>
 
                                 <!-- Action bar -->
                                 <div class="flex items-center justify-between mt-1 gap-2">
                                     <!-- Estimated Cost -->
-                                    <span class="text-xs font-semibold text-slate-300">
-                                        ${{ number_format($jobCard->estimated_cost, 2) }}
+                                    <span class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">
+                                        {{ config('app.currency', '$') }}{{ number_format($jobCard->estimated_cost, 2) }}
                                     </span>
 
                                     <!-- Status quick change dropdown -->
@@ -91,10 +95,10 @@
                                         @csrf
                                         @method('PATCH')
                                         <select name="status" onchange="this.form.submit()" 
-                                                class="text-[10px] bg-slate-800 hover:bg-slate-750 text-slate-300 font-medium py-1 px-1.5 rounded border border-slate-700/80 focus:outline-none cursor-pointer">
+                                                class="text-[10px] bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300 font-semibold py-1 px-1.5 rounded border border-slate-300 dark:border-slate-700/80 focus:outline-none cursor-pointer">
                                             @foreach(array_keys($columns) as $s)
                                                 <option value="{{ $s }}" {{ $jobCard->status === $s ? 'selected' : '' }}>
-                                                    {{ explode(' ', $columns[$s]['label'])[1] ?? $columns[$s]['label'] }}
+                                                    {{ $columns[$s]['label'] }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -104,7 +108,7 @@
 
                         </div>
                     @empty
-                        <div class="text-[11px] text-slate-600 text-center py-8">
+                        <div class="text-[11px] text-slate-500 text-center py-8">
                             No job cards
                         </div>
                     @endforelse
@@ -124,9 +128,12 @@
 
         <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
             <div class="pointer-events-auto w-screen max-w-md">
-                <div class="flex h-full flex-col overflow-y-scroll bg-slate-900 border-l border-slate-800 shadow-xl">
-                    <div class="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-                        <h2 class="text-lg font-bold text-slate-200">Initialize Job Card</h2>
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-850 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="clipboard" class="w-5 h-5 text-primary"></i>
+                            <span>Initialize Job Card</span>
+                        </h2>
                         <button onclick="document.getElementById('create-job-drawer').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
                     </div>
 
@@ -135,9 +142,9 @@
 
                         <!-- Vehicle selection -->
                         <div>
-                            <label for="vehicle_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Select Vehicle</label>
+                            <label for="vehicle_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Select Vehicle</label>
                             <select name="vehicle_id" id="vehicle_id" required
-                                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
                                 <option value="">-- Choose registered vehicle --</option>
                                 @foreach($vehicles as $veh)
                                     <option value="{{ $veh->id }}">
@@ -145,14 +152,14 @@
                                     </option>
                                 @endforeach
                             </select>
-                            <span class="text-[11px] text-slate-500 mt-1 block">Vehicles must be registered under a client profile first.</span>
+                            <span class="text-[11px] text-slate-500 mt-1 block leading-normal">Vehicles must be registered under a client profile first.</span>
                         </div>
 
                         <!-- Shop selection -->
                         <div>
-                            <label for="shop_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Assign Shop Location</label>
+                            <label for="shop_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Assign Shop Location</label>
                             <select name="shop_id" id="shop_id" required
-                                    class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
                                 <option value="">-- Select location --</option>
                                 @foreach($shops as $shop)
                                     <option value="{{ $shop->id }}">{{ $shop->name }}</option>
@@ -160,27 +167,34 @@
                             </select>
                         </div>
 
+                        <!-- Mileage -->
+                        <div>
+                            <label for="mileage" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Odometer / Mileage (Optional)</label>
+                            <input type="number" name="mileage" id="mileage" placeholder="e.g., 75000" min="0"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
                         <!-- Estimated Cost -->
                         <div>
-                            <label for="estimated_cost" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Estimated Cost ($)</label>
+                            <label for="estimated_cost" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Estimated Cost ({{ config('app.currency', '$') }})</label>
                             <input type="number" step="0.01" name="estimated_cost" id="estimated_cost" required value="0.00"
-                                   class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                         </div>
 
                         <!-- Notes -->
                         <div>
-                            <label for="notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Diagnose Notes / Instructions</label>
+                            <label for="notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Diagnose Notes / Instructions</label>
                             <textarea name="notes" id="notes" rows="4" placeholder="Abnormal noise, replacement instructions..."
-                                      class="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-indigo-500 text-sm"></textarea>
+                                      class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm"></textarea>
                         </div>
 
                         <!-- Workers multi selection checkbox -->
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Assign Technicians</label>
-                            <div class="space-y-2 max-h-32 overflow-y-auto p-3 bg-slate-950 border border-slate-800 rounded-lg">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Assign Technicians</label>
+                            <div class="space-y-2 max-h-32 overflow-y-auto p-3 bg-white dark:bg-slate-950 border border-slate-350 dark:border-slate-800 rounded-lg">
                                 @foreach($workers as $worker)
-                                    <label class="flex items-center text-sm text-slate-350 cursor-pointer">
-                                        <input type="checkbox" name="workers[]" value="{{ $worker->id }}" class="h-4 w-4 bg-slate-900 border-slate-850 text-indigo-600 rounded focus:ring-0">
+                                    <label class="flex items-center text-sm text-slate-700 dark:text-slate-350 cursor-pointer">
+                                        <input type="checkbox" name="workers[]" value="{{ $worker->id }}" class="h-4 w-4 text-primary focus:ring-primary rounded border border-slate-350 dark:border-slate-800">
                                         <span class="ml-2 capitalize">{{ $worker->name }}</span>
                                     </label>
                                 @endforeach
@@ -188,13 +202,13 @@
                         </div>
 
                         <!-- Buttons -->
-                        <div class="pt-4 border-t border-slate-800 flex gap-3">
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
                             <button type="submit"
-                                    class="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition text-sm">
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
                                 Create Job Card
                             </button>
                             <button type="button" onclick="document.getElementById('create-job-drawer').classList.add('hidden')"
-                                    class="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg transition text-sm">
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-850 hover:bg-slate-350 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
                                 Cancel
                             </button>
                         </div>

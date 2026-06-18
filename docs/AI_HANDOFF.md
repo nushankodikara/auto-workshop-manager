@@ -32,6 +32,10 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - Manager roles and module-based access control
 - Comments and activity history on job cards
 - Backup and recovery tooling
+- Vehicle CRUD edits (make, model, year, plate, VIN, mileage)
+- Vehicle Repair and Services History report with client-side toggle to print with or without prices
+- Job Card Services (recording multiple tasks on a job card, auto-populating billing workspace labor)
+- Data Insights Dashboard & Secure, Read-Only SQL Query Console (super-manager only)
 
 ## Suggested next modules
 
@@ -42,17 +46,13 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - Service reminders
 - Advanced reporting
 
-## Open implementation items
-
-- Database schema migrations and bootstrap seeding strategy
-- Automatic super manager creation on first boot via Laravel Seeders (using env variables `ADMIN_EMAIL` and `ADMIN_PASSWORD`)
-- Current bootstrap command: `php artisan migrate --force && php artisan db:seed --force`
-- Notification payload format and templates
-- PDF invoice branding and print layout rules
-- Inventory grouping/privacy rules for bill rendering
-- Salary slip categories and defaults
+## Database Updates & Constraints
+- **Vehicles & Job Cards Mileage**: Nullable integer fields. Vehicle mileage represents the highest known odometer reading; job card creations or updates with a higher mileage will trigger vehicle mileage updates. Lower values are ignored on the vehicle.
+- **Job Card Services**: Table `job_card_services` maps `job_card_id` to individual service names and prices.
+- **SQL Console Constraints**: The SQL console is protected using syntax rules: only queries matching `/^\s*select\s/i` are allowed, and dangerous modification keywords (`insert`, `update`, `delete`, `drop`, `alter`, etc.) are actively blocked. All queries are executed inside a safe try-catch block.
 
 ## Working agreement
 
 - Keep this file updated whenever module scope, external providers, or access rules change.
 - Capture decisions here before implementing feature code so later work does not lose context.
+

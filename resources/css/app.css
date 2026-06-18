@@ -4,6 +4,69 @@
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-primary: var(--primary-color);
+    --color-primary-hover: var(--primary-hover);
+
+    --color-slate-250: #d6dee8;
+    --color-slate-350: #afbccc;
+    --color-slate-450: #7c8ba1;
+    --color-slate-550: #55647a;
+    --color-slate-650: #3d4b5f;
+    --color-slate-850: #162032;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Corporate Accent Colors */
+:root {
+    --primary-color: #2563eb; /* default blue-650 */
+    --primary-hover: #1d4ed8;
+}
+
+/* User Accent Color overrides */
+.accent-blue {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+}
+
+.accent-emerald {
+    --primary-color: #059669;
+    --primary-hover: #047857;
+}
+
+.accent-indigo {
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+}
+
+.accent-red {
+    --primary-color: #dc2626;
+    --primary-hover: #b91c1c;
+}
+
+.accent-slate {
+    --primary-color: #475569;
+    --primary-hover: #334155;
+}
+
+/* Base custom classes to match light/dark styles */
+.app-card {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-slate-200);
+}
+.dark .app-card {
+    background-color: var(--color-slate-900);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-input {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-slate-350);
+}
+.dark .app-input {
+    background-color: var(--color-slate-950);
+    border: 1px solid var(--color-slate-800);
 }

@@ -68,6 +68,27 @@ class ClientVehicleController extends Controller
     }
 
     /**
+     * List all vehicles.
+     */
+    public function vehiclesIndex(Request $request)
+    {
+        $search = $request->input('search');
+        
+        $vehicles = Vehicle::when($search, function ($query) use ($search) {
+            $query->where('plate_number', 'like', "%{$search}%")
+                  ->orWhere('make', 'like', "%{$search}%")
+                  ->orWhere('model', 'like', "%{$search}%")
+                  ->orWhereHas('client', function ($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+        })->with(['client', 'jobCards'])->latest()->paginate(15);
+
+        $clients = Client::orderBy('name')->get();
+
+        return view('clients.vehicles', compact('vehicles', 'search', 'clients'));
+    }
+
+    /**
      * Store a new vehicle linked to a client.
      */
     public function vehicleStore(Request $request)
@@ -79,6 +100,7 @@ class ClientVehicleController extends Controller
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'plate_number' => 'required|string|max:20',
             'vin' => 'nullable|string|max:50',
+            'mileage' => 'nullable|integer|min:0',
         ]);
 
         Vehicle::create($data);
@@ -97,11 +119,29 @@ class ClientVehicleController extends Controller
             'year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'plate_number' => 'required|string|max:20',
             'vin' => 'nullable|string|max:50',
+            'mileage' => 'nullable|integer|min:0',
         ]);
 
         $vehicle->update($data);
 
         return back()->with('success', 'Vehicle details updated successfully.');
+    }
+
+    /**
+     * Show vehicle repair and services history report.
+     */
+    public function vehicleHistory(Vehicle $vehicle, Request $request)
+    {
+        $vehicle->load([
+            'client',
+            'jobCards' => function ($query) {
+                $query->with(['services', 'workers', 'shop', 'bill.items', 'stockMovements.inventory'])->latest();
+            }
+        ]);
+
+        $showPrices = $request->query('show_prices', 1);
+
+        return view('clients.history', compact('vehicle', 'showPrices'));
     }
 
     /**

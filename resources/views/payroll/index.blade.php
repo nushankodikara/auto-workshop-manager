@@ -1,17 +1,17 @@
 @extends('layouts.app')
 
-@section('title', 'Payroll Workspace')
+@section('title', 'Payroll & HR Workspace')
 
 @section('content')
 <div class="space-y-6">
 
-    <!-- Filters & Actions Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+    <!-- Filters & Tab Navigation Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
         <!-- Date selectors -->
         <form action="{{ route('payroll.index') }}" method="GET" class="flex items-center gap-3">
             <div>
                 <select name="year" onchange="this.form.submit()" 
-                        class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer">
+                        class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-250 text-xs focus:outline-none focus:border-primary cursor-pointer">
                     @for($y = date('Y') - 2; $y <= date('Y') + 2; $y++)
                         <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
                     @endfor
@@ -19,7 +19,7 @@
             </div>
             <div>
                 <select name="month" onchange="this.form.submit()"
-                        class="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-200 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer">
+                        class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-250 text-xs focus:outline-none focus:border-primary cursor-pointer">
                     @for($m = 1; $m <= 12; $m++)
                         <option value="{{ $m }}" {{ $m == $month ? 'selected' : '' }}>
                             {{ date('F', mktime(0, 0, 0, $m, 1)) }}
@@ -29,54 +29,68 @@
             </div>
         </form>
         
-        <div>
-            <span class="text-xs text-slate-500">
-                Period: {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}
-            </span>
+        <!-- Tab buttons -->
+        <div class="flex border-b border-transparent">
+            <button onclick="switchTab('tab-slips')" id="btn-tab-slips" class="px-4 py-2 font-semibold text-sm border-b-2 border-primary text-primary transition">
+                Payslips
+            </button>
+            <button onclick="switchTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition">
+                Attendance Tracker
+            </button>
+            <button onclick="switchTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition">
+                Employee Directory
+            </button>
         </div>
     </div>
 
-    <!-- Main Workspace Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+    <!-- 1. TAB: Payslips -->
+    <div id="tab-slips" class="grid grid-cols-1 lg:grid-cols-3 gap-8 tab-content">
         <!-- Left: Salary Slips Table -->
         <div class="lg:col-span-2 space-y-4">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">Generated Payslips</h3>
-            <div class="glass-card rounded-2xl overflow-hidden border border-slate-900">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Generated Payslips</h3>
+            <div class="app-card rounded-2xl overflow-hidden shadow-xs">
                 <table class="w-full text-left border-collapse text-sm">
                     <thead>
-                        <tr class="bg-slate-900/60 border-b border-slate-850/80 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                        <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                             <th class="py-4 px-6">Employee</th>
-                            <th class="py-4 px-6">Basic</th>
+                            <th class="py-4 px-6">Prorated Base</th>
+                            <th class="py-4 px-6">OT Pay</th>
                             <th class="py-4 px-6">Allowances</th>
                             <th class="py-4 px-6">Deductions</th>
                             <th class="py-4 px-6">Net Payout</th>
                             <th class="py-4 px-6 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-850/60">
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
                         @forelse($slips as $slip)
-                            <tr class="hover:bg-slate-900/40 transition">
-                                <td class="py-4 px-6 font-semibold text-slate-200 capitalize">
-                                    <a href="{{ route('payroll.show', $slip->id) }}" class="hover:text-indigo-400">
+                            <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition">
+                                <td class="py-4 px-6 font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                                    <a href="{{ route('payroll.show', $slip->id) }}" class="hover:text-primary">
                                         {{ $slip->user->name }}
                                     </a>
                                     <span class="block text-[10px] text-slate-500 capitalize mt-0.5">{{ $slip->user->role }}</span>
                                 </td>
-                                <td class="py-4 px-6 font-mono text-slate-400">${{ number_format($slip->basic_salary, 2) }}</td>
-                                <td class="py-4 px-6 font-mono text-green-400">+${{ number_format($slip->allowance, 2) }}</td>
-                                <td class="py-4 px-6 font-mono text-red-400">-${{ number_format($slip->deductions, 2) }}</td>
-                                <td class="py-4 px-6 font-mono text-slate-200 font-bold">${{ number_format($slip->net_salary, 2) }}</td>
+                                <td class="py-4 px-6 font-mono text-slate-500 dark:text-slate-400">
+                                    {{ config('app.currency', '$') }}{{ number_format($slip->prorated_salary, 2) }}
+                                    <span class="block text-[9px] text-slate-450 font-sans mt-0.5">({{ $slip->attended_days }}/{{ $slip->required_days }} days)</span>
+                                </td>
+                                <td class="py-4 px-6 font-mono text-slate-500 dark:text-slate-400">
+                                    {{ config('app.currency', '$') }}{{ number_format($slip->overtime_amount, 2) }}
+                                    <span class="block text-[9px] text-slate-450 font-sans mt-0.5">({{ $slip->overtime_hours }} hrs)</span>
+                                </td>
+                                <td class="py-4 px-6 font-mono text-green-600 dark:text-green-400">+{{ config('app.currency', '$') }}{{ number_format($slip->allowance, 2) }}</td>
+                                <td class="py-4 px-6 font-mono text-red-650 dark:text-red-400">-{{ config('app.currency', '$') }}{{ number_format($slip->deductions, 2) }}</td>
+                                <td class="py-4 px-6 font-mono text-slate-800 dark:text-slate-200 font-bold">{{ config('app.currency', '$') }}{{ number_format($slip->net_salary, 2) }}</td>
                                 <td class="py-4 px-6 text-right">
                                     <a href="{{ route('payroll.show', $slip->id) }}" 
-                                       class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded transition">
+                                       class="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded transition hover:bg-primary hover:text-white">
                                         View Slip
                                     </a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="py-12 text-center text-slate-500">
+                                <td colspan="7" class="py-12 text-center text-slate-500">
                                     No payslips generated for this period.
                                 </td>
                             </tr>
@@ -87,30 +101,31 @@
         </div>
 
         <!-- Right: Staff Members without payslips -->
-        <div class="glass-card rounded-2xl p-6">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800/80 pb-3 mb-4">
-                ➕ Outstanding Payslips
+        <div class="app-card rounded-2xl p-6 h-fit shadow-xs">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-primary"></i>
+                <span>Outstanding Payslips</span>
             </h3>
 
             <div class="space-y-4">
                 @php $hasOutstanding = false; @endphp
                 @foreach($users as $user)
-                    <!-- Check if user already has a slip for this month -->
                     @php
                         $hasSlip = $slips->contains('user_id', $user->id);
                     @endphp
 
                     @if(!$hasSlip)
                         @php $hasOutstanding = true; @endphp
-                        <div class="flex items-center justify-between p-3.5 bg-slate-900/40 rounded-xl border border-slate-850/80 text-xs capitalize">
+                        <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs capitalize">
                             <div>
-                                <span class="font-bold text-slate-250 block">{{ $user->name }}</span>
-                                <span class="text-[10px] text-slate-500 mt-0.5">Role: {{ $user->role }} • Basic: ${{ number_format($user->basic_salary, 2) }}</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200 block">{{ $user->name }}</span>
+                                <span class="text-[10px] text-slate-500 mt-0.5">Role: {{ $user->role }} • Base: {{ config('app.currency', '$') }}{{ number_format($user->basic_salary, 2) }}</span>
                             </div>
                             <div>
                                 <a href="{{ route('payroll.create', ['user' => $user->id, 'year' => $year, 'month' => $month]) }}"
-                                   class="px-2.5 py-1.5 bg-indigo-650 hover:bg-indigo-650 text-slate-200 font-semibold rounded-lg transition border border-indigo-600/30">
-                                    Generate
+                                   class="px-2.5 py-1.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition text-[11px] shadow-sm flex items-center gap-1">
+                                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                                    <span>Generate</span>
                                 </a>
                             </div>
                         </div>
@@ -118,14 +133,440 @@
                 @endforeach
 
                 @if(!$hasOutstanding)
-                    <div class="text-slate-650 text-xs text-center py-4">
-                        All active staff members have payslips generated for this month.
+                    <div class="text-slate-500 text-xs text-center py-4">
+                        All staff members have payslips generated for this period.
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. TAB: Attendance Tracker -->
+    <div id="tab-attendance" class="space-y-8 tab-content hidden">
+        
+        <!-- Subsection: Log Daily Attendance -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Log Daily Attendance</h3>
+                <div class="app-card rounded-2xl p-6 shadow-xs">
+                    <form action="{{ route('payroll.attendance.store') }}" method="POST" class="space-y-4">
+                        @csrf
+                        <div class="flex items-center gap-4 border-b border-slate-200 dark:border-slate-855 pb-4">
+                            <div>
+                                <label for="attendance_date" class="block text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wider">Date to Log</label>
+                                <input type="date" name="date" id="attendance_date" value="{{ date('Y-m-d') }}" required
+                                       class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                            </div>
+                            <div class="text-xs text-slate-500 mt-5">
+                                Select statuses and overtime hours for staff.
+                            </div>
+                        </div>
+
+                        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+                            @foreach($users as $user)
+                                <div class="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                                    <div class="font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                                        {{ $user->name }}
+                                        <span class="block text-[10px] text-slate-500 font-normal">Role: {{ $user->role }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-4">
+                                        <!-- Radio options -->
+                                        <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-950 p-1.5 rounded-lg border border-slate-200 dark:border-slate-850">
+                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
+                                                <input type="radio" name="attendance[{{ $user->id }}]" value="present" checked
+                                                       class="text-primary focus:ring-primary h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
+                                                <span class="text-slate-700 dark:text-slate-350">Present</span>
+                                            </label>
+                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
+                                                <input type="radio" name="attendance[{{ $user->id }}]" value="absent"
+                                                       class="text-red-500 focus:ring-red-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
+                                                <span class="text-slate-700 dark:text-slate-350">Absent</span>
+                                            </label>
+                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
+                                                <input type="radio" name="attendance[{{ $user->id }}]" value="leave"
+                                                       class="text-blue-500 focus:ring-blue-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
+                                                <span class="text-slate-700 dark:text-slate-350">Leave</span>
+                                            </label>
+                                        </div>
+                                        <!-- Overtime -->
+                                        <div class="flex items-center gap-1.5">
+                                            <input type="number" step="0.5" name="overtime[{{ $user->id }}]" placeholder="OT Hrs" min="0" max="24"
+                                                   class="w-16 px-2 py-1.5 text-center app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary text-xs">
+                                            <span class="text-[10px] text-slate-500 font-mono">hrs</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                            <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg transition shadow-sm flex items-center gap-1.5">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                <span>Save Daily Attendance</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="app-card rounded-2xl p-6 h-fit shadow-xs">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 mb-4 flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-4 h-4 text-primary"></i>
+                    <span>Bulk Edit Attendance</span>
+                </h3>
+                <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                    Select an employee below to bulk edit or override their attendance dates and overtime hours for the entire selected month of <strong>{{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</strong>.
+                </p>
+                <div class="space-y-3">
+                    @foreach($users as $u)
+                        <a href="{{ route('payroll.attendance.employee', ['user' => $u->id, 'year' => $year, 'month' => $month]) }}" 
+                           class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl transition text-xs font-semibold text-slate-750 dark:text-slate-200">
+                            <span class="capitalize">{{ $u->name }}</span>
+                            <span class="text-primary hover:underline flex items-center gap-1">
+                                <span>Bulk Edit</span>
+                                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                            </span>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <!-- Subsection: Monthly Attendance Summary Grid -->
+        <div class="space-y-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Monthly Attendance Grid</h3>
+            <div class="app-card rounded-2xl overflow-x-auto shadow-xs">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                            <th class="py-3.5 px-4 sticky left-0 bg-slate-100/60 dark:bg-slate-900/60 min-w-[120px]">Employee</th>
+                            @for($d = 1; $d <= $daysInMonth; $d++)
+                                <th class="py-3.5 px-1.5 text-center min-w-[24px]">{{ $d }}</th>
+                            @endfor
+                            <th class="py-3.5 px-4 text-center">Present</th>
+                            <th class="py-3.5 px-4 text-center">OT Hrs</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800/60">
+                        @foreach($users as $user)
+                            @php
+                                $uRecords = $attendanceData->get($user->id, collect());
+                                $presentCount = 0;
+                                $totalOt = 0;
+                            @endphp
+                            <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition">
+                                <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200 capitalize sticky left-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                    {{ $user->name }}
+                                </td>
+                                @for($d = 1; $d <= $daysInMonth; $d++)
+                                    @php
+                                        $dateStr = sprintf('%04d-%02d-%02d', $year, $month, $d);
+                                        $record = $uRecords->firstWhere(function($item) use ($dateStr) {
+                                            return $item->date->format('Y-m-d') === $dateStr;
+                                        });
+                                    @endphp
+                                    <td class="py-3 px-1.5 text-center border-r border-slate-150 dark:border-slate-850/60 last:border-r-0">
+                                        @if($record)
+                                            @if($record->status === 'present')
+                                                @php $presentCount++; $totalOt += $record->overtime_hours; @endphp
+                                                <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" title="Present ({{ $record->overtime_hours > 0 ? 'OT: ' . $record->overtime_hours . 'h' : 'No OT' }})"></span>
+                                            @elseif($record->status === 'absent')
+                                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" title="Absent"></span>
+                                            @else
+                                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" title="Leave"></span>
+                                            @endif
+                                        @else
+                                            <span class="text-slate-300 dark:text-slate-700 font-mono">-</span>
+                                        @endif
+                                    </td>
+                                @endfor
+                                <td class="py-3 px-4 font-bold text-center text-slate-700 dark:text-slate-300">{{ $presentCount }}</td>
+                                <td class="py-3 px-4 font-bold text-center font-mono text-slate-600 dark:text-slate-400">{{ $totalOt }}h</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex items-center gap-4 text-xxs text-slate-500 font-medium pt-1">
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> Present</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Absent</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> Leave</span>
             </div>
         </div>
 
     </div>
 
+    <!-- 3. TAB: Employee Directory -->
+    <div id="tab-employees" class="space-y-6 tab-content hidden">
+        <div class="flex justify-between items-center">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Employee List</h3>
+            <button onclick="document.getElementById('create-employee-drawer').classList.remove('hidden')"
+                    class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>Add Employee</span>
+            </button>
+        </div>
+
+        <div class="app-card rounded-2xl overflow-hidden shadow-xs">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                        <th class="py-4 px-6">Name</th>
+                        <th class="py-4 px-6">Email</th>
+                        <th class="py-4 px-6">Role</th>
+                        <th class="py-4 px-6">Base Salary</th>
+                        <th class="py-4 px-6">Required Days</th>
+                        <th class="py-4 px-6">Overtime Rate</th>
+                        <th class="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                    @foreach($users as $emp)
+                        <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition">
+                            <td class="py-4 px-6 font-semibold text-slate-800 dark:text-slate-200 capitalize">
+                                {{ $emp->name }}
+                            </td>
+                            <td class="py-4 px-6 text-slate-650 dark:text-slate-400 font-mono text-xs">{{ $emp->email }}</td>
+                            <td class="py-4 px-6 capitalize">
+                                <span class="px-2 py-0.5 rounded text-xs font-semibold border {{ $emp->isSuperManager() ? 'bg-red-500/10 text-red-550 border-red-500/20' : ($emp->isManager() ? 'bg-blue-500/10 text-blue-550 border-blue-500/20' : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-550/20') }}">
+                                    {{ $emp->role }}
+                                </span>
+                            </td>
+                            <td class="py-4 px-6 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                {{ config('app.currency', '$') }}{{ number_format($emp->basic_salary, 2) }}
+                            </td>
+                            <td class="py-4 px-6 font-mono text-slate-550 dark:text-slate-450">{{ $emp->required_days }} days</td>
+                            <td class="py-4 px-6 font-mono text-slate-550 dark:text-slate-450">
+                                {{ config('app.currency', '$') }}{{ number_format($emp->overtime_rate, 2) }}/hr
+                            </td>
+                            <td class="py-4 px-6 text-right space-x-2">
+                                <!-- Edit trigger -->
+                                <button onclick="openEditEmployeeDrawer({{ json_encode($emp) }})" 
+                                        class="text-xs font-semibold text-primary hover:underline">
+                                    Edit
+                                </button>
+                                
+                                @if($emp->id !== auth()->id())
+                                    <form action="{{ route('employees.destroy', $emp->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" onclick="return confirm('Permanently delete this employee?')"
+                                                class="text-xs font-semibold text-red-550 dark:text-red-400 hover:text-red-500">
+                                            Delete
+                                        </button>
+                                    </form>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
+
+<!-- Sidebar Drawer Modal: Create Employee -->
+<div id="create-employee-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="document.getElementById('create-employee-drawer').classList.add('hidden')"></div>
+
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="user-plus" class="w-5 h-5 text-primary"></i>
+                            <span>Register Employee</span>
+                        </h2>
+                        <button onclick="document.getElementById('create-employee-drawer').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form action="{{ route('employees.store') }}" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+
+                        <div>
+                            <label for="emp_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Full Name</label>
+                            <input type="text" name="name" id="emp_name" required placeholder="Alice Smith"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="emp_email" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
+                            <input type="email" name="email" id="emp_email" required placeholder="alice@workshop.com"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="emp_password" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Password</label>
+                            <input type="password" name="password" id="emp_password" required placeholder="••••••••"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="emp_role" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">System Role</label>
+                            <select name="role" id="emp_role" required
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                <option value="worker">Worker (Technician)</option>
+                                <option value="manager">Workshop Manager</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="emp_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Basic Contract Salary (Monthly)</label>
+                            <input type="number" step="0.01" name="basic_salary" id="emp_salary" required value="2000"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="emp_req_days" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Required Days</label>
+                                <input type="number" name="required_days" id="emp_req_days" required value="26" min="1" max="31"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="emp_ot" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Overtime Rate/hr</label>
+                                <input type="number" step="0.01" name="overtime_rate" id="emp_ot" required value="15"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Register Employee
+                            </button>
+                            <button type="button" onclick="document.getElementById('create-employee-drawer').classList.add('hidden')"
+                                    class="py-2.5 px-4 bg-slate-250 dark:bg-slate-850 hover:bg-slate-350 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sidebar Drawer Modal: Edit Employee -->
+<div id="edit-employee-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="document.getElementById('edit-employee-drawer').classList.add('hidden')"></div>
+
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="edit" class="w-5 h-5 text-primary"></i>
+                            <span>Edit Employee Profile</span>
+                        </h2>
+                        <button onclick="document.getElementById('edit-employee-drawer').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-employee-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label for="edit_emp_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Full Name</label>
+                            <input type="text" name="name" id="edit_emp_name" required
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_emp_email" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
+                            <input type="email" name="email" id="edit_emp_email" required
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_emp_password" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Password (Leave blank to keep current)</label>
+                            <input type="password" name="password" id="edit_emp_password" placeholder="••••••••"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_emp_role" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">System Role</label>
+                            <select name="role" id="edit_emp_role" required
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                <option value="worker">Worker (Technician)</option>
+                                <option value="manager">Workshop Manager</option>
+                                <option value="super-manager">Super Administrator</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="edit_emp_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Basic Contract Salary (Monthly)</label>
+                            <input type="number" step="0.01" name="basic_salary" id="edit_emp_salary" required
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit_emp_req_days" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Required Days</label>
+                                <input type="number" name="required_days" id="edit_emp_req_days" required min="1" max="31"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="edit_emp_ot" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Overtime Rate/hr</label>
+                                <input type="number" step="0.01" name="overtime_rate" id="edit_emp_ot" required
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Save Employee Changes
+                            </button>
+                            <button type="button" onclick="document.getElementById('edit-employee-drawer').classList.add('hidden')"
+                                    class="py-2.5 px-4 bg-slate-250 dark:bg-slate-850 hover:bg-slate-350 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Tab switcher function
+    function switchTab(tabId) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        // Remove active colors from all tabs
+        document.getElementById('btn-tab-slips').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
+        document.getElementById('btn-tab-attendance').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
+        document.getElementById('btn-tab-employees').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
+        
+        // Show target tab
+        document.getElementById(tabId).classList.remove('hidden');
+        // Set active style
+        document.getElementById('btn-' + tabId).className = "px-4 py-2 font-semibold text-sm border-b-2 border-primary text-primary transition";
+
+        // Save selected tab in localStorage to keep tab active on submit redirects
+        localStorage.setItem('payroll_active_tab', tabId);
+    }
+
+    // Restore active tab on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const activeTab = localStorage.getItem('payroll_active_tab') || 'tab-slips';
+        switchTab(activeTab);
+    });
+
+    // Populate and open Edit Employee drawer
+    function openEditEmployeeDrawer(emp) {
+        document.getElementById('edit-employee-form').action = `/employees/${emp.id}`;
+        document.getElementById('edit_emp_name').value = emp.name;
+        document.getElementById('edit_emp_email').value = emp.email;
+        document.getElementById('edit_emp_role').value = emp.role;
+        document.getElementById('edit_emp_salary').value = emp.basic_salary;
+        document.getElementById('edit_emp_req_days').value = emp.required_days;
+        document.getElementById('edit_emp_ot').value = emp.overtime_rate;
+        document.getElementById('edit-employee-drawer').classList.remove('hidden');
+    }
+</script>
 @endsection

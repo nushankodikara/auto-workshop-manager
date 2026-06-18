@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['vehicle_id', 'shop_id', 'status', 'notes', 'estimated_cost', 'completed_at'])]
+#[Fillable(['vehicle_id', 'shop_id', 'status', 'notes', 'estimated_cost', 'completed_at', 'mileage'])]
 class JobCard extends Model
 {
     protected function casts(): array
@@ -13,6 +13,7 @@ class JobCard extends Model
         return [
             'completed_at' => 'datetime',
             'estimated_cost' => 'decimal:2',
+            'mileage' => 'integer',
         ];
     }
 
@@ -49,5 +50,10 @@ class JobCard extends Model
     public function stockMovements()
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+    public function services()
+    {
+        return $this->hasMany(JobCardService::class);
     }
 }

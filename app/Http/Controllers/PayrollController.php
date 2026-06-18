@@ -6,18 +6,19 @@ use App\Models\User;
 use App\Models\PayrollCategory;
 use App\Models\PayrollSlip;
 use App\Models\PayrollSlipItem;
+use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PayrollController extends Controller
 {
     /**
-     * List payroll slips.
+     * List payroll slips, employee attendance summary, and directory.
      */
     public function index(Request $request)
     {
-        $year = $request->input('year', date('Y'));
-        $month = $request->input('month', date('m'));
+        $year = (int)$request->input('year', date('Y'));
+        $month = (int)$request->input('month', date('m'));
 
         $slips = PayrollSlip::where('year', $year)
             ->where('month', $month)
@@ -25,10 +26,17 @@ class PayrollController extends Controller
             ->latest()
             ->get();
 
-        $users = User::all();
+        $users = User::orderBy('name')->get();
         $categories = PayrollCategory::all();
+        $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
 
-        return view('payroll.index', compact('slips', 'users', 'categories', 'year', 'month'));
+        // Load attendance summary for the grid
+        $attendanceData = Attendance::whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->get()
+            ->groupBy('user_id');
+
+        return view('payroll.index', compact('slips', 'users', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData'));
     }
 
     /**
@@ -36,8 +44,8 @@ class PayrollController extends Controller
      */
     public function createWorkspace(User $user, Request $request)
     {
-        $year = $request->input('year', date('Y'));
-        $month = $request->input('month', date('m'));
+        $year = (int)$request->input('year', date('Y'));
+        $month = (int)$request->input('month', date('m'));
 
         // Check if slip already exists
         $existingSlip = PayrollSlip::where('user_id', $user->id)
@@ -49,9 +57,28 @@ class PayrollController extends Controller
             return redirect()->route('payroll.show', $existingSlip->id);
         }
 
+        // Calculate actual attendance metrics
+        $attendedDays = Attendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->where('status', 'present')
+            ->count();
+
+        $overtimeHours = Attendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->sum('overtime_hours');
+
+        $requiredDays = $user->required_days ?: 26;
+        $overtimeRate = $user->overtime_rate ?: 0.00;
+
+        // Base salary prorated calculation
+        $proratedSalary = $requiredDays > 0 ? round(($attendedDays / $requiredDays) * $user->basic_salary, 2) : $user->basic_salary;
+        $overtimeAmount = round($overtimeHours * $overtimeRate, 2);
+
         $categories = PayrollCategory::all();
 
-        return view('payroll.create', compact('user', 'categories', 'year', 'month'));
+        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount'));
     }
 
     /**
@@ -63,6 +90,12 @@ class PayrollController extends Controller
             'user_id' => 'required|exists:users,id',
             'month' => 'required|integer|min:1|max:12',
             'year' => 'required|integer|min:2020|max:2050',
+            'required_days' => 'required|integer|min:0',
+            'attended_days' => 'required|integer|min:0',
+            'overtime_hours' => 'required|numeric|min:0',
+            'overtime_rate' => 'required|numeric|min:0',
+            'overtime_amount' => 'required|numeric|min:0',
+            'prorated_salary' => 'required|numeric|min:0',
             // Allowances/Deductions arrays
             'item_name' => 'nullable|array',
             'item_type' => 'nullable|array',
@@ -82,7 +115,6 @@ class PayrollController extends Controller
         }
 
         DB::transaction(function () use ($user, $data) {
-            $basicSalary = $user->basic_salary;
             $allowanceTotal = 0.00;
             $deductionTotal = 0.00;
 
@@ -90,10 +122,16 @@ class PayrollController extends Controller
                 'user_id' => $user->id,
                 'month' => $data['month'],
                 'year' => $data['year'],
-                'basic_salary' => $basicSalary,
+                'basic_salary' => $user->basic_salary,
+                'required_days' => $data['required_days'],
+                'attended_days' => $data['attended_days'],
+                'overtime_hours' => $data['overtime_hours'],
+                'overtime_rate' => $data['overtime_rate'],
+                'overtime_amount' => $data['overtime_amount'],
+                'prorated_salary' => $data['prorated_salary'],
                 'allowance' => 0.00, // Temp
                 'deductions' => 0.00, // Temp
-                'net_salary' => $basicSalary,
+                'net_salary' => $data['prorated_salary'] + $data['overtime_amount'],
                 'status' => 'draft'
             ]);
 
@@ -102,7 +140,7 @@ class PayrollController extends Controller
                     if (empty($name)) continue;
 
                     $type = $data['item_type'][$key] ?? 'addition';
-                    $amount = $data['item_amount'][$key] ?? 0.00;
+                    $amount = floatval($data['item_amount'][$key] ?? 0.00);
 
                     PayrollSlipItem::create([
                         'payroll_slip_id' => $slip->id,
@@ -120,7 +158,7 @@ class PayrollController extends Controller
             }
 
             // Compute net salary
-            $netSalary = $basicSalary + $allowanceTotal - $deductionTotal;
+            $netSalary = $data['prorated_salary'] + $data['overtime_amount'] + $allowanceTotal - $deductionTotal;
 
             $slip->update([
                 'allowance' => $allowanceTotal,
@@ -156,5 +194,152 @@ class PayrollController extends Controller
         $payrollSlip->update($data);
 
         return back()->with('success', "Salary slip status updated to: {$payrollSlip->status}");
+    }
+
+    /**
+     * Store daily attendance/overtime logs bulk.
+     */
+    public function attendanceStore(Request $request)
+    {
+        $data = $request->validate([
+            'date' => 'required|date',
+            'attendance' => 'required|array', // user_id => status
+            'attendance.*' => 'required|in:present,absent,leave',
+            'overtime' => 'nullable|array', // user_id => overtime_hours
+            'overtime.*' => 'nullable|numeric|min:0',
+        ]);
+
+        $date = $data['date'];
+
+        foreach ($data['attendance'] as $userId => $status) {
+            $otHours = isset($data['overtime'][$userId]) ? floatval($data['overtime'][$userId]) : 0.00;
+
+            Attendance::updateOrCreate(
+                ['user_id' => $userId, 'date' => $date],
+                ['status' => $status, 'overtime_hours' => $otHours]
+            );
+        }
+
+        return back()->with('success', "Daily attendance updated successfully for date: {$date}");
+    }
+
+    /**
+     * Show single employee monthly attendance view for editing.
+     */
+    public function employeeAttendanceIndex(User $user, Request $request)
+    {
+        $year = (int)$request->input('year', date('Y'));
+        $month = (int)$request->input('month', date('m'));
+        
+        $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
+        
+        $records = Attendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->get()
+            ->keyBy(function($item) {
+                return $item->date->format('j');
+            });
+
+        return view('payroll.employee_attendance', compact('user', 'records', 'year', 'month', 'daysInMonth'));
+    }
+
+    /**
+     * Store single employee bulk monthly attendance.
+     */
+    public function employeeAttendanceStore(User $user, Request $request)
+    {
+        $data = $request->validate([
+            'year' => 'required|integer',
+            'month' => 'required|integer',
+            'status' => 'required|array', // day => status
+            'status.*' => 'required|in:present,absent,leave',
+            'overtime' => 'nullable|array', // day => overtime
+            'overtime.*' => 'nullable|numeric|min:0',
+        ]);
+
+        $year = $data['year'];
+        $month = $data['month'];
+
+        foreach ($data['status'] as $day => $status) {
+            $dateString = sprintf('%04d-%02d-%02d', $year, $month, $day);
+            $ot = isset($data['overtime'][$day]) ? floatval($data['overtime'][$day]) : 0.00;
+
+            Attendance::updateOrCreate(
+                ['user_id' => $user->id, 'date' => $dateString],
+                ['status' => $status, 'overtime_hours' => $ot]
+            );
+        }
+
+        return redirect()->route('payroll.index', ['year' => $year, 'month' => $month])
+            ->with('success', "Monthly attendance for {$user->name} saved successfully.");
+    }
+
+    /**
+     * Store a new employee.
+     */
+    public function employeeStore(Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'role' => 'required|in:manager,worker',
+            'basic_salary' => 'required|numeric|min:0',
+            'required_days' => 'required|integer|min:1|max:31',
+            'overtime_rate' => 'required|numeric|min:0',
+        ]);
+
+        $data['password'] = bcrypt($data['password']);
+        
+        if ($data['role'] === 'manager') {
+            $data['allowed_modules'] = ['dashboard', 'job-cards', 'clients', 'inventory', 'billing'];
+        } else {
+            $data['allowed_modules'] = [];
+        }
+
+        User::create($data);
+
+        return back()->with('success', 'Employee profile created successfully.');
+    }
+
+    /**
+     * Update employee profile.
+     */
+    public function employeeUpdate(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'role' => 'required|in:manager,worker,super-manager',
+            'basic_salary' => 'required|numeric|min:0',
+            'required_days' => 'required|integer|min:1|max:31',
+            'overtime_rate' => 'required|numeric|min:0',
+            'password' => 'nullable|string|min:6',
+        ]);
+
+        if (!empty($data['password'])) {
+            $data['password'] = bcrypt($data['password']);
+        } else {
+            unset($data['password']);
+        }
+
+        $user->update($data);
+
+        return back()->with('success', 'Employee profile updated successfully.');
+    }
+
+    /**
+     * Delete an employee.
+     */
+    public function employeeDestroy(User $user)
+    {
+        if ($user->id === auth()->id()) {
+            return back()->withErrors(['error' => 'You cannot delete yourself.']);
+        }
+
+        $user->delete();
+
+        return back()->with('success', 'Employee profile deleted.');
     }
 }

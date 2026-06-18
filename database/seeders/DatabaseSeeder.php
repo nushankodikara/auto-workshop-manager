@@ -50,7 +50,9 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('Password123!'),
             'role' => 'manager',
             'allowed_modules' => ['dashboard', 'job-cards', 'clients', 'inventory', 'billing'],
-            'basic_salary' => 3000.00
+            'basic_salary' => 3000.00,
+            'required_days' => 26,
+            'overtime_rate' => 20.00
         ]);
 
         $technician1 = User::create([
@@ -58,7 +60,9 @@ class DatabaseSeeder extends Seeder
             'email' => 'alex@workshop.com',
             'password' => Hash::make('Password123!'),
             'role' => 'worker',
-            'basic_salary' => 2000.00
+            'basic_salary' => 2000.00,
+            'required_days' => 26,
+            'overtime_rate' => 15.00
         ]);
 
         $technician2 = User::create([
@@ -66,7 +70,9 @@ class DatabaseSeeder extends Seeder
             'email' => 'bob@workshop.com',
             'password' => Hash::make('Password123!'),
             'role' => 'worker',
-            'basic_salary' => 2200.00
+            'basic_salary' => 2200.00,
+            'required_days' => 26,
+            'overtime_rate' => 18.00
         ]);
 
         // 4. Create Sample Clients
@@ -148,5 +154,46 @@ class DatabaseSeeder extends Seeder
             'estimated_cost' => 250.00
         ]);
         $jc2->workers()->attach([$technician1->id, $technician2->id]);
+
+        // 9. Create Sample Attendance records for the current month
+        $year = (int)date('Y');
+        $month = (int)date('m');
+        $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
+
+        for ($day = 1; $day <= 24; $day++) {
+            $dateString = sprintf('%04d-%02d-%02d', $year, $month, $day);
+            
+            // Alex Mechanic attendance
+            \App\Models\Attendance::create([
+                'user_id' => $technician1->id,
+                'date' => $dateString,
+                'status' => 'present',
+                'overtime_hours' => ($day % 5 === 0) ? 2.00 : 0.00
+            ]);
+
+            // Bob Electrician attendance
+            \App\Models\Attendance::create([
+                'user_id' => $technician2->id,
+                'date' => $dateString,
+                'status' => 'present',
+                'overtime_hours' => ($day % 4 === 0) ? 1.50 : 0.00
+            ]);
+        }
+        
+        for ($day = 25; $day <= min(26, $daysInMonth); $day++) {
+            $dateString = sprintf('%04d-%02d-%02d', $year, $month, $day);
+            \App\Models\Attendance::create([
+                'user_id' => $technician1->id,
+                'date' => $dateString,
+                'status' => 'absent',
+                'overtime_hours' => 0.00
+            ]);
+            \App\Models\Attendance::create([
+                'user_id' => $technician2->id,
+                'date' => $dateString,
+                'status' => 'leave',
+                'overtime_hours' => 0.00
+            ]);
+        }
     }
 }

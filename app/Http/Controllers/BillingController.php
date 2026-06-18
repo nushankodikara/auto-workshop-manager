@@ -16,7 +16,7 @@ class BillingController extends Controller
      */
     public function showWorkspace(JobCard $jobCard)
     {
-        $jobCard->load(['vehicle.client', 'bill.items', 'stockMovements.inventory']);
+        $jobCard->load(['vehicle.client', 'bill.items', 'stockMovements.inventory', 'services']);
 
         // Fetch unused stock movements that represent allocated parts
         $allocatedParts = [];
