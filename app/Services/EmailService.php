@@ -45,14 +45,23 @@ class EmailService
                 // Ignore session exceptions (e.g. during CLI commands)
             }
         } else {
-            try {
-                Log::info("Sending real email to {$recipient} with subject: {$subject}");
-                Mail::raw($body, function ($message) use ($recipient, $subject) {
-                    $message->to($recipient)->subject($subject);
-                });
-            } catch (\Exception $e) {
-                Log::error("Failed to send real email: " . $e->getMessage());
-            }
+            // Queue real email dispatch
+            dispatch(new \App\Jobs\SendEmailJob($recipient, $subject, $body));
+        }
+    }
+
+    /**
+     * Directly send Email (called by queued Job).
+     */
+    public function sendEmailDirect(string $recipient, string $subject, string $body): void
+    {
+        try {
+            Log::info("Sending real email to {$recipient} with subject: {$subject}");
+            Mail::raw($body, function ($message) use ($recipient, $subject) {
+                $message->to($recipient)->subject($subject);
+            });
+        } catch (\Exception $e) {
+            Log::error("Failed to send real email: " . $e->getMessage());
         }
     }
 }

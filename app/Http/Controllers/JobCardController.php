@@ -90,7 +90,7 @@ class JobCardController extends Controller
             'workers.*' => 'exists:users,id',
         ]);
 
-        DB::transaction(function () use ($data) {
+        $jobCard = DB::transaction(function () use ($data) {
             $jobCard = JobCard::create([
                 'vehicle_id' => $data['vehicle_id'],
                 'shop_id' => $data['shop_id'],
@@ -120,7 +120,14 @@ class JobCardController extends Controller
                 'action' => 'job_card_created',
                 'details' => 'Job Card initialized at status: Received'
             ]);
+
+            return $jobCard;
         });
+
+        // Load vehicle and client relation for status updates alert
+        $jobCard->load('vehicle.client');
+
+        $this->sendJobCardStatusNotification($jobCard, 'received-vehicle');
 
         return back()->with('success', 'Job Card created successfully.');
     }
@@ -198,16 +205,35 @@ class JobCardController extends Controller
         });
 
         // Send status updates alert to client (SMS & Email)
+        $this->sendJobCardStatusNotification($jobCard, $newStatus);
+
+        $statusLabels = [
+            'received-vehicle' => 'Received',
+            'on-going' => 'On-Going',
+            'blocked' => 'Blocked/Delayed',
+            'testing' => 'Testing',
+            'waiting-to-pickup' => 'Ready for Pickup',
+        ];
+        $statusText = $statusLabels[$newStatus];
+
+        return back()->with('success', "Job status updated to: {$statusText}. Alert sent to client.");
+    }
+
+    /**
+     * Send status updates alert to client (SMS & Email)
+     */
+    private function sendJobCardStatusNotification(JobCard $jobCard, string $status)
+    {
         $vehicle = $jobCard->vehicle;
         $client = $vehicle->client;
         $appName = config('app.name', 'Auto Workshop Manager');
 
-        if ($newStatus !== 'blocked') {
+        if ($status !== 'blocked') {
             $smsMessage = '';
             $emailSubject = '';
             $emailBody = '';
 
-            switch ($newStatus) {
+            switch ($status) {
                 case 'received-vehicle':
                     $smsMessage = "Dear {$client->name}, your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) has been received at {$appName} for: " . ($jobCard->notes ?: 'general inspection') . ". We will keep you updated.";
                     $emailSubject = "Vehicle Received - Job Card #{$jobCard->id}";
@@ -241,17 +267,6 @@ class JobCardController extends Controller
                 $this->emailService->sendEmail($client->email, $emailSubject, $emailBody);
             }
         }
-
-        $statusLabels = [
-            'received-vehicle' => 'Received',
-            'on-going' => 'On-Going',
-            'blocked' => 'Blocked/Delayed',
-            'testing' => 'Testing',
-            'waiting-to-pickup' => 'Ready for Pickup',
-        ];
-        $statusText = $statusLabels[$newStatus];
-
-        return back()->with('success', "Job status updated to: {$statusText}. Alert sent to client.");
     }
 
     /**

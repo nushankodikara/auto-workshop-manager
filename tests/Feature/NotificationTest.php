@@ -173,4 +173,41 @@ class NotificationTest extends TestCase
         $this->assertStringContainsString('thank you for your business', $sms['message']);
         $this->assertStringContainsString('Rs.165.00', $sms['message']);
     }
+
+    /**
+     * Test job card creation triggers received notification.
+     */
+    public function test_job_card_creation_triggers_received_notification()
+    {
+        $this->actingAs($this->superManager);
+
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        session()->forget('mock_notifications');
+        $response = $this->post(route('job-cards.store'), [
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'notes' => 'Engine inspection',
+            'estimated_cost' => 200.00,
+            'mileage' => 46000
+        ]);
+
+        $response->assertStatus(302);
+        
+        $mockNotifications = session('mock_notifications');
+        $this->assertNotEmpty($mockNotifications);
+
+        $sms = collect($mockNotifications)->firstWhere('type', 'sms');
+        $this->assertNotNull($sms);
+        $this->assertStringContainsString('Jane Doe', $sms['message']);
+        $this->assertStringContainsString('WP CAD-4321', $sms['message']);
+        $this->assertStringContainsString('has been received', $sms['message']);
+        $this->assertStringContainsString('Engine inspection', $sms['message']);
+
+        $email = collect($mockNotifications)->firstWhere('type', 'email');
+        $this->assertNotNull($email);
+        $this->assertEquals('jane@test.com', $email['to']);
+        $this->assertStringContainsString('Vehicle Received', $email['subject']);
+        $this->assertStringContainsString('Rs.200.00', $email['message']);
+    }
 }

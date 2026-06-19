@@ -57,6 +57,20 @@ class FitSmsService
             ];
         }
 
+        // Dispatch queued background job
+        dispatch(new \App\Jobs\SendSmsJob($cleanRecipient, $message));
+
+        return [
+            'status' => 'queued',
+            'message' => 'SMS has been queued for background dispatch.'
+        ];
+    }
+
+    /**
+     * Directly send SMS (called by queued Job).
+     */
+    public function sendSmsDirect(string $cleanRecipient, string $message): array
+    {
         if (empty($this->apiToken)) {
             Log::warning("FitSMS Alert: API token is not configured. SMS log: [To: {$cleanRecipient}] Message: {$message}");
             return [
