@@ -3,7 +3,67 @@
 @section('title', 'System Settings & Backups')
 
 @section('content')
+<!-- Cropper.js CSS CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+
 <div class="space-y-8 max-w-4xl mx-auto">
+
+    <!-- Workshop Brand Logo Section -->
+    <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="image" class="w-4 h-4 text-primary"></i>
+                    <span>Workshop Brand Logo</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Upload and crop a custom brand logo image (PNG/JPG) to show in the sidebar, login screen, and invoices.</p>
+            </div>
+            @if(file_exists(public_path('images/logo.png')))
+                <form action="{{ route('settings.logo.delete') }}" method="POST" class="inline">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" onclick="return confirm('Are you sure you want to delete the custom logo?')" 
+                            class="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-650 dark:text-red-400 font-semibold rounded-lg text-xs transition flex items-center gap-1 cursor-pointer">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>Delete Custom Logo</span>
+                    </button>
+                </form>
+            @endif
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-8">
+            <!-- Current Logo Preview -->
+            <div class="flex flex-col items-center gap-2">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Logo</span>
+                <div class="w-24 h-24 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-center p-3 shadow-inner">
+                    @if(file_exists(public_path('images/logo.png')))
+                        <img id="current-brand-logo" src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Brand Logo" class="w-full h-full object-contain">
+                    @else
+                        <!-- Default SVG Logo -->
+                        <svg class="w-12 h-12 text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M50 10 L85 30 L85 70 L50 90 L15 70 L15 30 Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round" fill="currentColor" fill-opacity="0.05"/>
+                            <circle cx="50" cy="50" r="18" stroke="currentColor" stroke-width="6"/>
+                            <path d="M50 24 L50 32 M50 68 L50 76 M24 50 L32 50 M68 50 L76 50 M32 32 L38 38 M62 62 L68 68 M32 68 L38 62 M62 32 L68 38" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                            <path d="M35 65 L65 35" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                        </svg>
+                    @endif
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-wider {{ file_exists(public_path('images/logo.png')) ? 'text-green-600 dark:text-green-400' : 'text-slate-400' }}">
+                    {{ file_exists(public_path('images/logo.png')) ? 'Custom Logo' : 'Default SVG Logo' }}
+                </span>
+            </div>
+
+            <!-- Upload input and Cropper loader -->
+            <div class="flex-1 w-full">
+                <div class="border-2 border-dashed border-slate-350 dark:border-slate-800 rounded-xl p-6 text-center hover:border-primary transition cursor-pointer relative" onclick="document.getElementById('logo-file-input').click()">
+                    <input type="file" id="logo-file-input" accept="image/png, image/jpeg" class="hidden" onchange="loadCropper(this)">
+                    <i data-lucide="upload-cloud" class="w-8 h-8 text-slate-400 mx-auto mb-2"></i>
+                    <span class="text-xs font-semibold text-slate-650 dark:text-slate-300 block">Click to upload brand logo image</span>
+                    <span class="text-[10px] text-slate-500 block mt-1">Supports PNG, JPG up to 2MB (recommended square 1:1 image)</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Section 1: UI Customization (Theme Accent Options) -->
     <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
@@ -138,7 +198,98 @@
 
 </div>
 
+<!-- Cropper.js JavaScript CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
+<!-- Cropping Modal -->
+<div id="cropper-modal" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-955/75 transition-opacity" onclick="closeCropperModal()"></div>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col h-[550px]">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="crop" class="w-4 h-4 text-primary"></i>
+                    <span>Crop Brand Logo</span>
+                </h3>
+                <button onclick="closeCropperModal()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+            </div>
+            
+            <!-- Cropper Workspace -->
+            <div class="flex-1 bg-slate-950 p-4 flex items-center justify-center overflow-hidden">
+                <img id="cropper-image" src="" alt="Source Logo" class="max-h-full max-w-full block">
+            </div>
+
+            <!-- Footer / Action Buttons -->
+            <div class="p-5 border-t border-slate-200 dark:border-slate-800 flex gap-3 bg-slate-50 dark:bg-slate-955/40">
+                <form action="{{ route('settings.logo') }}" method="POST" id="logo-crop-form" class="flex w-full gap-3">
+                    @csrf
+                    <input type="hidden" name="logo_base64" id="logo-base-input">
+                    <button type="button" onclick="submitCroppedLogo()"
+                            class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition text-xs shadow-sm cursor-pointer">
+                        Crop & Save Logo
+                    </button>
+                    <button type="button" onclick="closeCropperModal()"
+                            class="py-2.5 px-4 bg-slate-250 dark:bg-slate-855 hover:bg-slate-350 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg transition text-xs cursor-pointer">
+                        Cancel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    let cropper = null;
+
+    function loadCropper(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageEl = document.getElementById('cropper-image');
+                imageEl.src = e.target.result;
+                
+                // Show modal
+                document.getElementById('cropper-modal').classList.remove('hidden');
+
+                // Initialize Cropper.js
+                if (cropper) {
+                    cropper.destroy();
+                }
+                
+                setTimeout(() => {
+                    cropper = new Cropper(imageEl, {
+                        aspectRatio: 1, // Enforce square crop
+                        viewMode: 1,
+                        autoCropArea: 0.9,
+                        background: false,
+                        responsive: true
+                    });
+                }, 100);
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function closeCropperModal() {
+        document.getElementById('cropper-modal').classList.add('hidden');
+        document.getElementById('logo-file-input').value = '';
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+    }
+
+    function submitCroppedLogo() {
+        if (!cropper) return;
+        const canvas = cropper.getCroppedCanvas({
+            width: 256,
+            height: 256
+        });
+        const base64Data = canvas.toDataURL('image/png');
+        document.getElementById('logo-base-input').value = base64Data;
+        document.getElementById('logo-crop-form').submit();
+    }
+
     function selectAccent(color) {
         setAccentColor(color);
         // Refresh button rings

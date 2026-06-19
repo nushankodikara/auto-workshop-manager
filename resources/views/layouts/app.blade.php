@@ -34,8 +34,19 @@
     <aside class="w-full md:w-64 bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 transition-colors duration-200">
         <div>
             <!-- Branding -->
-            <div class="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40">
-                <span class="text-xl font-bold text-slate-800 dark:text-slate-100">
+            <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40">
+                @if(file_exists(public_path('images/logo.png')))
+                    <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Logo" class="w-8 h-8 object-contain rounded-lg shrink-0">
+                @else
+                    <!-- Fallback SVG Logo -->
+                    <svg class="w-8 h-8 text-primary shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M50 10 L85 30 L85 70 L50 90 L15 70 L15 30 Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round" fill="currentColor" fill-opacity="0.05"/>
+                        <circle cx="50" cy="50" r="18" stroke="currentColor" stroke-width="6"/>
+                        <path d="M50 24 L50 32 M50 68 L50 76 M24 50 L32 50 M68 50 L76 50 M32 32 L38 38 M62 62 L68 68 M32 68 L38 62 M62 32 L68 38" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                        <path d="M35 65 L65 35" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                    </svg>
+                @endif
+                <span class="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
                     {{ config('app.name', 'Auto Workshop Manager') }}
                 </span>
             </div>

@@ -43,16 +43,55 @@
     <!-- Printable Invoice Card -->
     <div class="app-card rounded-2xl p-8 space-y-8 shadow-xs print:bg-white print:text-black print:border-0 print:p-0">
         
-        <!-- Header: Workshop Details & Invoice Meta -->
-        <div class="flex flex-col md:flex-row justify-between gap-6 border-b border-slate-200 dark:border-slate-800 pb-6 print:border-black/10">
-            <div>
-                <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100 print:text-black">{{ config('app.name', 'Auto Workshop Manager') }}</h2>
-                <p class="text-xs text-slate-500 mt-1 print:text-black/60 font-semibold uppercase tracking-wider">Professional Auto Repair & Maintenance</p>
+        <!-- Header: Workshop, Customer, Vehicle, & Invoice details (Single Row) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-sm border-b border-slate-200 dark:border-slate-800 pb-6 print:grid-cols-4 print:gap-6 print:pb-4 print:border-none">
+            <!-- Company Logo & Address -->
+            <div class="space-y-2.5">
+                <div class="flex items-center gap-2">
+                    @if(file_exists(public_path('images/logo.png')))
+                        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Logo" class="w-8 h-8 object-contain rounded-lg shrink-0">
+                    @else
+                        <!-- Fallback SVG Logo -->
+                        <svg class="w-8 h-8 text-primary shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M50 10 L85 30 L85 70 L50 90 L15 70 L15 30 Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round" fill="currentColor" fill-opacity="0.05"/>
+                            <circle cx="50" cy="50" r="18" stroke="currentColor" stroke-width="6"/>
+                            <path d="M50 24 L50 32 M50 68 L50 76 M24 50 L32 50 M68 50 L76 50 M32 32 L38 38 M62 62 L68 68 M32 68 L38 62 M62 32 L68 38" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                            <path d="M35 65 L65 35" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                        </svg>
+                    @endif
+                    <span class="text-base font-bold text-slate-850 dark:text-slate-100 print:text-black leading-tight">{{ config('app.name', 'Auto Workshop Manager') }}</span>
+                </div>
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold print:text-black/60 leading-tight">Professional Auto Repair & Maintenance</div>
+                <div class="text-xs text-slate-600 dark:text-slate-400 print:text-black/70">
+                    <div class="font-bold text-slate-800 dark:text-slate-300 print:text-black">{{ $jobCard->shop->name }}</div>
+                    <div>{{ $jobCard->shop->address }}</div>
+                </div>
             </div>
-            <div class="text-left md:text-right text-sm">
-                <div class="font-bold text-slate-800 dark:text-slate-200 print:text-black text-base">INVOICE</div>
-                <div class="text-xs text-slate-500 mt-1 print:text-black/60 font-mono">Invoice #: {{ $jobCard->bill->bill_number }}</div>
-                <div class="text-xs text-slate-500 font-mono print:text-black/60">Date: {{ $jobCard->bill->created_at->format('Y-m-d') }}</div>
+
+            <!-- Customer Billing Address -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 print:text-black/45">Billed To</h4>
+                <div class="font-bold text-slate-850 dark:text-slate-200 print:text-black">{{ $jobCard->vehicle->client->name }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 mt-1.5 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Phone:</span> {{ $jobCard->vehicle->client->phone }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Email:</span> {{ $jobCard->vehicle->client->email ?? 'N/A' }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Address:</span> {{ $jobCard->vehicle->client->address ?? 'N/A' }}</div>
+            </div>
+
+            <!-- Vehicle Details -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 print:text-black/45">Vehicle Details</h4>
+                <div class="font-bold text-slate-850 dark:text-slate-200 print:text-black">{{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 mt-1.5 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Year:</span> {{ $jobCard->vehicle->year }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Plate:</span> {{ $jobCard->vehicle->plate_number }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70 font-mono"><span class="font-semibold font-sans text-slate-700 dark:text-slate-450 print:text-black">VIN:</span> {{ $jobCard->vehicle->vin ?? 'N/A' }}</div>
+            </div>
+
+            <!-- Invoice Metadata -->
+            <div class="text-left lg:text-right print:text-right">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 print:text-black/45">Invoice Summary</h4>
+                <div class="font-bold text-slate-850 dark:text-slate-200 print:text-black text-sm uppercase">INVOICE</div>
+                <div class="text-xs text-slate-500 mt-1 print:text-black/70 font-mono">Invoice #: {{ $jobCard->bill->bill_number }}</div>
+                <div class="text-xs text-slate-500 print:text-black/70 font-mono">Date: {{ $jobCard->bill->created_at->format('Y-m-d') }}</div>
                 <div class="mt-2 text-xs">
                     @if($jobCard->bill->status === 'paid')
                         <span class="px-2.5 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-450 border border-green-500/20 font-bold uppercase print:border-black/20 print:text-black">Paid</span>
@@ -60,24 +99,6 @@
                         <span class="px-2.5 py-0.5 rounded bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20 font-bold uppercase print:border-black/20 print:text-black">Unpaid / Draft</span>
                     @endif
                 </div>
-            </div>
-        </div>
-
-        <!-- Billing Info: Client & Vehicle -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm border-b border-slate-200 dark:border-slate-800 pb-6 print:border-black/10">
-            <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 print:text-black/40">Billed To</h4>
-                <div class="font-bold text-slate-800 dark:text-slate-200">{{ $jobCard->vehicle->client->name }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">Phone: {{ $jobCard->vehicle->client->phone }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">Email: {{ $jobCard->vehicle->client->email ?? 'N/A' }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">Address: {{ $jobCard->vehicle->client->address ?? 'N/A' }}</div>
-            </div>
-            <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 print:text-black/40">Vehicle Details</h4>
-                <div class="font-bold text-slate-800 dark:text-slate-200">{{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold">Year: {{ $jobCard->vehicle->year }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400">Plate Number: {{ $jobCard->vehicle->plate_number }}</div>
-                <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">VIN/Chassis: {{ $jobCard->vehicle->vin ?? 'N/A' }}</div>
             </div>
         </div>
 
@@ -157,6 +178,26 @@
         body {
             background: white !important;
             color: black !important;
+        }
+        .app-card {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            color: black !important;
+            padding: 0 !important;
+        }
+        /* Strip out borders and lines to keep print simple and border-free */
+        .border-b, .border-t, .divide-y, td, th, tr, table {
+            border: none !important;
+            border-bottom: none !important;
+            border-top: none !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+        /* Add spacing in place of horizontal dividers */
+        .pb-6, .pt-4, .pt-6 {
+            padding-bottom: 1.5rem !important;
+            padding-top: 1.5rem !important;
         }
     }
 </style>

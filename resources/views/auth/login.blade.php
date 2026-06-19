@@ -27,7 +27,17 @@
 
     <div class="w-full max-w-md">
         <!-- Brand Header -->
-        <div class="text-center mb-8">
+        <div class="text-center mb-8 flex flex-col items-center">
+            @if(file_exists(public_path('images/logo.png')))
+                <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Logo" class="w-16 h-16 object-contain rounded-xl mb-4">
+            @else
+                <svg class="w-16 h-16 text-primary mb-4" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M50 10 L85 30 L85 70 L50 90 L15 70 L15 30 Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round" fill="currentColor" fill-opacity="0.05"/>
+                    <circle cx="50" cy="50" r="18" stroke="currentColor" stroke-width="6"/>
+                    <path d="M50 24 L50 32 M50 68 L50 76 M24 50 L32 50 M68 50 L76 50 M32 32 L38 38 M62 62 L68 68 M32 68 L38 62 M62 32 L68 38" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                    <path d="M35 65 L65 35" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                </svg>
+            @endif
             <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
                 {{ config('app.name', 'Auto Workshop Manager') }}
             </h1>

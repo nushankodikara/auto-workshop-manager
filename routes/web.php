@@ -77,42 +77,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/employees/{user}', [PayrollController::class, 'employeeDestroy'])->name('employees.destroy');
 
     // System Settings & Database Backups (Super Manager Only)
-    Route::get('/settings', function () {
-        if (!auth()->user()->isSuperManager()) {
-            abort(403, 'Unauthorized module access.');
-        }
-        $backupDir = env('BACKUP_DIR', base_path('backups'));
-        $backups = [];
-        if (\Illuminate\Support\Facades\File::exists($backupDir)) {
-            $files = \Illuminate\Support\Facades\File::glob($backupDir . '/backup_*.sqlite');
-            $backups = array_map(function ($file) {
-                return [
-                    'name' => basename($file),
-                    'size' => round(filesize($file) / 1024, 2) . ' KB',
-                    'time' => date('Y-m-d H:i:s', filemtime($file))
-                ];
-            }, $files);
-            usort($backups, function ($a, $b) {
-                return strcmp($b['time'], $a['time']);
-            });
-        }
-        return view('settings.index', compact('backups'));
-    })->name('settings.index');
-
-    Route::post('/settings/backup', function () {
-        if (!auth()->user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
-        \Illuminate\Support\Facades\Artisan::call('db:backup');
-        return back()->with('success', 'Manual database backup generated successfully.');
-    })->name('settings.backup');
-
-    Route::post('/settings/restore', function (Request $request) {
-        if (!auth()->user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
-        $filename = $request->input('filename');
-        \Illuminate\Support\Facades\Artisan::call('db:restore', ['filename' => $filename, '--no-interaction' => true]);
-        return back()->with('success', "Database successfully restored from: {$filename}");
-    })->name('settings.restore');
+    Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings/backup', [App\Http\Controllers\SettingsController::class, 'backup'])->name('settings.backup');
+    Route::post('/settings/restore', [App\Http\Controllers\SettingsController::class, 'restore'])->name('settings.restore');
+    Route::post('/settings/logo', [App\Http\Controllers\SettingsController::class, 'uploadLogo'])->name('settings.logo');
+    Route::delete('/settings/logo', [App\Http\Controllers\SettingsController::class, 'deleteLogo'])->name('settings.logo.delete');
 });

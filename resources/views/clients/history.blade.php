@@ -5,6 +5,29 @@
 @section('content')
 <div class="space-y-6 max-w-4xl mx-auto print:p-0 print:max-w-full print:bg-white print:text-black">
 
+    <!-- Company Branding Header (Visible on print, clean on screen) -->
+    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-6 print:border-none print:pb-3">
+        <div class="flex items-center gap-3">
+            @if(file_exists(public_path('images/logo.png')))
+                <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Logo" class="w-10 h-10 object-contain rounded-lg shrink-0">
+            @else
+                <svg class="w-10 h-10 text-primary shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M50 10 L85 30 L85 70 L50 90 L15 70 L15 30 Z" stroke="currentColor" stroke-width="6" stroke-linejoin="round" fill="currentColor" fill-opacity="0.05"/>
+                    <circle cx="50" cy="50" r="18" stroke="currentColor" stroke-width="6"/>
+                    <path d="M50 24 L50 32 M50 68 L50 76 M24 50 L32 50 M68 50 L76 50 M32 32 L38 38 M62 62 L68 68 M32 68 L38 62 M62 32 L68 38" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                    <path d="M35 65 L65 35" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+                </svg>
+            @endif
+            <div>
+                <h1 class="text-xl font-bold text-slate-850 dark:text-slate-100 print:text-black leading-tight">{{ config('app.name', 'Auto Workshop Manager') }}</h1>
+                <p class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold print:text-black/60">Vehicle Service & Maintenance Report</p>
+            </div>
+        </div>
+        <div class="text-right text-xs text-slate-500 print:text-black/60 font-mono">
+            <div>Report Date: {{ date('Y-m-d') }}</div>
+        </div>
+    </div>
+
     <!-- Header navigation & controls (Hidden on Print) -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 print:hidden">
         <div class="flex items-center gap-3">
@@ -219,6 +242,19 @@
             background: transparent !important;
             color: black !important;
             padding: 0 !important;
+        }
+        /* Strip out borders and lines to keep print simple and border-free */
+        .border-b, .border-t, .divide-y, td, th, tr, table {
+            border: none !important;
+            border-bottom: none !important;
+            border-top: none !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+        /* Add spacing in place of horizontal dividers */
+        .pb-4, .pb-3, .pt-3 {
+            padding-bottom: 1rem !important;
+            padding-top: 1rem !important;
         }
         /* Page break prevention rules */
         .page-break-inside-avoid {
