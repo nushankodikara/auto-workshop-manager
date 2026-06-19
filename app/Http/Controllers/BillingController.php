@@ -6,11 +6,18 @@ use App\Models\JobCard;
 use App\Models\Bill;
 use App\Models\BillItem;
 use App\Models\StockMovement;
+use App\Services\FitSmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BillingController extends Controller
 {
+    protected FitSmsService $smsService;
+
+    public function __construct(FitSmsService $smsService)
+    {
+        $this->smsService = $smsService;
+    }
     /**
      * Show billing workspace for a Job Card.
      */
@@ -49,7 +56,7 @@ class BillingController extends Controller
             return back()->withErrors(['bill' => 'A bill already exists for this job card.']);
         }
 
-        DB::transaction(function () use ($jobCard, $data) {
+        $bill = DB::transaction(function () use ($jobCard, $data) {
             // Generate unique bill number: INV-YYYYMMDD-XXXX
             $billNumber = 'INV-' . date('Ymd') . '-' . str_pad($jobCard->id, 4, '0', STR_PAD_LEFT);
 
@@ -118,7 +125,26 @@ class BillingController extends Controller
             // 4. Update Bill Total
             $bill->total_amount = $totalAmount;
             $bill->save();
+
+            return $bill;
         });
+
+        // Send SMS alerts to client (Quotation / Paid)
+        $vehicle = $jobCard->vehicle;
+        $client = $vehicle->client;
+        $appName = config('app.name', 'Auto Workshop Manager');
+        $currency = config('app.currency', 'Rs.');
+        $amountFormatted = $currency . number_format($bill->total_amount, 2);
+
+        if ($bill->status === 'draft') {
+            // Quotation SMS
+            $message = "Dear {$client->name}, your service estimate/quotation for {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) is ready. The total estimated amount is {$amountFormatted} (inclusive of tax). Thank you for choosing {$appName}.";
+            $this->smsService->sendSms($client->phone, $message);
+        } else {
+            // Payment Received SMS
+            $message = "Dear {$client->name}, thank you for your business! Payment of {$amountFormatted} has been received for vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}).";
+            $this->smsService->sendSms($client->phone, $message);
+        }
 
         return redirect()->route('billing.show', $jobCard->id)->with('success', 'Invoice generated successfully.');
     }
@@ -146,7 +172,19 @@ class BillingController extends Controller
             'status' => 'required|in:draft,paid'
         ]);
 
+        $oldStatus = $bill->status;
         $bill->update($data);
+
+        if ($oldStatus === 'draft' && $bill->status === 'paid') {
+            $jobCard = $bill->jobCard;
+            $vehicle = $jobCard->vehicle;
+            $client = $vehicle->client;
+            $currency = config('app.currency', 'Rs.');
+            $amountFormatted = $currency . number_format($bill->total_amount, 2);
+
+            $message = "Dear {$client->name}, thank you for your business! Payment of {$amountFormatted} has been received for vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}).";
+            $this->smsService->sendSms($client->phone, $message);
+        }
 
         return back()->with('success', "Invoice status updated to: {$bill->status}");
     }

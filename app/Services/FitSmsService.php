@@ -10,11 +10,13 @@ class FitSmsService
     protected string $apiToken;
     protected string $senderId;
     protected string $apiUrl = 'https://app.fitsms.lk/api/v4/sms/send';
+    protected bool $isMock;
 
     public function __construct()
     {
-        $this->apiToken = env('FITSMS_API_TOKEN', '');
-        $this->senderId = env('FITSMS_SENDER_ID', 'TDC');
+        $this->apiToken = trim(env('FITSMS_API_TOKEN', ''));
+        $this->senderId = trim(env('FITSMS_SENDER_ID', 'TDC'), '"\' ');
+        $this->isMock = filter_var(env('NOTIFICATION_MOCK', true), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -28,6 +30,32 @@ class FitSmsService
     {
         // Sanitize recipient: FitSMS expects country code format without +
         $cleanRecipient = ltrim($recipient, '+');
+
+        if ($this->isMock) {
+            // Log to php://stdout (Docker console)
+            file_put_contents('php://stdout', "\n[SMS OUTBOUND MOCK] To: {$cleanRecipient} | Msg: {$message}\n----------------------------------------\n");
+            
+            // Log to laravel.log
+            Log::info("[SMS OUTBOUND MOCK] To: {$cleanRecipient} | Msg: {$message}");
+
+            // Push to session to display toast
+            try {
+                $mockNotifications = session()->get('mock_notifications', []);
+                $mockNotifications[] = [
+                    'type' => 'sms',
+                    'to' => $cleanRecipient,
+                    'message' => $message
+                ];
+                session()->put('mock_notifications', $mockNotifications);
+            } catch (\Exception $e) {
+                // Ignore session exceptions (e.g. during CLI commands)
+            }
+
+            return [
+                'status' => 'mocked',
+                'message' => 'SMS mock logged to console and toast.'
+            ];
+        }
 
         if (empty($this->apiToken)) {
             Log::warning("FitSMS Alert: API token is not configured. SMS log: [To: {$cleanRecipient}] Message: {$message}");

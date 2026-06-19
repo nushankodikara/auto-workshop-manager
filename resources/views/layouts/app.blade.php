@@ -166,6 +166,68 @@
                 </div>
             @endif
 
+            <!-- Mock Notification Toasts -->
+            @if($mockNotifs = session()->pull('mock_notifications'))
+                <div class="space-y-4 mb-6" id="mock-toast-container">
+                    @foreach($mockNotifs as $notif)
+                        <div id="mock-toast-{{ $loop->index }}" 
+                             class="p-4 rounded-xl border border-primary/20 bg-primary/10 text-slate-800 dark:text-slate-200 text-sm flex flex-col gap-1.5 shadow-sm relative overflow-hidden transition-all duration-300 transform scale-100 opacity-100">
+                            <!-- Left Accent Strip -->
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+                            
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                                    @if($notif['type'] === 'sms')
+                                        <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                                        <span>Mock SMS Notification (To: {{ $notif['to'] }})</span>
+                                    @else
+                                        <i data-lucide="mail" class="w-3.5 h-3.5"></i>
+                                        <span>Mock Email Notification (To: {{ $notif['to'] }})</span>
+                                    @endif
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] font-semibold text-slate-500 dark:text-slate-400">Environment: Mock Mode</span>
+                                    <button type="button" 
+                                            onclick="dismissMockToast('mock-toast-{{ $loop->index }}')" 
+                                            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5 rounded-lg hover:bg-slate-500/10" 
+                                            title="Dismiss">
+                                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            @if($notif['type'] === 'email')
+                                <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Subject: {{ $notif['subject'] }}</div>
+                            @endif
+                            <div class="text-xs text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-line">{{ $notif['message'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+                
+                <script>
+                    function dismissMockToast(id) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            el.classList.add('opacity-0', 'scale-95', '-translate-y-2');
+                            setTimeout(() => {
+                                el.remove();
+                                const container = document.getElementById('mock-toast-container');
+                                if (container && !container.children.length) {
+                                    container.remove();
+                                }
+                            }, 300);
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', () => {
+                        @foreach($mockNotifs as $notif)
+                            setTimeout(() => {
+                                dismissMockToast('mock-toast-{{ $loop->index }}');
+                            }, 10000 + ({{ $loop->index }} * 500));
+                        @endforeach
+                    });
+                </script>
+            @endif
+
             @yield('content')
         </main>
     </div>

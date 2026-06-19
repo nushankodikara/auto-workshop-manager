@@ -11,6 +11,7 @@ use App\Models\Activity;
 use App\Models\Inventory;
 use App\Models\StockMovement;
 use App\Services\FitSmsService;
+use App\Services\EmailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -20,10 +21,12 @@ use App\Models\JobCardService;
 class JobCardController extends Controller
 {
     protected FitSmsService $smsService;
+    protected EmailService $emailService;
 
-    public function __construct(FitSmsService $smsService)
+    public function __construct(FitSmsService $smsService, EmailService $emailService)
     {
         $this->smsService = $smsService;
+        $this->emailService = $emailService;
     }
 
     /**
@@ -194,9 +197,51 @@ class JobCardController extends Controller
             ]);
         });
 
-        // Send FitSMS alert to client if status updates
+        // Send status updates alert to client (SMS & Email)
         $vehicle = $jobCard->vehicle;
         $client = $vehicle->client;
+        $appName = config('app.name', 'Auto Workshop Manager');
+
+        if ($newStatus !== 'blocked') {
+            $smsMessage = '';
+            $emailSubject = '';
+            $emailBody = '';
+
+            switch ($newStatus) {
+                case 'received-vehicle':
+                    $smsMessage = "Dear {$client->name}, your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) has been received at {$appName} for: " . ($jobCard->notes ?: 'general inspection') . ". We will keep you updated.";
+                    $emailSubject = "Vehicle Received - Job Card #{$jobCard->id}";
+                    $emailBody = "Hello {$client->name},\n\nWe have successfully received your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) for servicing and diagnostics at {$appName}.\n\nInstructions/Notes:\n" . ($jobCard->notes ?: 'General inspection and maintenance.') . "\n\nEstimated Cost: " . config('app.currency') . number_format($jobCard->estimated_cost, 2) . "\n\nWe will notify you as soon as the repair operations commence.\n\nBest regards,\n{$appName} Team";
+                    break;
+
+                case 'on-going':
+                    $smsMessage = "Dear {$client->name}, repair and maintenance work on your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) is now in progress. We will notify you once complete.";
+                    $emailSubject = "Repair in Progress - Job Card #{$jobCard->id}";
+                    $emailBody = "Hello {$client->name},\n\nThis is to notify you that repair and servicing operations for your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) are now actively in progress.\n\nOur technicians are working to complete the tasks as scheduled. We will send you an update once the vehicle undergoes quality testing.\n\nBest regards,\n{$appName} Team";
+                    break;
+
+                case 'testing':
+                    $smsMessage = "Dear {$client->name}, repairs on your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) are complete. It is currently being tested by our mechanics.";
+                    $emailSubject = "Quality Testing & Diagnostics - Job Card #{$jobCard->id}";
+                    $emailBody = "Hello {$client->name},\n\nThe mechanical and repair work on your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) is now complete. The vehicle is currently undergoing quality control testing, road tests, and system diagnostics by our chief mechanics.\n\nWe will notify you immediately once the testing is finalized and the vehicle is cleared for collection.\n\nBest regards,\n{$appName} Team";
+                    break;
+
+                case 'waiting-to-pickup':
+                    $smsMessage = "Dear {$client->name}, your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) is ready to be picked up from {$appName}. Thank you!";
+                    $emailSubject = "Ready for Collection - Job Card #{$jobCard->id}";
+                    $emailBody = "Hello {$client->name},\n\nWe are pleased to inform you that your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) has successfully passed all quality control tests and is ready to be picked up at your convenience.\n\nFinal Cost Summary: " . config('app.currency') . number_format($jobCard->estimated_cost, 2) . "\n\nThank you for choosing {$appName}!\n\nBest regards,\n{$appName} Team";
+                    break;
+            }
+
+            if (!empty($smsMessage)) {
+                $this->smsService->sendSms($client->phone, $smsMessage);
+            }
+
+            if (!empty($client->email) && !empty($emailSubject) && !empty($emailBody)) {
+                $this->emailService->sendEmail($client->email, $emailSubject, $emailBody);
+            }
+        }
+
         $statusLabels = [
             'received-vehicle' => 'Received',
             'on-going' => 'On-Going',
@@ -204,12 +249,7 @@ class JobCardController extends Controller
             'testing' => 'Testing',
             'waiting-to-pickup' => 'Ready for Pickup',
         ];
-
         $statusText = $statusLabels[$newStatus];
-        $appName = config('app.name', 'Workshop Manager');
-        $smsMessage = "Dear {$client->name}, your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) status is now updated to: {$statusText}. Thank you for choosing {$appName}.";
-
-        $this->smsService->sendSms($client->phone, $smsMessage);
 
         return back()->with('success', "Job status updated to: {$statusText}. Alert sent to client.");
     }
