@@ -4,24 +4,34 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  publish-latest:
-    uses: nushankodikara/reusable-workflows/.github/workflows/docker-publish.yaml@main
-    with:
-      docker_username: ${{ vars.DOCKERHUB_USERNAME }}
-      docker_image_and_tag: ${{ vars.DOCKERHUB_USERNAME }}/auto-workshop-manager:latest
-      context: .
-      dockerfile: ./Dockerfile
-    secrets:
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-  publish-versioned:
-    uses: nushankodikara/reusable-workflows/.github/workflows/docker-publish.yaml@main
-    with:
-      docker_username: ${{ vars.DOCKERHUB_USERNAME }}
-      docker_image_and_tag: ${{ vars.DOCKERHUB_USERNAME }}/auto-workshop-manager:v1.0.${{ github.run_number }}
-      context: .
-      dockerfile: ./Dockerfile
-    secrets:
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/auto-workshop-manager:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/auto-workshop-manager:v1.0.${{ github.run_number }}
