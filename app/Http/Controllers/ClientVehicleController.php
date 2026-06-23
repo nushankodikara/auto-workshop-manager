@@ -135,7 +135,7 @@ class ClientVehicleController extends Controller
         $vehicle->load([
             'client',
             'jobCards' => function ($query) {
-                $query->with(['services', 'workers', 'shop', 'bill.items', 'stockMovements.inventory'])->latest();
+                $query->with(['services', 'workers', 'shop', 'bill.items', 'stockMovements.inventory', 'stockMovements.purchaseBatch'])->latest();
             }
         ]);
 

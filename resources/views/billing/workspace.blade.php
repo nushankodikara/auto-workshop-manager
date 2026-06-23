@@ -37,7 +37,7 @@
                         </div>
                         <div class="text-right">
                             <span class="font-bold text-slate-700 dark:text-slate-300">{{ abs($mov->quantity) }} {{ $mov->inventory->unit }}</span>
-                            <span class="text-xs text-slate-500 block font-mono mt-0.5">Cost: {{ config('app.currency', '$') }}{{ number_format(abs($mov->quantity) * $mov->inventory->price, 2) }}</span>
+                            <span class="text-xs text-slate-500 block font-mono mt-0.5">Price: {{ config('app.currency', 'Rs.') }}{{ number_format(abs($mov->quantity) * ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price), 2) }}</span>
                         </div>
                     </div>
                 @endforeach

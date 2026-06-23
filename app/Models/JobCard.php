@@ -5,9 +5,37 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['vehicle_id', 'shop_id', 'status', 'notes', 'estimated_cost', 'completed_at', 'mileage'])]
+#[Fillable(['vehicle_id', 'shop_id', 'status', 'notes', 'estimated_cost', 'completed_at', 'mileage', 'card_number', 'last_email', 'last_sms'])]
 class JobCard extends Model
 {
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($jobCard) {
+            if (empty($jobCard->card_number)) {
+                $prefix = \App\Models\Setting::get('job_card_prefix', 'TDC-');
+                $createdAt = $jobCard->created_at ? \Carbon\Carbon::parse($jobCard->created_at) : now();
+                $dateTimePart = $createdAt->format('ymdHi');
+                $searchPattern = $prefix . $dateTimePart . '%';
+                
+                $lastJobCard = self::where('card_number', 'like', $searchPattern)
+                    ->orderBy('card_number', 'desc')
+                    ->first();
+
+                if ($lastJobCard) {
+                    $lastNumStr = substr($lastJobCard->card_number, -3);
+                    $nextNum = intval($lastNumStr) + 1;
+                } else {
+                    $nextNum = 1;
+                }
+
+                $xxx = str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+                $jobCard->card_number = $prefix . $dateTimePart . $xxx;
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -55,5 +83,40 @@ class JobCard extends Model
     public function services()
     {
         return $this->hasMany(JobCardService::class);
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(JobCardAssignment::class);
+    }
+
+    public function getWorkerActiveHours($worker)
+    {
+        $assignments = $this->assignments()->where('user_id', $worker->id)->get();
+        $totalSeconds = 0;
+        foreach ($assignments as $assignment) {
+            $totalSeconds += $assignment->getActiveSeconds();
+        }
+        return round($totalSeconds / 3600, 2);
+    }
+
+    public function getWorkerOvertimeHours($worker)
+    {
+        $assignments = $this->assignments()->where('user_id', $worker->id)->get();
+        $totalSeconds = 0;
+        foreach ($assignments as $assignment) {
+            $totalSeconds += $assignment->getOvertimeSeconds();
+        }
+        return round($totalSeconds / 3600, 2);
+    }
+
+    public function getOpenDurationAttribute()
+    {
+        $start = $this->created_at;
+        $end = $this->completed_at ?: now();
+        return $start->diffForHumans($end, [
+            'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE,
+            'parts' => 2,
+        ]);
     }
 }

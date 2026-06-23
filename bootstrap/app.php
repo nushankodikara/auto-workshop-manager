@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         if (app()->runningUnitTests()) {
             $middleware->validateCsrfTokens(except: ['*']);
         }
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -113,6 +113,118 @@
         </div>
     </div>
 
+    <!-- Section 1.5: Job Card Number Settings -->
+    <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <i data-lucide="hash" class="w-4 h-4 text-primary"></i>
+                <span>Job Card Number Settings</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">Configure the prefix format for newly generated job card numbers (e.g., TDC-).</p>
+        </div>
+
+        <form action="{{ route('settings.update') }}" method="POST" class="space-y-4 pt-2">
+            @csrf
+            <div>
+                <label for="job_card_prefix" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Job Card Number Prefix</label>
+                <div class="flex gap-3">
+                    <input type="text" name="job_card_prefix" id="job_card_prefix" required 
+                           value="{{ \App\Models\Setting::get('job_card_prefix', 'TDC-') }}" 
+                           placeholder="TDC-"
+                           class="w-full max-w-xs px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    <button type="submit" 
+                            class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>Save Setting</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Section 1.7: Shop Locations Management -->
+    <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-primary"></i>
+                    <span>Shop Locations</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Configure work bays and workshop locations for job card assignments.</p>
+            </div>
+        </div>
+
+        @error('shop')
+            <div class="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-650 dark:text-red-400 text-xs font-semibold animate-pulse">
+                {{ $message }}
+            </div>
+        @enderror
+
+        <!-- Add Shop Form -->
+        <form action="{{ route('settings.shops.store') }}" method="POST" class="space-y-4 pt-2">
+            @csrf
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="shop_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Shop Name</label>
+                    <input type="text" name="name" id="shop_name" required placeholder="e.g. Main Workshop (Bay 2)"
+                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                </div>
+                <div>
+                    <label for="shop_address" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Address / Location Details</label>
+                    <div class="flex gap-3">
+                        <input type="text" name="address" id="shop_address" placeholder="e.g. 123 Engine Lane, Auto City"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        <button type="submit" 
+                                class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span>Add Shop</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <!-- Shops List -->
+        <div class="space-y-4 pt-2">
+            @if($shops->isEmpty())
+                <div class="text-slate-500 text-sm py-8 text-center bg-slate-50 dark:bg-slate-950/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                    No shop locations configured. Please add at least one shop location.
+                </div>
+            @else
+                <div class="app-card rounded-xl overflow-hidden shadow-xs">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                                <th class="py-3 px-5">Shop Name</th>
+                                <th class="py-3 px-5">Address / Location Details</th>
+                                <th class="py-3 px-5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                            @foreach($shops as $shop)
+                                <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/20 transition">
+                                    <td class="py-3 px-5 font-semibold text-slate-800 dark:text-slate-200">{{ $shop->name }}</td>
+                                    <td class="py-3 px-5 text-slate-500">{{ $shop->address ?? 'N/A' }}</td>
+                                    <td class="py-3 px-5 text-right">
+                                        <form action="{{ route('settings.shops.delete', $shop) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    onclick="return confirm('Are you sure you want to delete this shop location?')"
+                                                    class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-650 dark:text-red-400 font-semibold rounded transition text-[10px] cursor-pointer">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
+
     <!-- Section 2: Backup Engine -->
     <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
         <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">

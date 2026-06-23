@@ -20,6 +20,32 @@ class FitSmsService
     }
 
     /**
+     * Normalize phone numbers to Sri Lankan country code format (947xxxxxxxx).
+     */
+    public static function normalizePhoneNumber(string $phone): string
+    {
+        // Remove any non-numeric characters (except plus, which we will handle)
+        $clean = preg_replace('/[^0-9+]/', '', $phone);
+        
+        // Remove leading +
+        if (str_starts_with($clean, '+')) {
+            $clean = substr($clean, 1);
+        }
+        
+        // Replace leading 0 with 94 for Sri Lankan numbers (typically 10 digits starting with 0)
+        if (str_starts_with($clean, '0')) {
+            $clean = '94' . substr($clean, 1);
+        }
+        
+        // If the number is 9 digits (e.g. 771234567), prepend 94
+        if (strlen($clean) === 9) {
+            $clean = '94' . $clean;
+        }
+        
+        return $clean;
+    }
+
+    /**
      * Send outbound SMS.
      *
      * @param string $recipient Phone number (e.g., +94771234567 or 94771234567)
@@ -29,7 +55,7 @@ class FitSmsService
     public function sendSms(string $recipient, string $message): array
     {
         // Sanitize recipient: FitSMS expects country code format without +
-        $cleanRecipient = ltrim($recipient, '+');
+        $cleanRecipient = self::normalizePhoneNumber($recipient);
 
         if ($this->isMock) {
             // Log to php://stdout (Docker console)

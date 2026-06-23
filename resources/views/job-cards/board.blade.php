@@ -55,7 +55,7 @@
                                 <!-- Card Header -->
                                 <div class="flex items-start justify-between gap-2">
                                     <a href="{{ route('job-cards.show', $jobCard->id) }}" class="text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-primary transition min-w-0">
-                                        #{{ str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }} - {{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }}
+                                        {{ $jobCard->card_number ?? '#' . str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }} - {{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }}
                                     </a>
                                 </div>
 

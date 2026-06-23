@@ -6,11 +6,21 @@ on:
       - main
 
 jobs:
-  publish-docker:
+  publish-latest:
     uses: nushankodikara/reusable-workflows/.github/workflows/docker-publish.yaml@main
     with:
       docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
       docker_image_and_tag: ${{ secrets.DOCKERHUB_USERNAME }}/auto-workshop-manager:latest
+      context: .
+      dockerfile: ./Dockerfile
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  publish-versioned:
+    uses: nushankodikara/reusable-workflows/.github/workflows/docker-publish.yaml@main
+    with:
+      docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      docker_image_and_tag: ${{ secrets.DOCKERHUB_USERNAME }}/auto-workshop-manager:v1.0.${{ github.run_number }}
       context: .
       dockerfile: ./Dockerfile
     secrets:

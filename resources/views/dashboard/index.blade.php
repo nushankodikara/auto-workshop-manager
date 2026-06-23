@@ -44,18 +44,18 @@
             <div class="text-xs text-slate-500 mt-4 font-semibold uppercase tracking-wider">Linked to client profiles</div>
         </div>
 
-        <!-- Metrics 4: Monthly Revenue -->
+        <!-- Metrics 4: Total Jobs of the Month -->
         <div class="app-card rounded-2xl p-6 flex flex-col justify-between shadow-xs">
             <div>
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <i data-lucide="dollar-sign" class="w-3.5 h-3.5 text-primary"></i>
-                    <span>Monthly Revenue</span>
+                    <i data-lucide="wrench" class="w-3.5 h-3.5 text-primary"></i>
+                    <span>Total Jobs of the Month</span>
                 </span>
                 <h3 class="text-3xl font-bold mt-2 text-slate-805 dark:text-slate-100 font-mono">
-                    {{ config('app.currency', '$') }}{{ number_format($monthlyRevenue, 2) }}
+                    {{ $monthlyJobsCount }}
                 </h3>
             </div>
-            <div class="text-xs text-slate-500 mt-4 font-semibold uppercase tracking-wider">Sum of paid invoices this month</div>
+            <div class="text-xs text-slate-500 mt-4 font-semibold uppercase tracking-wider">Job cards created this month</div>
         </div>
 
     </div>

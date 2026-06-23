@@ -177,8 +177,8 @@
                                             <td class="py-2 px-3 font-medium">{{ $mov->inventory->name }}</td>
                                             <td class="py-2 px-3 font-mono text-slate-500 print:text-black/70">{{ $mov->inventory->sku }}</td>
                                             <td class="py-2 px-3 text-center font-mono">{{ abs($mov->quantity) }}</td>
-                                            <td class="py-2 px-3 text-right font-mono price-element">{{ config('app.currency', '$') }}{{ number_format($mov->inventory->price, 2) }}</td>
-                                            <td class="py-2 px-3 text-right font-mono price-element">{{ config('app.currency', '$') }}{{ number_format(abs($mov->quantity) * $mov->inventory->price, 2) }}</td>
+                                            <td class="py-2 px-3 text-right font-mono price-element">{{ config('app.currency', 'Rs.') }}{{ number_format($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price, 2) }}</td>
+                                            <td class="py-2 px-3 text-right font-mono price-element">{{ config('app.currency', 'Rs.') }}{{ number_format(abs($mov->quantity) * ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price), 2) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

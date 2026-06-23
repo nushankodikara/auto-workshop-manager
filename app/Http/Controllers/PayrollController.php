@@ -342,4 +342,53 @@ class PayrollController extends Controller
 
         return back()->with('success', 'Employee profile deleted.');
     }
+
+    /**
+     * Show employee profile with ticket utilization, active working hours, and overtime.
+     */
+    public function employeeShow(User $user)
+    {
+        // Fetch all assignments for this employee
+        $assignments = \App\Models\JobCardAssignment::where('user_id', $user->id)
+            ->with('jobCard.vehicle')
+            ->get();
+
+        $ticketBreakdown = [];
+        $totalRegularSeconds = 0;
+        $totalOvertimeSeconds = 0;
+
+        foreach ($assignments as $assignment) {
+            $regSec = $assignment->getActiveSeconds();
+            $otSec = $assignment->getOvertimeSeconds();
+
+            $totalRegularSeconds += $regSec;
+            $totalOvertimeSeconds += $otSec;
+
+            $jc = $assignment->jobCard;
+            if (!$jc) continue;
+
+            $jcId = $jc->id;
+            if (!isset($ticketBreakdown[$jcId])) {
+                $ticketBreakdown[$jcId] = [
+                    'job_card' => $jc,
+                    'regular_seconds' => 0,
+                    'overtime_seconds' => 0,
+                ];
+            }
+            $ticketBreakdown[$jcId]['regular_seconds'] += $regSec;
+            $ticketBreakdown[$jcId]['overtime_seconds'] += $otSec;
+        }
+
+        $totalActiveHours = round($totalRegularSeconds / 3600, 2);
+        $totalOvertimeHours = round($totalOvertimeSeconds / 3600, 2);
+
+        // Convert seconds to hours for breakdown
+        foreach ($ticketBreakdown as $jcId => $data) {
+            $ticketBreakdown[$jcId]['regular_hours'] = round($data['regular_seconds'] / 3600, 2);
+            $ticketBreakdown[$jcId]['overtime_hours'] = round($data['overtime_seconds'] / 3600, 2);
+            $ticketBreakdown[$jcId]['total_hours'] = round(($data['regular_seconds'] + $data['overtime_seconds']) / 3600, 2);
+        }
+
+        return view('payroll.employee_show', compact('user', 'totalActiveHours', 'totalOvertimeHours', 'ticketBreakdown'));
+    }
 }

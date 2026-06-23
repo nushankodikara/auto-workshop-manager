@@ -30,7 +30,7 @@ class BillingController extends Controller
         if (!$jobCard->bill) {
             $allocatedParts = StockMovement::where('job_card_id', $jobCard->id)
                 ->where('type', 'out')
-                ->with('inventory')
+                ->with(['inventory', 'purchaseBatch'])
                 ->get();
         }
 
@@ -73,13 +73,17 @@ class BillingController extends Controller
             // 1. Add Part Items (from allocated stock movements)
             $allocatedMovements = StockMovement::where('job_card_id', $jobCard->id)
                 ->where('type', 'out')
-                ->with('inventory')
+                ->with(['inventory', 'purchaseBatch'])
                 ->get();
 
             foreach ($allocatedMovements as $mov) {
                 $inv = $mov->inventory;
                 $qty = abs($mov->quantity); // Make positive
-                $unitPrice = $inv->price;
+                
+                // Fetch prices from batch if present, fallback to parent inventory values
+                $unitPrice = $mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $inv->selling_price;
+                $costPrice = $mov->cost_price ?? ($mov->purchaseBatch ? $mov->purchaseBatch->cost_price : $inv->cost_price);
+                
                 $totalPrice = $qty * $unitPrice;
 
                 BillItem::create([
@@ -88,6 +92,7 @@ class BillingController extends Controller
                     'type' => 'part',
                     'description' => $inv->name,
                     'quantity' => $qty,
+                    'cost_price' => $costPrice,
                     'unit_price' => $unitPrice,
                     'total_price' => $totalPrice
                 ]);
@@ -146,6 +151,9 @@ class BillingController extends Controller
             $this->smsService->sendSms($client->phone, $message);
         }
 
+        // Save last_sms to job card
+        $jobCard->update(['last_sms' => $message]);
+
         return redirect()->route('billing.show', $jobCard->id)->with('success', 'Invoice generated successfully.');
     }
 
@@ -184,6 +192,9 @@ class BillingController extends Controller
 
             $message = "Dear {$client->name}, thank you for your business! Payment of {$amountFormatted} has been received for vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}).";
             $this->smsService->sendSms($client->phone, $message);
+
+            // Save last_sms to job card
+            $jobCard->update(['last_sms' => $message]);
         }
 
         return back()->with('success', "Invoice status updated to: {$bill->status}");

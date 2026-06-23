@@ -41,7 +41,8 @@
                             <th class="py-4 px-6">Part Name</th>
                             <th class="py-4 px-6">SKU</th>
                             <th class="py-4 px-6">Available Stock</th>
-                            <th class="py-4 px-6">Price</th>
+                            <th class="py-4 px-6">Cost Price</th>
+                            <th class="py-4 px-6">Selling Price</th>
                             <th class="py-4 px-6 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -63,12 +64,20 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="py-4 px-6 text-slate-700 dark:text-slate-300 font-medium font-mono">
-                                    {{ config('app.currency', '$') }}{{ number_format($item->price, 2) }}
+                                <td class="py-4 px-6 text-slate-500 dark:text-slate-400 font-mono">
+                                    {{ config('app.currency', 'Rs.') }}{{ number_format($item->cost_price, 2) }}
                                 </td>
-                                <td class="py-4 px-6 text-right">
+                                <td class="py-4 px-6 text-slate-700 dark:text-slate-200 font-semibold font-mono">
+                                    {{ config('app.currency', 'Rs.') }}{{ number_format($item->selling_price, 2) }}
+                                </td>
+                                <td class="py-4 px-6 text-right flex items-center justify-end gap-2">
+                                    <!-- Add Batch trigger -->
+                                    <button onclick="openAddBatchModal({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->cost_price }}, {{ $item->selling_price }})"
+                                            class="text-xs font-bold text-green-600 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded transition hover:bg-green-600 hover:text-white">
+                                        Add Batch
+                                    </button>
                                     <!-- Adjust Stock trigger -->
-                                    <button onclick="openAdjustmentModal({{ $item->id }}, '{{ $item->name }}', '{{ $item->unit }}')"
+                                    <button onclick="openAdjustmentModal({{ $item->id }}, '{{ addslashes($item->name) }}', '{{ $item->unit }}')"
                                             class="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded transition hover:bg-primary hover:text-white">
                                         Adjust Stock
                                     </button>
@@ -76,7 +85,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="py-12 text-center text-slate-500">
+                                <td colspan="6" class="py-12 text-center text-slate-500">
                                     No parts registered in inventory.
                                 </td>
                             </tr>
@@ -164,12 +173,17 @@
                             <label for="quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Initial Quantity</label>
                             <input type="number" name="quantity" id="quantity" required min="0" value="0"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </di                        <!-- Cost Price -->
+                        <div>
+                            <label for="cost_price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="cost_price" id="cost_price" required value="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                         </div>
 
-                        <!-- Unit Price -->
+                        <!-- Selling Price -->
                         <div>
-                            <label for="price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Unit Price ({{ config('app.currency', '$') }})</label>
-                            <input type="number" step="0.01" name="price" id="price" required value="0.00"
+                            <label for="selling_price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="selling_price" id="selling_price" required value="0.00"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                         </div>
 
@@ -205,7 +219,7 @@
     
     <!-- Modal Card -->
     <div class="app-card w-full max-w-md rounded-2xl relative z-10 overflow-hidden shadow-2xl">
-        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
             <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5" id="adjustment-modal-title">
                 <i data-lucide="sliders" class="w-4 h-4 text-primary"></i>
                 <span>Adjust Stock</span>
@@ -253,6 +267,76 @@
     </div>
 </div>
 
+<!-- Replenish Stock / Add Purchase Batch Modal -->
+<div id="add-batch-modal" class="fixed inset-0 z-50 flex items-center justify-center p-6 hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-950/75" onclick="closeAddBatchModal()"></div>
+    
+    <!-- Modal Card -->
+    <div class="app-card w-full max-w-md rounded-2xl relative z-10 overflow-hidden shadow-2xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5" id="add-batch-modal-title">
+                <i data-lucide="package-plus" class="w-4 h-4 text-primary"></i>
+                <span>Replenish Stock (Add Batch)</span>
+            </h2>
+            <button onclick="closeAddBatchModal()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+        </div>
+
+        <form id="add-batch-form" method="POST" class="p-6 space-y-4 text-xs">
+            @csrf
+
+            <div>
+                <label for="batch_code" class="block text-slate-500 mb-1 font-semibold">Batch Code / ID</label>
+                <input type="text" name="batch_code" id="batch_code" required placeholder="e.g. BAT-20260619-A"
+                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="batch_quantity" class="block text-slate-500 mb-1 font-semibold">Quantity Received</label>
+                    <input type="number" name="quantity" id="batch_quantity" required min="1" value="1"
+                           class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono">
+                </div>
+                <div>
+                    <label for="batch_purchased_at" class="block text-slate-500 mb-1 font-semibold">Purchase Date</label>
+                    <input type="date" name="purchased_at" id="batch_purchased_at" required value="{{ date('Y-m-d') }}"
+                           class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="batch_cost_price" class="block text-slate-500 mb-1 font-semibold">Cost Price (Rs.)</label>
+                    <input type="number" step="0.01" name="cost_price" id="batch_cost_price" required value="0.00"
+                           class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono">
+                </div>
+                <div>
+                    <label for="batch_selling_price" class="block text-slate-500 mb-1 font-semibold">Selling Price (Rs.)</label>
+                    <input type="number" step="0.01" name="selling_price" id="batch_selling_price" required value="0.00"
+                           class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono">
+                </div>
+            </div>
+
+            <div>
+                <label for="batch_supplier" class="block text-slate-500 mb-1 font-semibold">Supplier Name</label>
+                <input type="text" name="supplier" id="batch_supplier" placeholder="e.g. Lanka Parts Wholesale"
+                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary">
+            </div>
+
+            <!-- Buttons -->
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 justify-end">
+                <button type="button" onclick="closeAddBatchModal()"
+                        class="py-2 px-3 bg-slate-200 dark:bg-slate-850 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg">
+                    Cancel
+                </button>
+                <button type="submit" class="py-2 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg">
+                    Add Batch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     function openAdjustmentModal(itemId, itemName, unit) {
         const modal = document.getElementById('adjustment-modal');
@@ -269,6 +353,29 @@
 
     function closeAdjustmentModal() {
         document.getElementById('adjustment-modal').classList.add('hidden');
+    }
+
+    function openAddBatchModal(itemId, itemName, currentCost, currentSelling) {
+        const modal = document.getElementById('add-batch-modal');
+        const form = document.getElementById('add-batch-form');
+        const title = document.getElementById('add-batch-modal-title');
+        
+        form.action = `/inventory/${itemId}/batch`;
+        title.innerText = `Add Purchase Batch - ${itemName}`;
+        
+        // Auto-fill a suggested batch code
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,"");
+        document.getElementById('batch_code').value = `BAT-${dateStr}-${itemId}`;
+        
+        // Pre-fill latest prices
+        document.getElementById('batch_cost_price').value = currentCost;
+        document.getElementById('batch_selling_price').value = currentSelling;
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeAddBatchModal() {
+        document.getElementById('add-batch-modal').classList.add('hidden');
     }
 </script>
 @endsection

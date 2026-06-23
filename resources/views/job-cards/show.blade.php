@@ -13,7 +13,7 @@
                 <span>Back to Board</span>
             </a>
             <span class="text-slate-400">|</span>
-            <span class="text-slate-650 dark:text-slate-350 font-semibold text-sm">Job Card #{{ str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }}</span>
+            <span class="text-slate-650 dark:text-slate-350 font-semibold text-sm">Job Card #{{ $jobCard->card_number ?? str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }}</span>
         </div>
 
         <!-- Invoice / Billing Link -->
@@ -59,7 +59,7 @@
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm mt-3">
+                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm mt-3">
                     <div>
                         <span class="text-slate-500 block text-xs font-semibold">Vehicle</span>
                         <span class="font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">{{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }} ({{ $jobCard->vehicle->year }})</span>
@@ -81,6 +81,10 @@
                     <div>
                         <span class="text-slate-500 block text-xs font-semibold">Odometer / Mileage</span>
                         <span class="font-bold text-slate-850 dark:text-slate-200 mt-0.5 block">{{ $jobCard->mileage ? number_format($jobCard->mileage) . ' km' : 'Not recorded' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-xs font-semibold">Open Duration</span>
+                        <span class="font-bold text-slate-850 dark:text-slate-200 mt-0.5 block">{{ $jobCard->open_duration }}</span>
                     </div>
                 </div>
 
@@ -180,14 +184,14 @@
                                 </div>
                                 <div class="text-right">
                                     <span class="font-bold text-slate-800 dark:text-slate-200">{{ abs($mov->quantity) }} {{ $mov->inventory->unit }}</span>
-                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">Cost: {{ config('app.currency', '$') }}{{ number_format(abs($mov->quantity) * $mov->inventory->price, 2) }}</span>
+                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">Price: {{ config('app.currency', 'Rs.') }}{{ number_format(abs($mov->quantity) * ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price), 2) }}</span>
                                 </div>
                             </div>
                         @endif
                     @endforeach
 
                     @if(!$hasParts)
-                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-950/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
                             No parts allocated to this job card yet. Use the form below to allocate parts from stock.
                         </div>
                     @endif
@@ -195,18 +199,25 @@
 
                 <!-- Part allocation form (Only show if invoice doesn't exist) -->
                 @if(!$jobCard->bill)
-                    <form action="{{ route('job-cards.allocate-parts', $jobCard->id) }}" method="POST" class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <form action="{{ route('job-cards.allocate-parts', $jobCard->id) }}" method="POST" class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-4 gap-4">
                         @csrf
                         <div>
-                            <label for="inventory_id" class="block text-xs text-slate-500 mb-1 font-semibold">Select Parts In Stock</label>
-                            <select name="inventory_id" id="inventory_id" required
+                            <label for="inventory_id" class="block text-xs text-slate-500 mb-1 font-semibold">Select Part</label>
+                            <select name="inventory_id" id="inventory_id" required onchange="updateBatchDropdown()"
                                     class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
                                 <option value="">-- Choose part --</option>
                                 @foreach($inventoryItems as $item)
                                     <option value="{{ $item->id }}">
-                                        {{ $item->name }} (SKU: {{ $item->sku }} - Avail: {{ $item->quantity }})
+                                        {{ $item->name }} (SKU: {{ $item->sku }} - Total: {{ $item->quantity }})
                                     </option>
                                 @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="purchase_batch_id" class="block text-xs text-slate-500 mb-1 font-semibold">Select Batch</label>
+                            <select name="purchase_batch_id" id="purchase_batch_id" required
+                                    class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
+                                <option value="">-- Choose batch --</option>
                             </select>
                         </div>
                         <div>
@@ -289,9 +300,18 @@
                 <div class="space-y-2">
                     @forelse($jobCard->workers as $worker)
                         <div class="flex items-center gap-2.5 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 text-xs capitalize font-medium">
-                            <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                            <span class="text-slate-750 dark:text-slate-300 font-bold">{{ $worker->name }}</span>
-                            <span class="text-slate-500 ml-auto">{{ $worker->role }}</span>
+                            <span class="h-2 w-2 rounded-full bg-green-500 text-xs inline-block shrink-0"></span>
+                            <span class="text-slate-750 dark:text-slate-300 font-bold">
+                                <a href="{{ route('employees.show', $worker->id) }}" class="text-primary hover:underline">
+                                    {{ $worker->name }}
+                                </a>
+                            </span>
+                            <span class="text-slate-505 dark:text-slate-400 ml-auto flex flex-col items-end text-right">
+                                <span class="font-semibold">{{ $worker->role }}</span>
+                                <span class="text-[10px] text-slate-400 font-semibold font-mono mt-0.5">
+                                    Active: {{ number_format($jobCard->getWorkerActiveHours($worker), 2) }}h (OT: {{ number_format($jobCard->getWorkerOvertimeHours($worker), 2) }}h)
+                                </span>
+                            </span>
                         </div>
                     @empty
                         <div class="text-yellow-600 dark:text-yellow-400 text-xs p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20 flex items-center gap-1.5">
@@ -415,4 +435,41 @@
         </div>
     </div>
 </div>
+<script>
+    const inventoryData = @json($inventoryItems);
+    
+    function updateBatchDropdown() {
+        const partSelect = document.getElementById('inventory_id');
+        const batchSelect = document.getElementById('purchase_batch_id');
+        const selectedPartId = partSelect.value;
+        
+        // Clear previous options
+        batchSelect.innerHTML = '<option value="">-- Choose batch --</option>';
+        
+        if (!selectedPartId) {
+            return;
+        }
+        
+        // Find selected part in inventoryData
+        const part = inventoryData.find(item => item.id == selectedPartId);
+        if (part && part.purchase_batches) {
+            part.purchase_batches.forEach((batch, index) => {
+                const option = document.createElement('option');
+                option.value = batch.id;
+                // Oldest batch is recommended by FIFO
+                const fifoLabel = index === 0 ? ' (FIFO Recommended)' : '';
+                option.text = `${batch.batch_code} (Avail: ${batch.quantity_remaining} | Price: Rs.${parseFloat(batch.selling_price).toFixed(2)})${fifoLabel}`;
+                if (index === 0) {
+                    option.selected = true; // Auto-select the oldest batch (FIFO)
+                }
+                batchSelect.appendChild(option);
+            });
+        }
+    }
+
+    // Call updateBatchDropdown on page load to populate if there's a pre-selected value
+    document.addEventListener('DOMContentLoaded', function() {
+        updateBatchDropdown();
+    });
+</script>
 @endsection

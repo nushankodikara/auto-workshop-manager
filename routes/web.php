@@ -21,6 +21,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::match(['get', 'post'], '/insights', [DashboardController::class, 'insights'])->name('dashboard.insights');
+    Route::get('/statistics', [DashboardController::class, 'statistics'])->name('dashboard.statistics');
 
     // Job Cards Kanban & Allocation
     Route::get('/job-cards', [JobCardController::class, 'board'])->name('job-cards.board');
@@ -51,6 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
     Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::patch('/inventory/{item}/adjust', [InventoryController::class, 'adjustStock'])->name('inventory.adjust');
+    Route::post('/inventory/{item}/batch', [InventoryController::class, 'addBatch'])->name('inventory.add-batch');
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
 
     // Billing & Invoices
@@ -82,4 +84,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/restore', [App\Http\Controllers\SettingsController::class, 'restore'])->name('settings.restore');
     Route::post('/settings/logo', [App\Http\Controllers\SettingsController::class, 'uploadLogo'])->name('settings.logo');
     Route::delete('/settings/logo', [App\Http\Controllers\SettingsController::class, 'deleteLogo'])->name('settings.logo.delete');
+    Route::post('/settings/update', [App\Http\Controllers\SettingsController::class, 'updateSettings'])->name('settings.update');
+    Route::post('/settings/shops', [App\Http\Controllers\SettingsController::class, 'storeShop'])->name('settings.shops.store');
+    Route::delete('/settings/shops/{shop}', [App\Http\Controllers\SettingsController::class, 'deleteShop'])->name('settings.shops.delete');
+
+    // Employee Profile Utilization View
+    Route::get('/employees/{user}', [PayrollController::class, 'employeeShow'])->name('employees.show');
 });
+
+// Public API Route (Exempt from auth & CSRF)
+Route::match(['get', 'post'], '/api/tickets/status', [App\Http\Controllers\ApiController::class, 'getTicketStatus'])->name('api.tickets.status');
+

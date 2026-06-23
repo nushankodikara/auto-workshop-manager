@@ -324,7 +324,9 @@
                     @foreach($users as $emp)
                         <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition">
                             <td class="py-4 px-6 font-semibold text-slate-800 dark:text-slate-200 capitalize">
-                                {{ $emp->name }}
+                                <a href="{{ route('employees.show', $emp->id) }}" class="text-primary hover:underline">
+                                    {{ $emp->name }}
+                                </a>
                             </td>
                             <td class="py-4 px-6 text-slate-650 dark:text-slate-400 font-mono text-xs">{{ $emp->email }}</td>
                             <td class="py-4 px-6 capitalize">

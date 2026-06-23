@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 use App\Models\JobCardService;
+use App\Models\PurchaseBatch;
 
 class JobCardController extends Controller
 {
@@ -70,7 +71,11 @@ class JobCardController extends Controller
         ]);
 
         $allWorkers = User::where('role', 'worker')->get();
-        $inventoryItems = Inventory::where('quantity', '>', 0)->get();
+        $inventoryItems = Inventory::where('quantity', '>', 0)
+            ->with(['purchaseBatches' => function ($q) {
+                $q->where('quantity_remaining', '>', 0)->orderBy('purchased_at', 'asc')->orderBy('id', 'asc');
+            }])
+            ->get();
 
         return view('job-cards.show', compact('jobCard', 'allWorkers', 'inventoryItems'));
     }
@@ -103,6 +108,14 @@ class JobCardController extends Controller
             // Attach workers if any
             if (!empty($data['workers'])) {
                 $jobCard->workers()->sync($data['workers']);
+                
+                foreach ($data['workers'] as $workerId) {
+                    \App\Models\JobCardAssignment::create([
+                        'job_card_id' => $jobCard->id,
+                        'user_id' => $workerId,
+                        'assigned_at' => $jobCard->created_at ?: now()
+                    ]);
+                }
             }
 
             // Check and update vehicle mileage if higher
@@ -189,8 +202,27 @@ class JobCardController extends Controller
         DB::transaction(function () use ($jobCard, $oldStatus, $newStatus) {
             $jobCard->status = $newStatus;
             
+            $now = now();
             if ($newStatus === 'waiting-to-pickup') {
-                $jobCard->completed_at = now();
+                $jobCard->completed_at = $now;
+                
+                // End all active assignments
+                \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)
+                    ->whereNull('unassigned_at')
+                    ->update(['unassigned_at' => $now]);
+            }
+
+            // Re-open active assignments if transitioned out of waiting-to-pickup
+            if ($oldStatus === 'waiting-to-pickup' && $newStatus !== 'waiting-to-pickup') {
+                $jobCard->completed_at = null;
+                
+                foreach ($jobCard->workers as $worker) {
+                    \App\Models\JobCardAssignment::create([
+                        'job_card_id' => $jobCard->id,
+                        'user_id' => $worker->id,
+                        'assigned_at' => $now
+                    ]);
+                }
             }
 
             $jobCard->save();
@@ -266,6 +298,18 @@ class JobCardController extends Controller
             if (!empty($client->email) && !empty($emailSubject) && !empty($emailBody)) {
                 $this->emailService->sendEmail($client->email, $emailSubject, $emailBody);
             }
+
+            // Update last_email and last_sms on job card
+            $updates = [];
+            if (!empty($smsMessage)) {
+                $updates['last_sms'] = $smsMessage;
+            }
+            if (!empty($emailBody)) {
+                $updates['last_email'] = $emailBody;
+            }
+            if (!empty($updates)) {
+                $jobCard->update($updates);
+            }
         }
     }
 
@@ -294,28 +338,40 @@ class JobCardController extends Controller
     {
         $data = $request->validate([
             'inventory_id' => 'required|exists:inventory,id',
+            'purchase_batch_id' => 'required|exists:purchase_batches,id',
             'quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string|max:255'
         ]);
 
-        $part = Inventory::findOrFail($data['inventory_id']);
+        $batch = PurchaseBatch::findOrFail($data['purchase_batch_id']);
 
-        if ($part->quantity < $data['quantity']) {
-            return back()->withErrors(['quantity' => "Insufficient stock. Only {$part->quantity} {$part->unit} available."]);
+        if ($batch->inventory_id != $data['inventory_id']) {
+            return back()->withErrors(['purchase_batch_id' => 'The selected batch does not belong to the selected part.']);
         }
 
-        DB::transaction(function () use ($jobCard, $part, $data) {
+        if ($batch->quantity_remaining < $data['quantity']) {
+            return back()->withErrors(['quantity' => "Insufficient stock in selected batch. Only {$batch->quantity_remaining} {$batch->inventory->unit} available."]);
+        }
+
+        DB::transaction(function () use ($jobCard, $batch, $data) {
+            $part = $batch->inventory;
+
             // Deduct stock levels
+            $batch->quantity_remaining -= $data['quantity'];
+            $batch->save();
+
             $part->quantity -= $data['quantity'];
             $part->save();
 
             // Create stock movement (out)
             StockMovement::create([
                 'inventory_id' => $part->id,
+                'purchase_batch_id' => $batch->id,
                 'job_card_id' => $jobCard->id,
                 'type' => 'out',
                 'quantity' => -$data['quantity'], // Negative representing usage
-                'notes' => $data['notes'] ?? "Allocated to Job Card #{$jobCard->id}"
+                'cost_price' => $batch->cost_price,
+                'notes' => $data['notes'] ?? "Allocated from batch: {$batch->batch_code}"
             ]);
 
             // Log activity
@@ -323,16 +379,13 @@ class JobCardController extends Controller
                 'job_card_id' => $jobCard->id,
                 'user_id' => Auth::id(),
                 'action' => 'parts_allocated',
-                'details' => "Allocated {$data['quantity']} {$part->unit} of {$part->name}"
+                'details' => "Allocated {$data['quantity']} {$part->unit} of {$part->name} from batch {$batch->batch_code}"
             ]);
         });
 
         return back()->with('success', 'Parts successfully allocated to this job card.');
     }
 
-    /**
-     * Update worker assignments.
-     */
     public function assignWorkers(Request $request, JobCard $jobCard)
     {
         $data = $request->validate([
@@ -340,14 +393,47 @@ class JobCardController extends Controller
             'workers.*' => 'exists:users,id'
         ]);
 
-        $jobCard->workers()->sync($data['workers'] ?? []);
+        $workers = $data['workers'] ?? [];
 
-        Activity::create([
-            'job_card_id' => $jobCard->id,
-            'user_id' => Auth::id(),
-            'action' => 'workers_assigned',
-            'details' => 'Technician assignments updated.'
-        ]);
+        DB::transaction(function () use ($jobCard, $workers) {
+            $currentWorkers = $jobCard->workers()->pluck('users.id')->toArray();
+            $jobCard->workers()->sync($workers);
+
+            // Workers added
+            $added = array_diff($workers, $currentWorkers);
+            // Workers removed
+            $removed = array_diff($currentWorkers, $workers);
+
+            $now = now();
+
+            foreach ($added as $workerId) {
+                if ($jobCard->status !== 'waiting-to-pickup') {
+                    \App\Models\JobCardAssignment::create([
+                        'job_card_id' => $jobCard->id,
+                        'user_id' => $workerId,
+                        'assigned_at' => $now
+                    ]);
+                }
+            }
+
+            foreach ($removed as $workerId) {
+                // Find and close active assignment
+                $assignment = \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)
+                    ->where('user_id', $workerId)
+                    ->whereNull('unassigned_at')
+                    ->first();
+                if ($assignment) {
+                    $assignment->update(['unassigned_at' => $now]);
+                }
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'workers_assigned',
+                'details' => 'Technician assignments updated.'
+            ]);
+        });
 
         return back()->with('success', 'Technicians updated.');
     }

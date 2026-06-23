@@ -32,11 +32,10 @@ class DashboardController extends Controller
         // Low stock items (less than 10)
         $lowStockItems = Inventory::where('quantity', '<', 10)->get();
 
-        // Paid billing total this month
-        $monthlyRevenue = Bill::where('status', 'paid')
-            ->whereMonth('created_at', date('m'))
+        // Total Job Cards created this month
+        $monthlyJobsCount = JobCard::whereMonth('created_at', date('m'))
             ->whereYear('created_at', date('Y'))
-            ->sum('total_amount');
+            ->count();
 
         // Recent workshop activities
         $recentActivities = Activity::with(['user', 'jobCard.vehicle'])
@@ -54,7 +53,7 @@ class DashboardController extends Controller
             'testingCount',
             'pickupCount',
             'lowStockItems',
-            'monthlyRevenue',
+            'monthlyJobsCount',
             'recentActivities'
         ));
     }
@@ -153,6 +152,90 @@ class DashboardController extends Controller
             'queryResult',
             'queryError',
             'headers'
+        ));
+    }
+
+    /**
+     * Show Statistics and Finance Dashboard.
+     */
+    public function statistics(Request $request)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized module access.');
+        }
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        // Income query
+        $incomeQuery = Bill::where('status', 'paid');
+        if ($startDate) {
+            $incomeQuery->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $incomeQuery->whereDate('created_at', '<=', $endDate);
+        }
+        $totalIncome = $incomeQuery->sum('total_amount');
+
+        // Expenditure - Stock Purchases
+        $batchesQuery = \App\Models\PurchaseBatch::query();
+        if ($startDate) {
+            $batchesQuery->whereDate('purchased_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $batchesQuery->whereDate('purchased_at', '<=', $endDate);
+        }
+        $totalStockPurchases = $batchesQuery->sum(DB::raw('quantity_received * cost_price'));
+
+        // Expenditure - Paid payroll
+        $payrollQuery = \App\Models\PayrollSlip::where('status', 'paid');
+        if ($startDate) {
+            $payrollQuery->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $payrollQuery->whereDate('created_at', '<=', $endDate);
+        }
+        $paidBasicSalaries = $payrollQuery->sum('basic_salary');
+        $paidAllowances = $payrollQuery->sum('allowance');
+        $totalPayroll = $paidBasicSalaries + $paidAllowances;
+
+        $totalExpenditure = $totalStockPurchases + $totalPayroll;
+        $netProfit = $totalIncome - $totalExpenditure;
+
+        // Trading profitability (linked to paid bills in timeframe)
+        $billItemsQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($startDate, $endDate) {
+            $q->where('status', 'paid');
+            if ($startDate) {
+                $q->whereDate('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $q->whereDate('created_at', '<=', $endDate);
+            }
+        });
+
+        // Parts
+        $partsRevenue = (clone $billItemsQuery)->where('type', 'part')->sum('total_price');
+        $partsCOGS = (clone $billItemsQuery)->where('type', 'part')->sum(DB::raw('quantity * cost_price'));
+        $partsProfit = $partsRevenue - $partsCOGS;
+        $partsMargin = $partsRevenue > 0 ? ($partsProfit / $partsRevenue) * 100 : 0;
+
+        // Labor
+        $laborRevenue = (clone $billItemsQuery)->where('type', 'labor')->sum('total_price');
+        $laborProfit = $laborRevenue; // 100% margin assumed for direct labor in COGS
+
+        // Total Trading
+        $tradingRevenue = $partsRevenue + $laborRevenue;
+        $tradingCOGS = $partsCOGS;
+        $tradingProfit = $tradingRevenue - $tradingCOGS;
+        $tradingMargin = $tradingRevenue > 0 ? ($tradingProfit / $tradingRevenue) * 100 : 0;
+
+        return view('dashboard.statistics', compact(
+            'startDate', 'endDate',
+            'totalIncome', 'totalStockPurchases', 'paidBasicSalaries', 'paidAllowances', 'totalPayroll',
+            'totalExpenditure', 'netProfit',
+            'partsRevenue', 'partsCOGS', 'partsProfit', 'partsMargin',
+            'laborRevenue', 'laborProfit',
+            'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin'
         ));
     }
 }

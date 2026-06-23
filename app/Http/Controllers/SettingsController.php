@@ -36,7 +36,9 @@ class SettingsController extends Controller
             });
         }
 
-        return view('settings.index', compact('backups'));
+        $shops = \App\Models\Shop::all();
+
+        return view('settings.index', compact('backups', 'shops'));
     }
 
     /**
@@ -126,5 +128,65 @@ class SettingsController extends Controller
         }
 
         return back()->with('info', 'No custom logo exists to delete.');
+    }
+
+    /**
+     * Update application settings.
+     */
+    public function updateSettings(Request $request)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $data = $request->validate([
+            'job_card_prefix' => 'required|string|max:50',
+        ]);
+
+        foreach ($data as $key => $value) {
+            \App\Models\Setting::updateOrCreate(
+                ['key' => $key],
+                ['value' => $value]
+            );
+        }
+
+        return back()->with('success', 'Settings updated successfully.');
+    }
+
+    /**
+     * Add a shop location.
+     */
+    public function storeShop(Request $request)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string|max:255',
+        ]);
+
+        \App\Models\Shop::create($data);
+
+        return back()->with('success', 'Shop location added successfully.');
+    }
+
+    /**
+     * Delete a shop location.
+     */
+    public function deleteShop(\App\Models\Shop $shop)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($shop->jobCards()->exists()) {
+            return back()->withErrors(['shop' => 'Cannot delete shop location because it is linked to existing job cards.']);
+        }
+
+        $shop->delete();
+
+        return back()->with('success', 'Shop location deleted successfully.');
     }
 }

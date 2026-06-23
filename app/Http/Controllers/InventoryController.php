@@ -39,19 +39,34 @@ class InventoryController extends Controller
             'name' => 'required|string|max:255',
             'sku' => 'required|string|max:50|unique:inventory,sku',
             'quantity' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
+            'cost_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
             'unit' => 'required|string|max:20',
         ]);
 
         DB::transaction(function () use ($data) {
             $item = Inventory::create($data);
 
-            // Log initial stock movement if quantity > 0
+            // Create initial batch if quantity > 0
             if ($item->quantity > 0) {
+                $batchCode = 'BAT-INIT-' . str_pad($item->id, 3, '0', STR_PAD_LEFT);
+                $batch = \App\Models\PurchaseBatch::create([
+                    'inventory_id' => $item->id,
+                    'batch_code' => $batchCode,
+                    'quantity_received' => $item->quantity,
+                    'quantity_remaining' => $item->quantity,
+                    'cost_price' => $item->cost_price,
+                    'selling_price' => $item->selling_price,
+                    'supplier' => 'Initial Stock Setup',
+                    'purchased_at' => date('Y-m-d')
+                ]);
+
                 StockMovement::create([
                     'inventory_id' => $item->id,
+                    'purchase_batch_id' => $batch->id,
                     'type' => 'in',
                     'quantity' => $item->quantity,
+                    'cost_price' => $item->cost_price,
                     'notes' => 'Initial stock setup'
                 ]);
             }
@@ -68,7 +83,8 @@ class InventoryController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => "required|string|max:50|unique:inventory,sku,{$item->id}",
-            'price' => 'required|numeric|min:0',
+            'cost_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
             'unit' => 'required|string|max:20',
         ]);
 
@@ -78,7 +94,54 @@ class InventoryController extends Controller
     }
 
     /**
-     * Adjust stock level.
+     * Replenish stock by adding a new purchase batch.
+     */
+    public function addBatch(Request $request, Inventory $item)
+    {
+        $data = $request->validate([
+            'batch_code' => 'required|string|max:50',
+            'quantity' => 'required|integer|min:1',
+            'cost_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+            'supplier' => 'nullable|string|max:255',
+            'purchased_at' => 'required|date',
+        ]);
+
+        DB::transaction(function () use ($item, $data) {
+            // Create purchase batch record
+            $batch = \App\Models\PurchaseBatch::create([
+                'inventory_id' => $item->id,
+                'batch_code' => $data['batch_code'],
+                'quantity_received' => $data['quantity'],
+                'quantity_remaining' => $data['quantity'],
+                'cost_price' => $data['cost_price'],
+                'selling_price' => $data['selling_price'],
+                'supplier' => $data['supplier'] ?? null,
+                'purchased_at' => $data['purchased_at'],
+            ]);
+
+            // Update parent inventory quantity and latest prices
+            $item->quantity += $data['quantity'];
+            $item->cost_price = $data['cost_price'];
+            $item->selling_price = $data['selling_price'];
+            $item->save();
+
+            // Create stock movement
+            StockMovement::create([
+                'inventory_id' => $item->id,
+                'purchase_batch_id' => $batch->id,
+                'type' => 'in',
+                'quantity' => $data['quantity'],
+                'cost_price' => $data['cost_price'],
+                'notes' => "Replenished stock via Batch: {$data['batch_code']}"
+            ]);
+        });
+
+        return back()->with('success', 'Purchase batch added successfully.');
+    }
+
+    /**
+     * Adjust stock level manually.
      */
     public function adjustStock(Request $request, Inventory $item)
     {
@@ -86,6 +149,7 @@ class InventoryController extends Controller
             'adjustment_type' => 'required|in:in,out,adjustment',
             'quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string|max:255',
+            'purchase_batch_id' => 'nullable|exists:purchase_batches,id',
         ]);
 
         $qtyChange = $data['quantity'];
@@ -94,36 +158,128 @@ class InventoryController extends Controller
         }
 
         DB::transaction(function () use ($item, $data, $qtyChange) {
-            // Update item quantity
-            if ($data['adjustment_type'] === 'adjustment') {
-                // For direct adjustment override
+            if ($data['adjustment_type'] === 'in') {
+                // Generic batch adjustment
+                $batchCode = 'BAT-ADJ-' . time();
+                $batch = \App\Models\PurchaseBatch::create([
+                    'inventory_id' => $item->id,
+                    'batch_code' => $batchCode,
+                    'quantity_received' => $data['quantity'],
+                    'quantity_remaining' => $data['quantity'],
+                    'cost_price' => $item->cost_price,
+                    'selling_price' => $item->selling_price,
+                    'supplier' => 'Stock Adjustment Inflow',
+                    'purchased_at' => date('Y-m-d')
+                ]);
+
+                $item->quantity += $data['quantity'];
+                $item->save();
+
+                StockMovement::create([
+                    'inventory_id' => $item->id,
+                    'purchase_batch_id' => $batch->id,
+                    'type' => 'in',
+                    'quantity' => $data['quantity'],
+                    'cost_price' => $item->cost_price,
+                    'notes' => $data['notes'] ?? 'Manual stock addition'
+                ]);
+
+            } elseif ($data['adjustment_type'] === 'out') {
+                $qtyToDeduct = $data['quantity'];
+                
+                if (!empty($data['purchase_batch_id'])) {
+                    $batches = \App\Models\PurchaseBatch::where('id', $data['purchase_batch_id'])->get();
+                } else {
+                    // FIFO fallback
+                    $batches = \App\Models\PurchaseBatch::where('inventory_id', $item->id)
+                        ->where('quantity_remaining', '>', 0)
+                        ->orderBy('purchased_at', 'asc')
+                        ->orderBy('id', 'asc')
+                        ->get();
+                }
+
+                foreach ($batches as $batch) {
+                    if ($qtyToDeduct <= 0) break;
+                    
+                    $deduct = min($qtyToDeduct, $batch->quantity_remaining);
+                    $batch->quantity_remaining -= $deduct;
+                    $batch->save();
+
+                    StockMovement::create([
+                        'inventory_id' => $item->id,
+                        'purchase_batch_id' => $batch->id,
+                        'type' => 'out',
+                        'quantity' => -$deduct,
+                        'cost_price' => $batch->cost_price,
+                        'notes' => $data['notes'] ?? 'Manual stock reduction'
+                    ]);
+
+                    $qtyToDeduct -= $deduct;
+                }
+
+                $item->quantity = max(0, $item->quantity - $data['quantity']);
+                $item->save();
+
+            } elseif ($data['adjustment_type'] === 'adjustment') {
                 $oldQty = $item->quantity;
-                $item->quantity = $data['quantity'];
+                $newQty = $data['quantity'];
+                $item->quantity = $newQty;
                 $item->save();
 
-                $diff = $data['quantity'] - $oldQty;
+                $diff = $newQty - $oldQty;
 
-                StockMovement::create([
-                    'inventory_id' => $item->id,
-                    'type' => 'adjustment',
-                    'quantity' => $diff,
-                    'notes' => $data['notes'] ?? 'Manual stock adjustment override'
-                ]);
-            } else {
-                // For adding stock (in) or subtracting (out)
-                $item->quantity += $qtyChange;
-                $item->save();
+                if ($diff > 0) {
+                    $batchCode = 'BAT-ADJ-' . time();
+                    $batch = \App\Models\PurchaseBatch::create([
+                        'inventory_id' => $item->id,
+                        'batch_code' => $batchCode,
+                        'quantity_received' => $diff,
+                        'quantity_remaining' => $diff,
+                        'cost_price' => $item->cost_price,
+                        'selling_price' => $item->selling_price,
+                        'supplier' => 'Stock Adjustment Override Inflow',
+                        'purchased_at' => date('Y-m-d')
+                    ]);
 
-                StockMovement::create([
-                    'inventory_id' => $item->id,
-                    'type' => $data['adjustment_type'],
-                    'quantity' => $qtyChange,
-                    'notes' => $data['notes'] ?? 'Manual stock update'
-                ]);
+                    StockMovement::create([
+                        'inventory_id' => $item->id,
+                        'purchase_batch_id' => $batch->id,
+                        'type' => 'adjustment',
+                        'quantity' => $diff,
+                        'cost_price' => $item->cost_price,
+                        'notes' => $data['notes'] ?? 'Manual stock adjustment override (+)'
+                    ]);
+                } elseif ($diff < 0) {
+                    $qtyToDeduct = abs($diff);
+                    $batches = \App\Models\PurchaseBatch::where('inventory_id', $item->id)
+                        ->where('quantity_remaining', '>', 0)
+                        ->orderBy('purchased_at', 'asc')
+                        ->orderBy('id', 'asc')
+                        ->get();
+
+                    foreach ($batches as $batch) {
+                        if ($qtyToDeduct <= 0) break;
+                        
+                        $deduct = min($qtyToDeduct, $batch->quantity_remaining);
+                        $batch->quantity_remaining -= $deduct;
+                        $batch->save();
+
+                        StockMovement::create([
+                            'inventory_id' => $item->id,
+                            'purchase_batch_id' => $batch->id,
+                            'type' => 'adjustment',
+                            'quantity' => -$deduct,
+                            'cost_price' => $batch->cost_price,
+                            'notes' => $data['notes'] ?? 'Manual stock adjustment override (-)'
+                        ]);
+
+                        $qtyToDeduct -= $deduct;
+                    }
+                }
             }
         });
 
-        return back()->with('success', 'Stock level updated successfully.');
+        return back()->with('success', 'Stock level adjusted successfully.');
     }
 
     /**

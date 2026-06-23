@@ -97,6 +97,10 @@
                         <i data-lucide="line-chart" class="w-4 h-4"></i>
                         <span>Data Insights</span>
                     </a>
+                    <a href="{{ route('dashboard.statistics') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('dashboard.statistics') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                        <i data-lucide="trending-up" class="w-4 h-4"></i>
+                        <span>Statistics & Finance</span>
+                    </a>
                     <a href="{{ route('settings.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('settings.index') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="settings" class="w-4 h-4"></i>
                         <span>Settings & Backups</span>
