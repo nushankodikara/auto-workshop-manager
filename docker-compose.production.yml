@@ -1,0 +1,51 @@
+services:
+  app:
+    image: nushankodikara/auto-workshop-manager:latest
+    container_name: tdc-laravel-app-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./backups:/var/www/html/backups
+      - tdc-db:/var/www/html/database
+      - .env:/var/www/html/.env
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+
+  backup-cron:
+    image: nushankodikara/auto-workshop-manager:latest
+    container_name: tdc-laravel-backup-cron-prod
+    restart: unless-stopped
+    volumes:
+      - ./backups:/var/www/html/backups
+      - tdc-db:/var/www/html/database
+      - .env:/var/www/html/.env
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+    entrypoint: ["sh", "-c", "echo '* * * * * cd /var/www/html && /usr/local/bin/php artisan db:backup >> /var/log/cron.log 2>&1' > /etc/cron.d/backup-cron && chmod 0644 /etc/cron.d/backup-cron && crontab /etc/cron.d/backup-cron && cron -f"]
+
+  queue-worker:
+    image: nushankodikara/auto-workshop-manager:latest
+    container_name: tdc-laravel-queue-worker-prod
+    restart: unless-stopped
+    volumes:
+      - ./backups:/var/www/html/backups
+      - tdc-db:/var/www/html/database
+      - .env:/var/www/html/.env
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+    entrypoint: ["php", "artisan", "queue:work", "--verbose", "--tries=3"]
+
+  init-db:
+    image: alpine
+    container_name: tdc-laravel-init-db-prod
+    volumes:
+      - tdc-db:/var/www/html/database
+    entrypoint: ["sh", "-c", "mkdir -p /var/www/html/database && touch /var/www/html/database/database.sqlite && chmod 777 /var/www/html/database/database.sqlite && chmod 777 /var/www/html/database"]
+
+volumes:
+  tdc-db:
+    driver: local
