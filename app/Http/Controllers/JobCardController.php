@@ -408,10 +408,16 @@ class JobCardController extends Controller
 
             foreach ($added as $workerId) {
                 if ($jobCard->status !== 'waiting-to-pickup') {
+                    $hasPrevious = \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)
+                        ->where('user_id', $workerId)
+                        ->exists();
+
+                    $assignedAt = $hasPrevious ? $now : ($jobCard->created_at ?: $now);
+
                     \App\Models\JobCardAssignment::create([
                         'job_card_id' => $jobCard->id,
                         'user_id' => $workerId,
-                        'assigned_at' => $now
+                        'assigned_at' => $assignedAt
                     ]);
                 }
             }

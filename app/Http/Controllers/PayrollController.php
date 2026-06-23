@@ -58,11 +58,19 @@ class PayrollController extends Controller
         }
 
         // Calculate actual attendance metrics
-        $attendedDays = Attendance::where('user_id', $user->id)
+        $presentDays = Attendance::where('user_id', $user->id)
             ->whereYear('date', $year)
             ->whereMonth('date', $month)
             ->where('status', 'present')
             ->count();
+
+        $halfDays = Attendance::where('user_id', $user->id)
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->where('status', 'half_day')
+            ->count();
+
+        $attendedDays = $presentDays + ($halfDays * 0.5);
 
         $overtimeHours = Attendance::where('user_id', $user->id)
             ->whereYear('date', $year)
@@ -91,7 +99,7 @@ class PayrollController extends Controller
             'month' => 'required|integer|min:1|max:12',
             'year' => 'required|integer|min:2020|max:2050',
             'required_days' => 'required|integer|min:0',
-            'attended_days' => 'required|integer|min:0',
+            'attended_days' => 'required|numeric|min:0',
             'overtime_hours' => 'required|numeric|min:0',
             'overtime_rate' => 'required|numeric|min:0',
             'overtime_amount' => 'required|numeric|min:0',
@@ -204,20 +212,25 @@ class PayrollController extends Controller
         $data = $request->validate([
             'date' => 'required|date',
             'attendance' => 'required|array', // user_id => status
-            'attendance.*' => 'required|in:present,absent,leave',
+            'attendance.*' => 'required|in:present,half_day,absent,leave,n/a',
             'overtime' => 'nullable|array', // user_id => overtime_hours
             'overtime.*' => 'nullable|numeric|min:0',
         ]);
 
         $date = $data['date'];
+        $dateObj = \Carbon\Carbon::parse($date)->startOfDay();
 
         foreach ($data['attendance'] as $userId => $status) {
-            $otHours = isset($data['overtime'][$userId]) ? floatval($data['overtime'][$userId]) : 0.00;
+            if ($status === 'n/a') {
+                Attendance::where('user_id', $userId)->where('date', $dateObj)->delete();
+            } else {
+                $otHours = isset($data['overtime'][$userId]) ? floatval($data['overtime'][$userId]) : 0.00;
 
-            Attendance::updateOrCreate(
-                ['user_id' => $userId, 'date' => $date],
-                ['status' => $status, 'overtime_hours' => $otHours]
-            );
+                Attendance::updateOrCreate(
+                    ['user_id' => $userId, 'date' => $dateObj],
+                    ['status' => $status, 'overtime_hours' => $otHours]
+                );
+            }
         }
 
         return back()->with('success', "Daily attendance updated successfully for date: {$date}");
@@ -253,7 +266,7 @@ class PayrollController extends Controller
             'year' => 'required|integer',
             'month' => 'required|integer',
             'status' => 'required|array', // day => status
-            'status.*' => 'required|in:present,absent,leave',
+            'status.*' => 'required|in:present,half_day,absent,leave,n/a',
             'overtime' => 'nullable|array', // day => overtime
             'overtime.*' => 'nullable|numeric|min:0',
         ]);
@@ -263,12 +276,18 @@ class PayrollController extends Controller
 
         foreach ($data['status'] as $day => $status) {
             $dateString = sprintf('%04d-%02d-%02d', $year, $month, $day);
-            $ot = isset($data['overtime'][$day]) ? floatval($data['overtime'][$day]) : 0.00;
+            $dateObj = \Carbon\Carbon::parse($dateString)->startOfDay();
 
-            Attendance::updateOrCreate(
-                ['user_id' => $user->id, 'date' => $dateString],
-                ['status' => $status, 'overtime_hours' => $ot]
-            );
+            if ($status === 'n/a') {
+                Attendance::where('user_id', $user->id)->where('date', $dateObj)->delete();
+            } else {
+                $ot = isset($data['overtime'][$day]) ? floatval($data['overtime'][$day]) : 0.00;
+
+                Attendance::updateOrCreate(
+                    ['user_id' => $user->id, 'date' => $dateObj],
+                    ['status' => $status, 'overtime_hours' => $ot]
+                );
+            }
         }
 
         return redirect()->route('payroll.index', ['year' => $year, 'month' => $month])

@@ -295,18 +295,28 @@
                     <i data-lucide="users" class="w-4 h-4 text-primary"></i>
                     <span>Staff Assignments</span>
                 </h3>
-
-                <!-- Active Workers list -->
+                <!-- Active & Historical Workers list -->
                 <div class="space-y-2">
-                    @forelse($jobCard->workers as $worker)
+                    @php
+                        $historicalWorkerIds = \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)->pluck('user_id')->unique();
+                        $historicalWorkers = \App\Models\User::whereIn('id', $historicalWorkerIds)->get();
+                    @endphp
+                    @forelse($historicalWorkers as $worker)
+                        @php
+                            $isCurrentlyAssigned = $jobCard->workers->contains($worker->id);
+                        @endphp
                         <div class="flex items-center gap-2.5 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 text-xs capitalize font-medium">
-                            <span class="h-2 w-2 rounded-full bg-green-500 text-xs inline-block shrink-0"></span>
-                            <span class="text-slate-750 dark:text-slate-300 font-bold">
+                            <span class="h-2 w-2 rounded-full {{ $isCurrentlyAssigned ? 'bg-green-500' : 'bg-slate-400' }} text-xs inline-block shrink-0"
+                                  title="{{ $isCurrentlyAssigned ? 'Currently Assigned' : 'Previously Assigned (Inactive)' }}"></span>
+                            <span class="text-slate-750 dark:text-slate-350 font-bold">
                                 <a href="{{ route('employees.show', $worker->id) }}" class="text-primary hover:underline">
                                     {{ $worker->name }}
                                 </a>
+                                @if(!$isCurrentlyAssigned)
+                                    <span class="text-[9px] text-slate-500 dark:text-slate-450 normal-case ml-1 font-semibold bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded">(inactive)</span>
+                                @endif
                             </span>
-                            <span class="text-slate-505 dark:text-slate-400 ml-auto flex flex-col items-end text-right">
+                            <span class="text-slate-550 dark:text-slate-400 ml-auto flex flex-col items-end text-right">
                                 <span class="font-semibold">{{ $worker->role }}</span>
                                 <span class="text-[10px] text-slate-400 font-semibold font-mono mt-0.5">
                                     Active: {{ number_format($jobCard->getWorkerActiveHours($worker), 2) }}h (OT: {{ number_format($jobCard->getWorkerOvertimeHours($worker), 2) }}h)

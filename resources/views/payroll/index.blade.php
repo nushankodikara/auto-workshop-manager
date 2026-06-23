@@ -171,11 +171,16 @@
                                     </div>
                                     <div class="flex items-center gap-4">
                                         <!-- Radio options -->
-                                        <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-950 p-1.5 rounded-lg border border-slate-200 dark:border-slate-850">
+                                        <div class="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-955 p-1.5 rounded-lg border border-slate-200 dark:border-slate-850">
                                             <label class="flex items-center gap-1 cursor-pointer text-xs">
                                                 <input type="radio" name="attendance[{{ $user->id }}]" value="present" checked
                                                        class="text-primary focus:ring-primary h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
                                                 <span class="text-slate-700 dark:text-slate-350">Present</span>
+                                            </label>
+                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
+                                                <input type="radio" name="attendance[{{ $user->id }}]" value="half_day"
+                                                       class="text-amber-500 focus:ring-amber-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
+                                                <span class="text-slate-700 dark:text-slate-350">Half Day</span>
                                             </label>
                                             <label class="flex items-center gap-1 cursor-pointer text-xs">
                                                 <input type="radio" name="attendance[{{ $user->id }}]" value="absent"
@@ -186,6 +191,11 @@
                                                 <input type="radio" name="attendance[{{ $user->id }}]" value="leave"
                                                        class="text-blue-500 focus:ring-blue-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
                                                 <span class="text-slate-700 dark:text-slate-350">Leave</span>
+                                            </label>
+                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
+                                                <input type="radio" name="attendance[{{ $user->id }}]" value="n/a"
+                                                       class="text-slate-500 focus:ring-slate-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
+                                                <span class="text-slate-700 dark:text-slate-350">N/A</span>
                                             </label>
                                         </div>
                                         <!-- Overtime -->
@@ -270,6 +280,9 @@
                                             @if($record->status === 'present')
                                                 @php $presentCount++; $totalOt += $record->overtime_hours; @endphp
                                                 <span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" title="Present ({{ $record->overtime_hours > 0 ? 'OT: ' . $record->overtime_hours . 'h' : 'No OT' }})"></span>
+                                            @elseif($record->status === 'half_day')
+                                                @php $presentCount += 0.5; $totalOt += $record->overtime_hours; @endphp
+                                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" title="Half Day ({{ $record->overtime_hours > 0 ? 'OT: ' . $record->overtime_hours . 'h' : 'No OT' }})"></span>
                                             @elseif($record->status === 'absent')
                                                 <span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" title="Absent"></span>
                                             @else
@@ -289,8 +302,10 @@
             </div>
             <div class="flex items-center gap-4 text-xxs text-slate-500 font-medium pt-1">
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> Present</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Half Day</span>
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Absent</span>
                 <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> Leave</span>
+                <span class="flex items-center gap-1"><span class="text-slate-300 dark:text-slate-700 font-mono font-bold">-</span> N/A (Not Logged)</span>
             </div>
         </div>
 

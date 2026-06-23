@@ -57,7 +57,7 @@
                 </div>
                 <div>
                     <label for="attended_days" class="block text-xs text-slate-500 mb-1 font-semibold">Days Attended (Present)</label>
-                    <input type="number" name="attended_days" id="attended_days" value="{{ $attendedDays }}" min="0" max="31" oninput="recalculate()"
+                    <input type="number" step="any" name="attended_days" id="attended_days" value="{{ $attendedDays }}" min="0" max="31" oninput="recalculate()"
                            class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-sm focus:outline-none focus:border-primary">
                 </div>
                 <div>
@@ -212,7 +212,7 @@
     function recalculate() {
         const contractSalary = parseFloat(document.getElementById('contract_salary').value) || 0;
         const requiredDays = parseInt(document.getElementById('required_days').value) || 0;
-        const attendedDays = parseInt(document.getElementById('attended_days').value) || 0;
+        const attendedDays = parseFloat(document.getElementById('attended_days').value) || 0;
         const otHours = parseFloat(document.getElementById('overtime_hours').value) || 0;
         const otRate = parseFloat(document.getElementById('overtime_rate').value) || 0;
 

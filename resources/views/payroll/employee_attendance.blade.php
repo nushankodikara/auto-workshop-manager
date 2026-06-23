@@ -36,7 +36,7 @@
                     @php
                         $dayOfWeek = date('l', mktime(0, 0, 0, $month, $d, $year));
                         $record = $records->get($d);
-                        $currentStatus = $record ? $record->status : 'present';
+                        $currentStatus = $record ? $record->status : 'n/a';
                         $currentOt = $record ? $record->overtime_hours : 0.00;
                     @endphp
                     <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition">
@@ -56,8 +56,10 @@
                                 <select name="status[{{ $d }}]"
                                         class="px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
                                     <option value="present" {{ $currentStatus === 'present' ? 'selected' : '' }}>Present</option>
+                                    <option value="half_day" {{ $currentStatus === 'half_day' ? 'selected' : '' }}>Half Day</option>
                                     <option value="absent" {{ $currentStatus === 'absent' ? 'selected' : '' }}>Absent</option>
                                     <option value="leave" {{ $currentStatus === 'leave' ? 'selected' : '' }}>Leave</option>
+                                    <option value="n/a" {{ $currentStatus === 'n/a' ? 'selected' : '' }}>N/A (Remove/Not Logged)</option>
                                 </select>
                             </div>
 

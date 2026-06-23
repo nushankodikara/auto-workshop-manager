@@ -18,7 +18,7 @@ class PayrollSlip extends Model
             'month' => 'integer',
             'year' => 'integer',
             'required_days' => 'integer',
-            'attended_days' => 'integer',
+            'attended_days' => 'float',
             'overtime_hours' => 'decimal:2',
             'overtime_rate' => 'decimal:2',
             'overtime_amount' => 'decimal:2',

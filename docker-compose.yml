@@ -6,7 +6,7 @@ services:
     container_name: tdc-laravel-app
     restart: unless-stopped
     ports:
-      - "8000:80"
+      - "4040:80"
     volumes:
       - .:/var/www/html
       - ./backups:/var/www/html/backups
