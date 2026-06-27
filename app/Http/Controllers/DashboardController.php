@@ -221,11 +221,19 @@ class DashboardController extends Controller
 
         // Labor
         $laborRevenue = (clone $billItemsQuery)->where('type', 'labor')->sum('total_price');
-        $laborProfit = $laborRevenue; // 100% margin assumed for direct labor in COGS
+        $laborCOGS = (clone $billItemsQuery)->where('type', 'labor')->sum('cost_price');
+        $laborProfit = $laborRevenue - $laborCOGS;
+        $laborMargin = $laborRevenue > 0 ? ($laborProfit / $laborRevenue) * 100 : 0;
+
+        // Outsourcing
+        $outsourcingRevenue = (clone $billItemsQuery)->where('type', 'outsourcing')->sum('total_price');
+        $outsourcingCOGS = (clone $billItemsQuery)->where('type', 'outsourcing')->sum('cost_price');
+        $outsourcingProfit = $outsourcingRevenue - $outsourcingCOGS;
+        $outsourcingMargin = $outsourcingRevenue > 0 ? ($outsourcingProfit / $outsourcingRevenue) * 100 : 0;
 
         // Total Trading
-        $tradingRevenue = $partsRevenue + $laborRevenue;
-        $tradingCOGS = $partsCOGS;
+        $tradingRevenue = $partsRevenue + $laborRevenue + $outsourcingRevenue;
+        $tradingCOGS = $partsCOGS + $laborCOGS + $outsourcingCOGS;
         $tradingProfit = $tradingRevenue - $tradingCOGS;
         $tradingMargin = $tradingRevenue > 0 ? ($tradingProfit / $tradingRevenue) * 100 : 0;
 
@@ -234,7 +242,8 @@ class DashboardController extends Controller
             'totalIncome', 'totalStockPurchases', 'paidBasicSalaries', 'paidAllowances', 'totalPayroll',
             'totalExpenditure', 'netProfit',
             'partsRevenue', 'partsCOGS', 'partsProfit', 'partsMargin',
-            'laborRevenue', 'laborProfit',
+            'laborRevenue', 'laborCOGS', 'laborProfit', 'laborMargin',
+            'outsourcingRevenue', 'outsourcingCOGS', 'outsourcingProfit', 'outsourcingMargin',
             'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin'
         ));
     }

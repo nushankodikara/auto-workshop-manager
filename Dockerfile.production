@@ -1,5 +1,5 @@
-# Stage 1: Build frontend assets
-FROM node:20-alpine AS asset-builder
+# Stage 1: Build frontend assets (compiled natively on the host platform for speed)
+FROM --platform=$BUILDPLATFORM node:20-alpine AS asset-builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['bill_id', 'inventory_id', 'type', 'description', 'quantity', 'cost_price', 'unit_price', 'total_price'])]
+#[Fillable(['bill_id', 'inventory_id', 'outsourcing_company_id', 'type', 'description', 'quantity', 'cost_price', 'unit_price', 'total_price'])]
 class BillItem extends Model
 {
     protected function casts(): array
@@ -26,5 +26,10 @@ class BillItem extends Model
     public function inventory()
     {
         return $this->belongsTo(Inventory::class);
+    }
+
+    public function outsourcingCompany()
+    {
+        return $this->belongsTo(OutsourcingCompany::class);
     }
 }

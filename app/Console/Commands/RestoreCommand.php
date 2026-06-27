@@ -55,6 +55,11 @@ class RestoreCommand extends Command
 
             if (File::exists($dbPath)) {
                 try {
+                    // Checkpoint WAL transactions into the main sqlite file before rolling back
+                    $sourceDb = new \SQLite3($dbPath);
+                    $sourceDb->exec('PRAGMA wal_checkpoint(TRUNCATE);');
+                    $sourceDb->close();
+
                     File::copy($dbPath, $tempRollback);
                     $hasBackup = true;
                 } catch (\Exception $e) {
@@ -63,6 +68,14 @@ class RestoreCommand extends Command
             }
 
             try {
+                // Delete active database -wal and -shm files if they exist to prevent WAL conflict/corruption
+                if (File::exists($dbPath . '-wal')) {
+                    File::delete($dbPath . '-wal');
+                }
+                if (File::exists($dbPath . '-shm')) {
+                    File::delete($dbPath . '-shm');
+                }
+
                 // Copy backup over active database
                 File::copy($backupPath, $dbPath);
                 

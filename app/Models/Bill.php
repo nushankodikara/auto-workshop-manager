@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['job_card_id', 'bill_number', 'tax', 'total_amount', 'status'])]
+#[Fillable(['job_card_id', 'bill_number', 'tax', 'discount_percent', 'total_amount', 'status'])]
 class Bill extends Model
 {
     protected function casts(): array
     {
         return [
             'tax' => 'decimal:2',
+            'discount_percent' => 'decimal:2',
             'total_amount' => 'decimal:2',
         ];
     }

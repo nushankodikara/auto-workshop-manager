@@ -25,16 +25,20 @@ class BillingController extends Controller
     {
         $jobCard->load(['vehicle.client', 'bill.items', 'stockMovements.inventory', 'services']);
 
-        // Fetch unused stock movements that represent allocated parts
-        $allocatedParts = [];
-        if (!$jobCard->bill) {
-            $allocatedParts = StockMovement::where('job_card_id', $jobCard->id)
-                ->where('type', 'out')
-                ->with(['inventory', 'purchaseBatch'])
-                ->get();
+        if ($jobCard->bill && !auth()->user()->isSuperManager()) {
+            return redirect()->route('billing.show', $jobCard->id);
         }
 
-        return view('billing.workspace', compact('jobCard', 'allocatedParts'));
+        // Fetch stock movements that represent allocated parts
+        $allocatedParts = StockMovement::where('job_card_id', $jobCard->id)
+            ->where('type', 'out')
+            ->with(['inventory', 'purchaseBatch'])
+            ->get();
+
+        $partners = \App\Models\OutsourcingCompany::orderBy('name')->get();
+        $predefinedServices = \App\Models\PredefinedService::orderBy('name')->get();
+
+        return view('billing.workspace', compact('jobCard', 'allocatedParts', 'partners', 'predefinedServices'));
     }
 
     /**
@@ -44,29 +48,49 @@ class BillingController extends Controller
     {
         $data = $request->validate([
             'tax' => 'nullable|numeric|min:0',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
             'status' => 'required|in:draft,paid',
             // Labor items
             'labor_desc' => 'nullable|array',
+            'labor_cost' => 'nullable|array',
             'labor_price' => 'nullable|array',
-            // Allocated parts mappings
-            'parts' => 'nullable|array', // inventory_id => price
+            // Outsourcing items
+            'outsourcing_company_id' => 'nullable|array',
+            'outsourcing_desc' => 'nullable|array',
+            'outsourcing_cost' => 'nullable|array',
+            'outsourcing_price' => 'nullable|array',
+            // Allocated parts mappings (altered prices)
+            'parts_cost' => 'nullable|array',
+            'parts_price' => 'nullable|array',
         ]);
 
-        if ($jobCard->bill) {
-            return back()->withErrors(['bill' => 'A bill already exists for this job card.']);
+        if ($jobCard->bill && !auth()->user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'A bill already exists for this job card. Only super admins can update it.']);
         }
 
         $bill = DB::transaction(function () use ($jobCard, $data) {
-            // Generate unique bill number: INV-YYYYMMDD-XXXX
-            $billNumber = 'INV-' . date('Ymd') . '-' . str_pad($jobCard->id, 4, '0', STR_PAD_LEFT);
+            if ($jobCard->bill) {
+                $bill = $jobCard->bill;
+                $bill->update([
+                    'tax' => $data['tax'] ?? 0.00,
+                    'discount_percent' => $data['discount_percent'] ?? 0.00,
+                    'status' => $data['status']
+                ]);
+                // Delete existing items to rebuild them
+                $bill->items()->delete();
+            } else {
+                // Generate unique bill number: INV-YYYYMMDD-XXXX
+                $billNumber = 'INV-' . date('Ymd') . '-' . str_pad($jobCard->id, 4, '0', STR_PAD_LEFT);
 
-            $bill = Bill::create([
-                'job_card_id' => $jobCard->id,
-                'bill_number' => $billNumber,
-                'tax' => $data['tax'] ?? 0.00,
-                'total_amount' => 0.00, // We will calculate this
-                'status' => $data['status']
-            ]);
+                $bill = Bill::create([
+                    'job_card_id' => $jobCard->id,
+                    'bill_number' => $billNumber,
+                    'tax' => $data['tax'] ?? 0.00,
+                    'discount_percent' => $data['discount_percent'] ?? 0.00,
+                    'total_amount' => 0.00, // We will calculate this
+                    'status' => $data['status']
+                ]);
+            }
 
             $totalAmount = 0.00;
 
@@ -80,15 +104,16 @@ class BillingController extends Controller
                 $inv = $mov->inventory;
                 $qty = abs($mov->quantity); // Make positive
                 
-                // Fetch prices from batch if present, fallback to parent inventory values
-                $unitPrice = $mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $inv->selling_price;
-                $costPrice = $mov->cost_price ?? ($mov->purchaseBatch ? $mov->purchaseBatch->cost_price : $inv->cost_price);
+                // Fetch prices from request, fall back to batch or parent inventory values
+                $unitPrice = isset($data['parts_price'][$mov->id]) ? floatval($data['parts_price'][$mov->id]) : ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $inv->selling_price);
+                $costPrice = isset($data['parts_cost'][$mov->id]) ? floatval($data['parts_cost'][$mov->id]) : ($mov->cost_price ?? ($mov->purchaseBatch ? $mov->purchaseBatch->cost_price : $inv->cost_price));
                 
                 $totalPrice = $qty * $unitPrice;
 
                 BillItem::create([
                     'bill_id' => $bill->id,
                     'inventory_id' => $inv->id,
+                    'outsourcing_company_id' => null,
                     'type' => 'part',
                     'description' => $inv->name,
                     'quantity' => $qty,
@@ -105,14 +130,17 @@ class BillingController extends Controller
                 foreach ($data['labor_desc'] as $key => $desc) {
                     if (empty($desc)) continue;
 
+                    $cost = $data['labor_cost'][$key] ?? 0.00;
                     $price = $data['labor_price'][$key] ?? 0.00;
 
                     BillItem::create([
                         'bill_id' => $bill->id,
                         'inventory_id' => null,
+                        'outsourcing_company_id' => null,
                         'type' => 'labor',
                         'description' => $desc,
                         'quantity' => 1.00,
+                        'cost_price' => $cost,
                         'unit_price' => $price,
                         'total_price' => $price
                     ]);
@@ -121,13 +149,45 @@ class BillingController extends Controller
                 }
             }
 
-            // 3. Apply Tax
+            // 3. Add Outsourcing Items
+            if (!empty($data['outsourcing_desc'])) {
+                foreach ($data['outsourcing_desc'] as $key => $desc) {
+                    if (empty($desc)) continue;
+
+                    $companyId = $data['outsourcing_company_id'][$key] ?? null;
+                    $cost = $data['outsourcing_cost'][$key] ?? 0.00;
+                    $price = $data['outsourcing_price'][$key] ?? 0.00;
+
+                    BillItem::create([
+                        'bill_id' => $bill->id,
+                        'inventory_id' => null,
+                        'outsourcing_company_id' => $companyId,
+                        'type' => 'outsourcing',
+                        'description' => $desc,
+                        'quantity' => 1.00,
+                        'cost_price' => $cost,
+                        'unit_price' => $price,
+                        'total_price' => $price
+                    ]);
+
+                    $totalAmount += $price;
+                }
+            }
+
+            // 4. Apply Discount Percentage
+            $subtotal = $totalAmount;
+            if ($bill->discount_percent > 0) {
+                $discountAmount = ($subtotal * ($bill->discount_percent / 100));
+                $totalAmount -= $discountAmount;
+            }
+
+            // 5. Apply Tax
             if ($bill->tax > 0) {
                 $taxAmount = ($totalAmount * ($bill->tax / 100));
                 $totalAmount += $taxAmount;
             }
 
-            // 4. Update Bill Total
+            // 6. Update Bill Total
             $bill->total_amount = $totalAmount;
             $bill->save();
 

@@ -150,6 +150,10 @@ class JobCardController extends Controller
      */
     public function update(Request $request, JobCard $jobCard)
     {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can update it.']);
+        }
+
         $data = $request->validate([
             'notes' => 'nullable|string',
             'estimated_cost' => 'required|numeric|min:0',
@@ -188,6 +192,10 @@ class JobCardController extends Controller
      */
     public function updateStatus(Request $request, JobCard $jobCard)
     {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can change its status.']);
+        }
+
         $data = $request->validate([
             'status' => 'required|in:received-vehicle,on-going,blocked,testing,waiting-to-pickup'
         ]);
@@ -336,6 +344,10 @@ class JobCardController extends Controller
      */
     public function allocateParts(Request $request, JobCard $jobCard)
     {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can allocate parts.']);
+        }
+
         $data = $request->validate([
             'inventory_id' => 'required|exists:inventory,id',
             'purchase_batch_id' => 'required|exists:purchase_batches,id',
@@ -388,6 +400,10 @@ class JobCardController extends Controller
 
     public function assignWorkers(Request $request, JobCard $jobCard)
     {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can manage technician assignments.']);
+        }
+
         $data = $request->validate([
             'workers' => 'nullable|array',
             'workers.*' => 'exists:users,id'
@@ -449,6 +465,10 @@ class JobCardController extends Controller
      */
     public function addService(Request $request, JobCard $jobCard)
     {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can add service operations.']);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
@@ -475,6 +495,11 @@ class JobCardController extends Controller
      */
     public function deleteService(JobCardService $service)
     {
+        $jobCard = $service->jobCard;
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can delete service operations.']);
+        }
+
         $jobCardId = $service->job_card_id;
         $serviceName = $service->name;
 

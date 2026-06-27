@@ -176,11 +176,11 @@
                 <div class="space-y-2">
                     <div class="flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300">
                         <span>Labor Segment</span>
-                        <span class="font-mono text-green-600 bg-green-500/10 px-2 py-0.5 rounded text-[11px]">
-                            Margin: 100.0%
+                        <span class="font-mono text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded text-[11px]">
+                            Margin: {{ number_format($laborMargin, 1) }}%
                         </span>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 dark:bg-slate-950/40 rounded-xl p-3 border border-slate-200 dark:border-slate-850/60">
+                    <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 dark:bg-slate-950/40 rounded-xl p-3 border border-slate-200 dark:border-slate-855">
                         <div>
                             <span class="text-slate-500 block">Revenue</span>
                             <span class="font-semibold font-mono text-slate-700 dark:text-slate-300">
@@ -189,12 +189,44 @@
                         </div>
                         <div>
                             <span class="text-slate-500 block">Direct Cost</span>
-                            <span class="font-semibold font-mono text-slate-400">0.00</span>
+                            <span class="font-semibold font-mono text-red-550 dark:text-red-400">
+                                {{ number_format($laborCOGS, 2) }}
+                            </span>
                         </div>
                         <div>
                             <span class="text-slate-500 block">Gross Profit</span>
                             <span class="font-semibold font-mono text-green-600 dark:text-green-400">
                                 {{ number_format($laborProfit, 2) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Outsourcing Segment -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <span>Specialist Services (Outsourced)</span>
+                        <span class="font-mono text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded text-[11px]">
+                            Margin: {{ number_format($outsourcingMargin, 1) }}%
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 dark:bg-slate-950/40 rounded-xl p-3 border border-slate-200 dark:border-slate-855">
+                        <div>
+                            <span class="text-slate-500 block">Revenue</span>
+                            <span class="font-semibold font-mono text-slate-700 dark:text-slate-300">
+                                {{ number_format($outsourcingRevenue, 2) }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Direct Cost</span>
+                            <span class="font-semibold font-mono text-red-550 dark:text-red-400">
+                                {{ number_format($outsourcingCOGS, 2) }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Gross Profit</span>
+                            <span class="font-semibold font-mono text-green-600 dark:text-green-400">
+                                {{ number_format($outsourcingProfit, 2) }}
                             </span>
                         </div>
                     </div>

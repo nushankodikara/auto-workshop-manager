@@ -17,6 +17,15 @@
         </div>
 
         <div class="flex items-center gap-3">
+            <!-- Edit Invoice (Only show for super-manager) -->
+            @if(auth()->user()->isSuperManager())
+                <a href="{{ route('billing.workspace', $jobCard->id) }}" 
+                   class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="edit" class="w-3.5 h-3.5"></i>
+                    <span>Edit Invoice & Calculations</span>
+                </a>
+            @endif
+
             <!-- Mark as Paid form (Only show if draft) -->
             @if($jobCard->bill->status === 'draft')
                 <form action="{{ route('billing.update-status', $jobCard->bill->id) }}" method="POST" class="inline">
@@ -24,7 +33,7 @@
                     @method('PATCH')
                     <input type="hidden" name="status" value="paid">
                     <button type="submit" 
-                            class="px-4 py-2 bg-green-650 hover:bg-green-650 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                            class="px-4 py-2 bg-green-650 hover:bg-green-655 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
                         <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
                         <span>Mark as Paid</span>
                     </button>
@@ -33,7 +42,7 @@
 
             <!-- Print Button -->
             <button onclick="window.print()" 
-                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                 <i data-lucide="printer" class="w-3.5 h-3.5"></i>
                 <span>Print / Save PDF</span>
             </button>
@@ -120,10 +129,12 @@
                         @php $subtotal += $item->total_price; @endphp
                         <tr class="text-slate-750 dark:text-slate-300 print:text-black">
                             <td class="py-3 font-semibold text-slate-800 dark:text-slate-200">{{ $item->description }}</td>
-                            <td class="py-3 text-xs capitalize text-slate-500">{{ $item->type }}</td>
+                            <td class="py-3 text-xs capitalize text-slate-500">
+                                {{ $item->type === 'outsourcing' ? 'Specialist Service' : ($item->type === 'labor' ? 'Labor/Service' : $item->type) }}
+                            </td>
                             <td class="py-3 text-right font-mono">{{ number_format($item->quantity, 2) }}</td>
-                            <td class="py-3 text-right font-mono">{{ config('app.currency', '$') }}{{ number_format($item->unit_price, 2) }}</td>
-                            <td class="py-3 text-right font-mono font-semibold">{{ config('app.currency', '$') }}{{ number_format($item->total_price, 2) }}</td>
+                            <td class="py-3 text-right font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($item->unit_price, 2) }}</td>
+                            <td class="py-3 text-right font-mono font-semibold">{{ config('app.currency', 'Rs.') }}{{ number_format($item->total_price, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -135,20 +146,29 @@
             <div class="w-full md:w-80 space-y-2">
                 <div class="flex justify-between text-slate-500 dark:text-slate-400">
                     <span>Subtotal:</span>
-                    <span class="font-mono font-semibold">{{ config('app.currency', '$') }}{{ number_format($subtotal, 2) }}</span>
+                    <span class="font-mono font-semibold">{{ config('app.currency', 'Rs.') }}{{ number_format($subtotal, 2) }}</span>
                 </div>
+                
+                @if($jobCard->bill->discount_percent > 0)
+                    @php $discountAmount = ($subtotal * ($jobCard->bill->discount_percent / 100)); @endphp
+                    <div class="flex justify-between text-red-500">
+                        <span>Discount ({{ number_format($jobCard->bill->discount_percent, 2) }}%):</span>
+                        <span class="font-mono font-semibold">-{{ config('app.currency', 'Rs.') }}{{ number_format($discountAmount, 2) }}</span>
+                    </div>
+                    @php $subtotal = $subtotal - $discountAmount; @endphp
+                @endif
                 
                 @if($jobCard->bill->tax > 0)
                     @php $taxAmount = ($subtotal * ($jobCard->bill->tax / 100)); @endphp
                     <div class="flex justify-between text-slate-500 dark:text-slate-400">
                         <span>Tax ({{ $jobCard->bill->tax }}%):</span>
-                        <span class="font-mono font-semibold">{{ config('app.currency', '$') }}{{ number_format($taxAmount, 2) }}</span>
+                        <span class="font-mono font-semibold">{{ config('app.currency', 'Rs.') }}{{ number_format($taxAmount, 2) }}</span>
                     </div>
                 @endif
                 
                 <div class="flex justify-between text-base font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-slate-850 dark:text-slate-100 print:text-black">
                     <span>Total Amount:</span>
-                    <span class="font-mono text-primary">{{ config('app.currency', '$') }}{{ number_format($jobCard->bill->total_amount, 2) }}</span>
+                    <span class="font-mono text-primary print:text-black">{{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->bill->total_amount, 2) }}</span>
                 </div>
             </div>
         </div>

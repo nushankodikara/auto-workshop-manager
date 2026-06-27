@@ -48,11 +48,13 @@
                         <span>Diagnostic Info</span>
                     </h3>
                     <div class="flex items-center gap-2">
-                        <button onclick="document.getElementById('edit-job-details-drawer').classList.remove('hidden')"
-                                class="text-xs text-primary hover:bg-primary/10 font-semibold px-2 py-1 rounded transition border border-transparent hover:border-primary/20 flex items-center gap-1">
-                            <i data-lucide="edit" class="w-3.5 h-3.5"></i>
-                            <span>Edit Details</span>
-                        </button>
+                        @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                            <button onclick="document.getElementById('edit-job-details-drawer').classList.remove('hidden')"
+                                    class="text-xs text-primary hover:bg-primary/10 font-semibold px-2 py-1 rounded transition border border-transparent hover:border-primary/20 flex items-center gap-1">
+                                <i data-lucide="edit" class="w-3.5 h-3.5"></i>
+                                <span>Edit Details</span>
+                            </button>
+                        @endif
                         <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 capitalize">
                             Status: {{ str_replace('-', ' ', $jobCard->status) }}
                         </span>
@@ -115,7 +117,7 @@
                             </div>
                             <div class="flex items-center gap-4">
                                 <span class="font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', '$') }}{{ number_format($serv->price, 2) }}</span>
-                                @if(!$jobCard->bill)
+                                @if(!$jobCard->bill || auth()->user()->isSuperManager())
                                     <form action="{{ route('job-cards.delete-service', $serv->id) }}" method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
@@ -128,14 +130,20 @@
                             </div>
                         </div>
                     @empty
-                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-950/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
                             No service tasks recorded yet. Use the form below to add services.
                         </div>
                     @endforelse
                 </div>
 
                 <!-- Add service form -->
-                @if(!$jobCard->bill)
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    @if($jobCard->bill && auth()->user()->isSuperManager())
+                        <div class="text-xs text-amber-600 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 mb-3 flex items-center gap-1.5 font-semibold">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span>Note: This ticket has already been billed. Modifying services will require updating the billing calculations.</span>
+                        </div>
+                    @endif
                     <form action="{{ route('job-cards.add-service', $jobCard->id) }}" method="POST" class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-4 gap-4">
                         @csrf
                         <div class="md:col-span-2">
@@ -197,8 +205,14 @@
                     @endif
                 </div>
 
-                <!-- Part allocation form (Only show if invoice doesn't exist) -->
-                @if(!$jobCard->bill)
+                <!-- Part allocation form (Only show if invoice doesn't exist or user is super admin) -->
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    @if($jobCard->bill && auth()->user()->isSuperManager())
+                        <div class="text-xs text-amber-600 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 mb-3 flex items-center gap-1.5 font-semibold">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span>Note: This ticket has already been billed. Modifying parts will require updating the billing calculations.</span>
+                        </div>
+                    @endif
                     <form action="{{ route('job-cards.allocate-parts', $jobCard->id) }}" method="POST" class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-4 gap-4">
                         @csrf
                         <div>
@@ -330,26 +344,38 @@
                         </div>
                     @endforelse
                 </div>
-
                 <!-- Update Assignees form -->
-                <form action="{{ route('job-cards.workers', $jobCard->id) }}" method="POST" class="pt-4 border-t border-slate-200 dark:border-slate-800/50 space-y-3">
-                    @csrf
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Manage Assignments</label>
-                    <div class="space-y-1.5 max-h-40 overflow-y-auto p-3 bg-white dark:bg-slate-950 border border-slate-250 dark:border-slate-800 rounded-lg">
-                        @foreach($allWorkers as $worker)
-                            <label class="flex items-center text-xs text-slate-700 dark:text-slate-350 cursor-pointer">
-                                <input type="checkbox" name="workers[]" value="{{ $worker->id }}" 
-                                       {{ $jobCard->workers->contains($worker->id) ? 'checked' : '' }}
-                                       class="h-3.5 w-3.5 text-primary focus:ring-primary rounded border border-slate-350 dark:border-slate-800">
-                                <span class="ml-2 capitalize">{{ $worker->name }}</span>
-                            </label>
-                        @endforeach
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    @if($jobCard->bill && auth()->user()->isSuperManager())
+                        <div class="text-xs text-amber-600 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 mb-3 flex items-center gap-1.5 font-semibold font-sans">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span>Note: This ticket has already been billed. Modifying technicians won't automatically update existing bill items.</span>
+                        </div>
+                    @endif
+                    <form action="{{ route('job-cards.workers', $jobCard->id) }}" method="POST" class="pt-4 border-t border-slate-200 dark:border-slate-800/50 space-y-3">
+                        @csrf
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Manage Assignments</label>
+                        <div class="space-y-1.5 max-h-40 overflow-y-auto p-3 bg-white dark:bg-slate-955 border border-slate-250 dark:border-slate-800 rounded-lg">
+                            @foreach($allWorkers as $worker)
+                                <label class="flex items-center text-xs text-slate-700 dark:text-slate-350 cursor-pointer">
+                                    <input type="checkbox" name="workers[]" value="{{ $worker->id }}" 
+                                           {{ $jobCard->workers->contains($worker->id) ? 'checked' : '' }}
+                                           class="h-3.5 w-3.5 text-primary focus:ring-primary rounded border border-slate-355 dark:border-slate-800">
+                                    <span class="ml-2 capitalize">{{ $worker->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <button type="submit" class="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700 flex items-center justify-center gap-1">
+                            <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+                            <span>Update Technicians</span>
+                        </button>
+                    </form>
+                @else
+                    <div class="text-xs text-slate-500 bg-slate-50 dark:bg-slate-955/35 p-3 rounded-lg border border-slate-200 dark:border-slate-800 mt-2 flex items-center gap-1.5">
+                        <i data-lucide="lock" class="w-3.5 h-3.5 text-primary shrink-0"></i>
+                        <span>Technician assignments are locked because an invoice has already been generated.</span>
                     </div>
-                    <button type="submit" class="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700 flex items-center justify-center gap-1">
-                        <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
-                        <span>Update Technicians</span>
-                    </button>
-                </form>
+                @endif
             </div>
 
             <!-- 2. Operations Logs (Activity Log) -->

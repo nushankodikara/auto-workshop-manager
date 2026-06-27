@@ -48,9 +48,14 @@ class BackupCommand extends Command
         $backupFilename = "backup_{$timestamp}.sqlite";
         $backupPath = $backupDir . '/' . $backupFilename;
 
-        // 4. Perform SQLite backup copy
+        // 4. Perform SQLite backup
         try {
-            File::copy($dbPath, $backupPath);
+            $source = new \SQLite3($dbPath);
+            $destination = new \SQLite3($backupPath);
+            $source->backup($destination);
+            $source->close();
+            $destination->close();
+
             $this->info("Backup successfully created: {$backupFilename}");
             $this->info("Saved to: {$backupPath}");
             
@@ -59,7 +64,7 @@ class BackupCommand extends Command
 
             return Command::SUCCESS;
         } catch (\Exception $e) {
-            $this->error("Failed to copy database file: " . $e->getMessage());
+            $this->error("Failed to back up database: " . $e->getMessage());
             return Command::FAILURE;
         }
     }

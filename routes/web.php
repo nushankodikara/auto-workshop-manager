@@ -78,6 +78,21 @@ Route::middleware('auth')->group(function () {
     Route::put('/employees/{user}', [PayrollController::class, 'employeeUpdate'])->name('employees.update');
     Route::delete('/employees/{user}', [PayrollController::class, 'employeeDestroy'])->name('employees.destroy');
 
+    // Employee Profile Utilization View
+    Route::get('/employees/{user}', [PayrollController::class, 'employeeShow'])->name('employees.show');
+
+    // Outsourcing CRUD (Super Manager Only)
+    Route::get('/outsourcing', [App\Http\Controllers\OutsourcingController::class, 'index'])->name('outsourcing.index');
+    Route::post('/outsourcing', [App\Http\Controllers\OutsourcingController::class, 'store'])->name('outsourcing.store');
+    Route::put('/outsourcing/{company}', [App\Http\Controllers\OutsourcingController::class, 'update'])->name('outsourcing.update');
+    Route::delete('/outsourcing/{company}', [App\Http\Controllers\OutsourcingController::class, 'destroy'])->name('outsourcing.destroy');
+
+    // Predefined Services CRUD (Super Manager Only)
+    Route::get('/predefined-services', [App\Http\Controllers\PredefinedServiceController::class, 'index'])->name('services.index');
+    Route::post('/predefined-services', [App\Http\Controllers\PredefinedServiceController::class, 'store'])->name('services.store');
+    Route::put('/predefined-services/{service}', [App\Http\Controllers\PredefinedServiceController::class, 'update'])->name('services.update');
+    Route::delete('/predefined-services/{service}', [App\Http\Controllers\PredefinedServiceController::class, 'destroy'])->name('services.destroy');
+
     // System Settings & Database Backups (Super Manager Only)
     Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings/backup', [App\Http\Controllers\SettingsController::class, 'backup'])->name('settings.backup');
@@ -88,8 +103,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/shops', [App\Http\Controllers\SettingsController::class, 'storeShop'])->name('settings.shops.store');
     Route::delete('/settings/shops/{shop}', [App\Http\Controllers\SettingsController::class, 'deleteShop'])->name('settings.shops.delete');
 
-    // Employee Profile Utilization View
-    Route::get('/employees/{user}', [PayrollController::class, 'employeeShow'])->name('employees.show');
 });
 
 // Public API Route (Exempt from auth & CSRF)
