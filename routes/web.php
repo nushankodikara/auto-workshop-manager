@@ -8,6 +8,7 @@ use App\Http\Controllers\ClientVehicleController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\BroadcastController;
 use Illuminate\Http\Request;
 
 // Guest Routes
@@ -102,6 +103,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/update', [App\Http\Controllers\SettingsController::class, 'updateSettings'])->name('settings.update');
     Route::post('/settings/shops', [App\Http\Controllers\SettingsController::class, 'storeShop'])->name('settings.shops.store');
     Route::delete('/settings/shops/{shop}', [App\Http\Controllers\SettingsController::class, 'deleteShop'])->name('settings.shops.delete');
+
+    // Customer Broadcast Messaging (Super Manager Only)
+    Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcast.index');
+    Route::post('/broadcast/send', [BroadcastController::class, 'send'])->name('broadcast.send');
 
 });
 

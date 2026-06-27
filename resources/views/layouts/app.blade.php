@@ -109,6 +109,10 @@
                         <i data-lucide="clipboard-list" class="w-4 h-4"></i>
                         <span>Predefined Services</span>
                     </a>
+                    <a href="{{ route('broadcast.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('broadcast.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                        <i data-lucide="megaphone" class="w-4 h-4"></i>
+                        <span>Broadcast Messages</span>
+                    </a>
                     <a href="{{ route('settings.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('settings.index') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="settings" class="w-4 h-4"></i>
                         <span>Settings & Backups</span>
