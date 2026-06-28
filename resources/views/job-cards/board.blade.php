@@ -19,6 +19,60 @@
         </button>
     </div>
 
+    <!-- Date Filter Bar -->
+    <div class="app-card rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <form action="{{ route('job-cards.board') }}" method="GET" class="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4 text-xs">
+                <!-- Start Date -->
+                <div class="flex flex-col gap-1">
+                    <label for="start_date" class="font-semibold text-slate-505 dark:text-slate-400">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" value="{{ $startDate }}"
+                           class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                </div>
+
+                <!-- End Date -->
+                <div class="flex flex-col gap-1">
+                    <label for="end_date" class="font-semibold text-slate-550 dark:text-slate-400">End Date</label>
+                    <input type="date" name="end_date" id="end_date" value="{{ $endDate }}"
+                           class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                </div>
+
+                <!-- Quick Selection Buttons -->
+                <div class="flex items-center gap-2 pt-4">
+                    <button type="button" onclick="setQuickDates('{{ date('Y-m-d') }}', '{{ date('Y-m-d') }}')"
+                            class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] font-bold rounded text-slate-700 dark:text-slate-300 transition cursor-pointer">
+                        Today
+                    </button>
+                    <button type="button" onclick="setQuickDates('{{ date('Y-m-d', strtotime('-7 days')) }}', '{{ date('Y-m-d') }}')"
+                            class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] font-bold rounded text-slate-700 dark:text-slate-300 transition cursor-pointer">
+                        Last 7 Days
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                @if($startDate !== date('Y-m-d') || $endDate !== date('Y-m-d'))
+                    <a href="{{ route('job-cards.board') }}" 
+                       class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs flex items-center justify-center transition">
+                        Reset
+                    </a>
+                @endif
+                <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+                    <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                    <span>Filter Board</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function setQuickDates(start, end) {
+            document.getElementById('start_date').value = start;
+            document.getElementById('end_date').value = end;
+            document.getElementById('start_date').closest('form').submit();
+        }
+    </script>
+
     <!-- Kanban Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
 

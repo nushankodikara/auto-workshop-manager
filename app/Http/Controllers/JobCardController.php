@@ -33,9 +33,34 @@ class JobCardController extends Controller
     /**
      * Show the Kanban Board.
      */
-    public function board()
+    public function board(Request $request)
     {
-        $jobCards = JobCard::with(['vehicle.client', 'shop', 'workers'])->get();
+        $startDate = $request->input('start_date', date('Y-m-d'));
+        $endDate = $request->input('end_date', date('Y-m-d'));
+
+        $start = \Carbon\Carbon::parse($startDate)->startOfDay();
+        $end = \Carbon\Carbon::parse($endDate)->endOfDay();
+
+        $jobCards = JobCard::with(['vehicle.client', 'shop', 'workers'])
+            ->where(function ($query) use ($start, $end) {
+                // Condition 1: Unfinished tickets created on or before the end of the range
+                $query->where(function ($q) use ($end) {
+                    $q->where('status', '!=', 'waiting-to-pickup')
+                      ->where('created_at', '<=', $end);
+                })
+                // Condition 2: Finished tickets completed (or created if completed_at is null) within the range
+                ->orWhere(function ($q) use ($start, $end) {
+                    $q->where('status', '=', 'waiting-to-pickup')
+                      ->where(function ($sub) use ($start, $end) {
+                          $sub->whereBetween('completed_at', [$start, $end])
+                              ->orWhere(function ($sub2) use ($start, $end) {
+                                  $sub2->whereNull('completed_at')
+                                       ->whereBetween('created_at', [$start, $end]);
+                              });
+                      });
+                });
+            })
+            ->get();
         
         // Group by status
         $boardData = [
@@ -51,7 +76,7 @@ class JobCardController extends Controller
         $workers = User::where('role', 'worker')->get();
         $managers = User::whereIn('role', ['super-manager', 'manager'])->get();
 
-        return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers'));
+        return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers', 'startDate', 'endDate'));
     }
 
     /**

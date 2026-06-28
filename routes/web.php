@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     // Inventory Stock & Movements
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+    Route::get('/inventory/{item}', [InventoryController::class, 'show'])->name('inventory.show');
     Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::patch('/inventory/{item}/adjust', [InventoryController::class, 'adjustStock'])->name('inventory.adjust');
     Route::post('/inventory/{item}/batch', [InventoryController::class, 'addBatch'])->name('inventory.add-batch');

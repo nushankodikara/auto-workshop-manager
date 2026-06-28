@@ -35,7 +35,8 @@
         <!-- Left: Inventory List Table -->
         <div class="lg:col-span-2 space-y-6">
             <div class="app-card rounded-2xl overflow-hidden shadow-xs">
-                <table class="w-full text-left border-collapse text-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
                     <thead>
                         <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                             <th class="py-4 px-6">Part Name</th>
@@ -54,7 +55,7 @@
                                 </td>
                                 <td class="py-4 px-6 text-slate-500 font-mono text-xs">{{ $item->sku }}</td>
                                 <td class="py-4 px-6">
-                                    @if($item->quantity < 10)
+                                    @if($item->low_stock_alert_qty > 0 && $item->quantity <= $item->low_stock_alert_qty)
                                         <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20 text-xs font-semibold">
                                             {{ $item->quantity }} {{ $item->unit }} (Low)
                                         </span>
@@ -71,14 +72,19 @@
                                     {{ config('app.currency', 'Rs.') }}{{ number_format($item->selling_price, 2) }}
                                 </td>
                                 <td class="py-4 px-6 text-right flex items-center justify-end gap-2">
+                                    <!-- View Details link -->
+                                    <a href="{{ route('inventory.show', $item) }}"
+                                       class="text-xs font-bold text-slate-650 dark:text-slate-350 bg-slate-500/10 border border-slate-500/20 px-2.5 py-1 rounded transition hover:bg-slate-600 hover:text-white">
+                                        View Details
+                                    </a>
                                     <!-- Add Batch trigger -->
                                     <button onclick="openAddBatchModal({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->cost_price }}, {{ $item->selling_price }})"
-                                            class="text-xs font-bold text-green-600 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded transition hover:bg-green-600 hover:text-white">
+                                            class="text-xs font-bold text-green-600 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded transition hover:bg-green-600 hover:text-white cursor-pointer">
                                         Add Batch
                                     </button>
                                     <!-- Adjust Stock trigger -->
                                     <button onclick="openAdjustmentModal({{ $item->id }}, '{{ addslashes($item->name) }}', '{{ $item->unit }}')"
-                                            class="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded transition hover:bg-primary hover:text-white">
+                                            class="text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded transition hover:bg-primary hover:text-white cursor-pointer">
                                         Adjust Stock
                                     </button>
                                 </td>
@@ -92,6 +98,7 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <!-- Pagination -->
@@ -192,6 +199,14 @@
                             <label for="unit" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Measurement Unit</label>
                             <input type="text" name="unit" id="unit" required placeholder="pcs, liters, meters" value="pcs"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <!-- Low Stock Alert Quantity -->
+                        <div>
+                            <label for="low_stock_alert_qty" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Low Stock Alert Qty</label>
+                            <input type="number" name="low_stock_alert_qty" id="low_stock_alert_qty" min="0" value="0" required
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            <span class="text-[10px] text-slate-450 dark:text-slate-500 mt-1 block">Define stock alert limit. If 0, alerts are disabled.</span>
                         </div>
 
                         <!-- Buttons -->

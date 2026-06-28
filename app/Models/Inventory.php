@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['name', 'sku', 'quantity', 'cost_price', 'selling_price', 'unit'])]
+#[Fillable(['name', 'sku', 'quantity', 'cost_price', 'selling_price', 'unit', 'low_stock_alert_qty'])]
 class Inventory extends Model
 {
     protected $table = 'inventory';
@@ -16,6 +16,7 @@ class Inventory extends Model
             'quantity' => 'integer',
             'cost_price' => 'decimal:2',
             'selling_price' => 'decimal:2',
+            'low_stock_alert_qty' => 'integer',
         ];
     }
 

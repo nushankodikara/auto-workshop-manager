@@ -31,6 +31,25 @@ class InventoryController extends Controller
     }
 
     /**
+     * Show detailed inventory item.
+     */
+    public function show(Inventory $item)
+    {
+        $item->load(['purchaseBatches' => function ($q) {
+            $q->orderBy('purchased_at', 'desc')->orderBy('id', 'desc');
+        }, 'stockMovements' => function ($q) {
+            $q->with('jobCard.vehicle')->latest();
+        }]);
+
+        // Get price history from purchase batches
+        $priceHistory = $item->purchaseBatches()
+            ->orderBy('purchased_at', 'asc')
+            ->get(['purchased_at', 'cost_price', 'selling_price', 'batch_code']);
+
+        return view('inventory.show', compact('item', 'priceHistory'));
+    }
+
+    /**
      * Store a new inventory item.
      */
     public function store(Request $request)
@@ -42,7 +61,10 @@ class InventoryController extends Controller
             'cost_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'unit' => 'required|string|max:20',
+            'low_stock_alert_qty' => 'nullable|integer|min:0',
         ]);
+
+        $data['low_stock_alert_qty'] = $data['low_stock_alert_qty'] ?? 0;
 
         DB::transaction(function () use ($data) {
             $item = Inventory::create($data);
@@ -86,9 +108,17 @@ class InventoryController extends Controller
             'cost_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'unit' => 'required|string|max:20',
+            'low_stock_alert_qty' => 'nullable|integer|min:0',
         ]);
 
+        $data['low_stock_alert_qty'] = $data['low_stock_alert_qty'] ?? 0;
+
         $item->update($data);
+
+        // If the update was triggered from the item details page, redirect there instead of back
+        if ($request->header('referer') && str_contains($request->header('referer'), "/inventory/{$item->id}")) {
+            return redirect()->route('inventory.show', $item)->with('success', 'Inventory item updated successfully.');
+        }
 
         return back()->with('success', 'Inventory item updated successfully.');
     }

@@ -29,8 +29,10 @@ class DashboardController extends Controller
         $testingCount = JobCard::where('status', 'testing')->count();
         $pickupCount = JobCard::where('status', 'waiting-to-pickup')->count();
 
-        // Low stock items (less than 10)
-        $lowStockItems = Inventory::where('quantity', '<', 10)->get();
+        // Low stock items (using custom alert thresholds, where threshold > 0 and stock <= threshold)
+        $lowStockItems = Inventory::where('low_stock_alert_qty', '>', 0)
+            ->whereColumn('quantity', '<=', 'low_stock_alert_qty')
+            ->get();
 
         // Total Job Cards created this month
         $monthlyJobsCount = JobCard::whereMonth('created_at', date('m'))
@@ -100,8 +102,11 @@ class DashboardController extends Controller
             }
         }
 
-        // 3. Low stock inventory summary
-        $lowStockCount = DB::table('inventory')->where('quantity', '<', 10)->count();
+        // 3. Low stock inventory summary (using custom alert thresholds)
+        $lowStockCount = DB::table('inventory')
+            ->where('low_stock_alert_qty', '>', 0)
+            ->whereColumn('quantity', '<=', 'low_stock_alert_qty')
+            ->count();
 
         // Custom SQL console processing
         $sqlQuery = $request->input('sql_query');
