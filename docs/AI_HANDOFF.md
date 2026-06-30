@@ -61,6 +61,19 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - **Shop Locations Settings**: Exposes `POST /settings/shops` and `DELETE /settings/shops/{shop}` for UI management. Shop deletion is actively blocked if the shop is in use by any job cards.
 - **Outbound SMS Phone Normalization**: Automatically normalizes numbers to Sri Lankan `947xxxxxxxx` format, stripping spaces, dashes, leading `+` signs, and translating leading `0` to country code `94` to comply with FitSMS delivery rules.
 - **Docker Tagging & Versioning**: CI/CD build pushes on `main` tag images with both `latest` and `v1.0.${{ github.run_number }}` versions.
+- **Customer Broadcast Messaging**: Added a dedicated outreach console allowing managers to filter customers by their last service date (last week, month, 3/6 months, custom range, or all) and broadcast SMS or email updates using FitSMS or Mail drivers. Includes a development/testing Safe Mode that mocks and logs outgoing messages instead of firing real transmissions.
+- **Custom Low Stock Alerts & Inventory Details**: Replaced the hardcoded low stock alerts limit with item-specific `low_stock_alert_qty` thresholds (setting to `0` disables alerts). Added `overflow-x-auto` horizontal scroll to prevent cramped inventory table layouts, and created an inventory detailed show page mapping editing, FIFO purchase batches, recent transactions, and price fluctuation SVG graphs.
+- **Kanban Board Date Range Filters**: Refactored the Kanban board to default to showing today's work + older unfinished tickets. Added custom date range start/end filter inputs to narrow down completed/in-progress tickets within arbitrary timeframes.
+- **Employee Archiving (Soft Deactivation)**: Added `is_archived` boolean column to the `users` table. Setting to `true` excludes deactivated workers/managers from attendance trackers, payroll slip generation lists, and job card worker assignment selections. Includes a restore option to re-activate employees.
+- **Yearly Attendance Calendar View**: Renders a complete 12-month calendar grid on each employee's profile detail view. Highlights marked daily attendance statuses: Present (Emerald), Half Day (Amber), Absent (Red), and Approved Leave (Blue). Includes a year filter dropdown.
+- **Double-Entry Bookkeeping Ledger**: Replaced simple cash metrics with a robust double-entry system (tables `accounts`, `journal_entries`, `journal_items`). Seeds a default Chart of Accounts (Cash Drawer `1000`, Bank Account `1010`, Accounts Receivable `1200`, Parts Inventory `1300`, Revenues, Expenses, etc.).
+  - Automatically posts client billing invoices (AR debit, Revenues credit), Cost of Goods Sold (COGS debit, Parts Inventory credit), and payment receipts (Cash Drawer debit, AR credit).
+  - Automatically posts stock batch purchases (Parts Inventory debit, Cash Drawer credit) and paid salary slips (Salaries Expense debit, Cash Drawer credit).
+  - Enforces balanced transactions (Debits = Credits) on manual journal logs.
+  - Dynamically calculates Share Value based on Book Equity (Assets - Liabilities) divided by configured total company shares.
+  - Provides stream CSV download exports for Chart of Accounts, General Ledger, and Customer balances.
+- **Unified Statistics**: Integrated the Statistics & Finance dashboard directly with the double-entry bookkeeping ledger, computing cash flows and segment margins based on ledger account balances instead of raw table sums to keep both modules perfectly coherent.
+
 
 ## Working agreement
 

@@ -83,6 +83,8 @@ class InventoryController extends Controller
                     'purchased_at' => date('Y-m-d')
                 ]);
 
+                \App\Services\DoubleEntryService::postPurchaseBatchTransaction($batch);
+
                 StockMovement::create([
                     'inventory_id' => $item->id,
                     'purchase_batch_id' => $batch->id,
@@ -150,6 +152,8 @@ class InventoryController extends Controller
                 'purchased_at' => $data['purchased_at'],
             ]);
 
+            \App\Services\DoubleEntryService::postPurchaseBatchTransaction($batch);
+
             // Update parent inventory quantity and latest prices
             $item->quantity += $data['quantity'];
             $item->cost_price = $data['cost_price'];
@@ -201,6 +205,8 @@ class InventoryController extends Controller
                     'supplier' => 'Stock Adjustment Inflow',
                     'purchased_at' => date('Y-m-d')
                 ]);
+
+                \App\Services\DoubleEntryService::postPurchaseBatchTransaction($batch);
 
                 $item->quantity += $data['quantity'];
                 $item->save();
@@ -270,6 +276,8 @@ class InventoryController extends Controller
                         'supplier' => 'Stock Adjustment Override Inflow',
                         'purchased_at' => date('Y-m-d')
                     ]);
+
+                    \App\Services\DoubleEntryService::postPurchaseBatchTransaction($batch);
 
                     StockMovement::create([
                         'inventory_id' => $item->id,

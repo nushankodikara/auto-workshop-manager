@@ -172,39 +172,58 @@ class DashboardController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        // Income query
-        $incomeQuery = Bill::where('status', 'paid');
+        // Income query (Type: Revenue accounts)
+        $incomeQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
+            $q->where('type', 'revenue');
+        });
         if ($startDate) {
-            $incomeQuery->whereDate('created_at', '>=', $startDate);
+            $incomeQuery->whereHas('entry', function ($q) use ($startDate) {
+                $q->whereDate('entry_date', '>=', $startDate);
+            });
         }
         if ($endDate) {
-            $incomeQuery->whereDate('created_at', '<=', $endDate);
+            $incomeQuery->whereHas('entry', function ($q) use ($endDate) {
+                $q->whereDate('entry_date', '<=', $endDate);
+            });
         }
-        $totalIncome = $incomeQuery->sum('total_amount');
+        $totalIncome = (double)$incomeQuery->sum('credit');
 
-        // Expenditure - Stock Purchases
-        $batchesQuery = \App\Models\PurchaseBatch::query();
+        // Total Expenses query (Type: Expense accounts)
+        $expenditureQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
+            $q->where('type', 'expense');
+        });
         if ($startDate) {
-            $batchesQuery->whereDate('purchased_at', '>=', $startDate);
+            $expenditureQuery->whereHas('entry', function ($q) use ($startDate) {
+                $q->whereDate('entry_date', '>=', $startDate);
+            });
         }
         if ($endDate) {
-            $batchesQuery->whereDate('purchased_at', '<=', $endDate);
+            $expenditureQuery->whereHas('entry', function ($q) use ($endDate) {
+                $q->whereDate('entry_date', '<=', $endDate);
+            });
         }
-        $totalStockPurchases = $batchesQuery->sum(DB::raw('quantity_received * cost_price'));
+        $totalExpenditure = (double)$expenditureQuery->sum('debit');
 
-        // Expenditure - Paid payroll
-        $payrollQuery = \App\Models\PayrollSlip::where('status', 'paid');
+        // Segment Salaries (Code 5100)
+        $salariesQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
+            $q->where('code', '5100');
+        });
         if ($startDate) {
-            $payrollQuery->whereDate('created_at', '>=', $startDate);
+            $salariesQuery->whereHas('entry', function ($q) use ($startDate) {
+                $q->whereDate('entry_date', '>=', $startDate);
+            });
         }
         if ($endDate) {
-            $payrollQuery->whereDate('created_at', '<=', $endDate);
+            $salariesQuery->whereHas('entry', function ($q) use ($endDate) {
+                $q->whereDate('entry_date', '<=', $endDate);
+            });
         }
-        $paidBasicSalaries = $payrollQuery->sum('basic_salary');
-        $paidAllowances = $payrollQuery->sum('allowance');
-        $totalPayroll = $paidBasicSalaries + $paidAllowances;
+        $paidBasicSalaries = (double)$salariesQuery->sum('debit');
+        $paidAllowances = 0.00;
+        $totalPayroll = $paidBasicSalaries;
 
-        $totalExpenditure = $totalStockPurchases + $totalPayroll;
+        // Balance of expenses goes to parts stock purchases and other expenditures (COGS, Rent, Utilities, General Expenses)
+        $totalStockPurchases = max(0, $totalExpenditure - $totalPayroll);
         $netProfit = $totalIncome - $totalExpenditure;
 
         // Trading profitability (linked to paid bills in timeframe)

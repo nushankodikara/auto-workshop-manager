@@ -81,4 +81,5 @@ docker compose exec app php artisan db:restore {filename}
 
 To keep the codebase maintainable for future developers and AI coding assistants:
 1. **Document Before coding**: Always write down scope changes, API endpoints, or database structures in [docs/AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/AI_HANDOFF.md) before implementing them.
-2. **Use Descriptive Diffs**: Maintain a clean Git history and document any schema changes inside migrations.
+2. **Keep the Handoff Updated**: Update [docs/AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/AI_HANDOFF.md) whenever a change is made or a feature is implemented/expanded to reflect the true current state of the application.
+3. **Use Descriptive Diffs**: Maintain a clean Git history and document any schema changes inside migrations.

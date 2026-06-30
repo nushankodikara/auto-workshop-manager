@@ -42,6 +42,18 @@ return new class extends Migration
         foreach ($bills as $bill) {
             DoubleEntryService::postBillTransaction($bill);
         }
+
+        // 4. Historical Purchase Batches Migration
+        $batches = \App\Models\PurchaseBatch::with('inventory')->get();
+        foreach ($batches as $batch) {
+            DoubleEntryService::postPurchaseBatchTransaction($batch);
+        }
+
+        // 5. Historical Paid Payroll Slips Migration
+        $slips = \App\Models\PayrollSlip::where('status', 'paid')->with('user')->get();
+        foreach ($slips as $slip) {
+            DoubleEntryService::postPayrollSlipTransaction($slip);
+        }
     }
 
     /**

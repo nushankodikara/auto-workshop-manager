@@ -149,4 +149,104 @@ class FinanceBookkeepingTest extends TestCase
         $response->assertStatus(200);
         $this->assertStringContainsString('general_ledger_', $response->headers->get('Content-Disposition'));
     }
+
+    /**
+     * Test stock purchase batches and payroll slips automatically post to bookkeeping books.
+     */
+    public function test_stock_purchase_and_payroll_slip_sync()
+    {
+        // 1. Verify stock purchase posting
+        $inventoryItem = \App\Models\Inventory::create([
+            'name' => 'Synthetic Engine Oil 5W-30',
+            'sku' => 'OIL-5W30',
+            'quantity' => 0,
+            'cost_price' => 25.00,
+            'selling_price' => 45.00,
+            'unit' => 'liters'
+        ]);
+
+        $batch = \App\Models\PurchaseBatch::create([
+            'inventory_id' => $inventoryItem->id,
+            'batch_code' => 'BAT-OIL-01',
+            'quantity_received' => 10,
+            'quantity_remaining' => 10,
+            'cost_price' => 25.00,
+            'selling_price' => 45.00,
+            'purchased_at' => '2026-06-30'
+        ]);
+
+        // Manually trigger or verify controller trigger
+        \App\Services\DoubleEntryService::postPurchaseBatchTransaction($batch);
+
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'BATCH-' . $batch->id]);
+        $entry = JournalEntry::where('reference', 'BATCH-' . $batch->id)->first();
+        $this->assertEquals(250.00, $entry->items()->where('account_id', Account::where('code', '1300')->first()->id)->first()->debit);
+        $this->assertEquals(250.00, $entry->items()->where('account_id', Account::where('code', '1000')->first()->id)->first()->credit);
+
+        // 2. Verify payroll slip payout posting
+        $worker = User::create([
+            'name' => 'Test Worker',
+            'email' => 'worker2@test.com',
+            'password' => Hash::make('Password123!'),
+            'role' => 'worker',
+            'basic_salary' => 3000.00
+        ]);
+
+        $slip = \App\Models\PayrollSlip::create([
+            'user_id' => $worker->id,
+            'month' => 6,
+            'year' => 2026,
+            'basic_salary' => 3000.00,
+            'required_days' => 20,
+            'attended_days' => 20,
+            'overtime_hours' => 0,
+            'overtime_rate' => 0,
+            'overtime_amount' => 0,
+            'prorated_salary' => 3000.00,
+            'net_salary' => 3000.00,
+            'status' => 'draft'
+        ]);
+
+        // Put to paid
+        $response = $this->actingAs($this->superManager)->patch(route('payroll.update-status', $slip->id), [
+            'status' => 'paid'
+        ]);
+
+        $response->assertRedirect();
+        $slip->refresh();
+        $this->assertEquals('paid', $slip->status);
+
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'SLIP-' . $slip->id]);
+        $slipEntry = JournalEntry::where('reference', 'SLIP-' . $slip->id)->first();
+        $this->assertEquals(3000.00, $slipEntry->items()->where('account_id', Account::where('code', '5100')->first()->id)->first()->debit);
+        $this->assertEquals(3000.00, $slipEntry->items()->where('account_id', Account::where('code', '1000')->first()->id)->first()->credit);
+    }
+
+    /**
+     * Test statistics dashboard calculates profits directly from double entry books.
+     */
+    public function test_dashboard_statistics_coherent_unification()
+    {
+        $revAcc = Account::where('code', '4000')->first(); // Service Revenue
+        $expAcc = Account::where('code', '5300')->first(); // General Expense
+
+        // Add 5000 Revenue and 1500 Expense in bookkeeping
+        $entry1 = JournalEntry::create(['entry_date' => '2026-06-30', 'description' => 'Service performed']);
+        $entry1->items()->create(['account_id' => Account::where('code', '1000')->first()->id, 'debit' => 5000.00, 'credit' => 0.00]);
+        $entry1->items()->create(['account_id' => $revAcc->id, 'debit' => 0.00, 'credit' => 5000.00]);
+
+        $entry2 = JournalEntry::create(['entry_date' => '2026-06-30', 'description' => 'General Expense logged']);
+        $entry2->items()->create(['account_id' => $expAcc->id, 'debit' => 1500.00, 'credit' => 0.00]);
+        $entry2->items()->create(['account_id' => Account::where('code', '1000')->first()->id, 'debit' => 0.00, 'credit' => 1500.00]);
+
+        $response = $this->actingAs($this->superManager)->get(route('dashboard.statistics', [
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-06-30'
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertViewHas('totalIncome', 5000.00);
+        $response->assertViewHas('totalExpenditure', 1500.00);
+        $response->assertViewHas('netProfit', 3500.00);
+    }
 }

@@ -202,6 +202,8 @@ class PayrollController extends Controller
 
         $payrollSlip->update($data);
 
+        \App\Services\DoubleEntryService::postPayrollSlipTransaction($payrollSlip);
+
         return back()->with('success', "Salary slip status updated to: {$payrollSlip->status}");
     }
 

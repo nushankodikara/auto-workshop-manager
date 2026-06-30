@@ -165,4 +165,104 @@ class DoubleEntryService
             Log::error("DoubleEntryService Error: " . $e->getMessage());
         }
     }
+
+    /**
+     * Automatically log a stock purchase batch to the ledger (Debit Parts Inventory, Credit Cash Drawer).
+     */
+    public static function postPurchaseBatchTransaction($batch)
+    {
+        try {
+            // Delete existing entries for this batch to avoid duplication
+            $oldEntry = JournalEntry::where('reference', 'BATCH-' . $batch->id)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            $inventoryAccount = Account::where('code', '1300')->first();
+            $cashAccount = Account::where('code', '1000')->first();
+
+            if (!$inventoryAccount || !$cashAccount) {
+                return;
+            }
+
+            $totalCost = floatval($batch->quantity_received) * floatval($batch->cost_price);
+            if ($totalCost <= 0) {
+                return;
+            }
+
+            $entry = JournalEntry::create([
+                'entry_date' => $batch->purchased_at ?? date('Y-m-d'),
+                'reference' => 'BATCH-' . $batch->id,
+                'description' => "Stock purchase batch {$batch->batch_code} (Item: " . ($batch->inventory->name ?? 'Unknown') . ")"
+            ]);
+
+            // Debit Parts Inventory (1300)
+            $entry->items()->create([
+                'account_id' => $inventoryAccount->id,
+                'debit' => $totalCost,
+                'credit' => 0.00
+            ]);
+
+            // Credit Cash Drawer (1000)
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => 0.00,
+                'credit' => $totalCost
+            ]);
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postPurchaseBatchTransaction Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Automatically log employee payroll salary slip payout to the ledger (Debit Salaries Expense, Credit Cash Drawer).
+     */
+    public static function postPayrollSlipTransaction($payrollSlip)
+    {
+        try {
+            // Delete existing entries for this slip to avoid duplication
+            $oldEntry = JournalEntry::where('reference', 'SLIP-' . $payrollSlip->id)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            if ($payrollSlip->status !== 'paid') {
+                return;
+            }
+
+            $salariesExpenseAcc = Account::where('code', '5100')->first();
+            $cashAccount = Account::where('code', '1000')->first();
+
+            if (!$salariesExpenseAcc || !$cashAccount) {
+                return;
+            }
+
+            $netSalary = floatval($payrollSlip->net_salary);
+            if ($netSalary <= 0) {
+                return;
+            }
+
+            $entry = JournalEntry::create([
+                'entry_date' => date('Y-m-d'),
+                'reference' => 'SLIP-' . $payrollSlip->id,
+                'description' => "Salary payout for " . ($payrollSlip->user->name ?? 'Employee') . " (Month: {$payrollSlip->month}/{$payrollSlip->year})"
+            ]);
+
+            // Debit Salaries Expense (5100)
+            $entry->items()->create([
+                'account_id' => $salariesExpenseAcc->id,
+                'debit' => $netSalary,
+                'credit' => 0.00
+            ]);
+
+            // Credit Cash Drawer (1000)
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => 0.00,
+                'credit' => $netSalary
+            ]);
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postPayrollSlipTransaction Error: " . $e->getMessage());
+        }
+    }
 }
