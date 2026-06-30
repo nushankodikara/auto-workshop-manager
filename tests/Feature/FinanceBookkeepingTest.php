@@ -38,7 +38,8 @@ class FinanceBookkeepingTest extends TestCase
      */
     public function test_default_accounts_seeded()
     {
-        $this->assertDatabaseHas('accounts', ['code' => '1000', 'name' => 'Cash & Bank']);
+        $this->assertDatabaseHas('accounts', ['code' => '1000', 'name' => 'Cash Drawer']);
+        $this->assertDatabaseHas('accounts', ['code' => '1010', 'name' => 'Bank Account']);
         $this->assertDatabaseHas('accounts', ['code' => '1200', 'name' => 'Accounts Receivable']);
         $this->assertDatabaseHas('accounts', ['code' => '3200', 'name' => 'Investor Capital']);
     }
