@@ -191,6 +191,9 @@ class BillingController extends Controller
             $bill->total_amount = $totalAmount;
             $bill->save();
 
+            // Sync to double entry bookkeeping system
+            \App\Services\DoubleEntryService::postBillTransaction($bill);
+
             return $bill;
         });
 

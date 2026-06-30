@@ -141,6 +141,7 @@ class SettingsController extends Controller
 
         $data = $request->validate([
             'job_card_prefix' => 'required|string|max:50',
+            'total_shares' => 'nullable|integer|min:1',
         ]);
 
         foreach ($data as $key => $value) {

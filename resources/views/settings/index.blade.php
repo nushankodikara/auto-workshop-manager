@@ -125,19 +125,28 @@
 
         <form action="{{ route('settings.update') }}" method="POST" class="space-y-4 pt-2">
             @csrf
-            <div>
-                <label for="job_card_prefix" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Job Card Number Prefix</label>
-                <div class="flex gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="job_card_prefix" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Job Card Number Prefix</label>
                     <input type="text" name="job_card_prefix" id="job_card_prefix" required 
                            value="{{ \App\Models\Setting::get('job_card_prefix', 'TDC-') }}" 
                            placeholder="TDC-"
-                           class="w-full max-w-xs px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                    <button type="submit" 
-                            class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
-                        <i data-lucide="save" class="w-4 h-4"></i>
-                        <span>Save Setting</span>
-                    </button>
+                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                 </div>
+                <div>
+                    <label for="total_shares" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Total Company Shares (Pvt Ltd)</label>
+                    <input type="number" name="total_shares" id="total_shares" required 
+                           value="{{ \App\Models\Setting::get('total_shares', '100000') }}" 
+                           placeholder="100000"
+                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                </div>
+            </div>
+            <div>
+                <button type="submit" 
+                        class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Save Settings</span>
+                </button>
             </div>
         </form>
     </div>

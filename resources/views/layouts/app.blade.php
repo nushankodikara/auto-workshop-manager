@@ -101,6 +101,10 @@
                         <i data-lucide="trending-up" class="w-4 h-4"></i>
                         <span>Statistics & Finance</span>
                     </a>
+                    <a href="{{ route('finance.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('finance.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                        <i data-lucide="wallet" class="w-4 h-4"></i>
+                        <span>Bookkeeping & Ledger</span>
+                    </a>
                     <a href="{{ route('outsourcing.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('outsourcing.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="handshake" class="w-4 h-4"></i>
                         <span>Outsourcing Partners</span>
