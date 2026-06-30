@@ -72,6 +72,7 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
   - Enforces balanced transactions (Debits = Credits) on manual journal logs.
   - Dynamically calculates Share Value based on Book Equity (Assets - Liabilities) divided by configured total company shares.
   - Provides stream CSV download exports for Chart of Accounts, General Ledger, and Customer balances.
+  - **Retroactive Data Sync Migration**: A subsequent migration [2026_06_30_120000_retroactive_import_batches_and_slips.php](file:///Users/nushan/Projects/TDC%20Laravel/database/migrations/2026_06_30_120000_retroactive_import_batches_and_slips.php) force-imports pre-existing stock purchase batches and paid payroll slips into the ledger.
 - **Unified Statistics**: Integrated the Statistics & Finance dashboard directly with the double-entry bookkeeping ledger, computing cash flows and segment margins based on ledger account balances instead of raw table sums to keep both modules perfectly coherent.
 
 
