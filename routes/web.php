@@ -83,6 +83,10 @@ Route::middleware('auth')->group(function () {
     // Employee Profile Utilization View
     Route::get('/employees/{user}', [PayrollController::class, 'employeeShow'])->name('employees.show');
 
+    // Employee Archive / Unarchive
+    Route::post('/employees/{user}/archive', [PayrollController::class, 'employeeArchive'])->name('employees.archive');
+    Route::post('/employees/{user}/unarchive', [PayrollController::class, 'employeeUnarchive'])->name('employees.unarchive');
+
     // Outsourcing CRUD (Super Manager Only)
     Route::get('/outsourcing', [App\Http\Controllers\OutsourcingController::class, 'index'])->name('outsourcing.index');
     Route::post('/outsourcing', [App\Http\Controllers\OutsourcingController::class, 'store'])->name('outsourcing.store');

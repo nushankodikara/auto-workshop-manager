@@ -364,6 +364,13 @@
                                 </button>
                                 
                                 @if($emp->id !== auth()->id())
+                                    <form action="{{ route('employees.archive', $emp->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" onclick="return confirm('Archive this employee? They will no longer appear for active work, attendance, or payroll.')"
+                                                class="text-xs font-semibold text-amber-600 dark:text-amber-450 hover:text-amber-500">
+                                            Archive
+                                        </button>
+                                    </form>
                                     <form action="{{ route('employees.destroy', $emp->id) }}" method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
@@ -379,6 +386,60 @@
                 </tbody>
             </table>
         </div>
+
+        @if(count($archivedUsers) > 0)
+            <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-550">Archived Employees (Left Company)</h4>
+                <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-800">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100/40 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                                <th class="py-4 px-6">Name</th>
+                                <th class="py-4 px-6">Email</th>
+                                <th class="py-4 px-6">Role</th>
+                                <th class="py-4 px-6 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                            @foreach($archivedUsers as $emp)
+                                <tr class="hover:bg-slate-100/10 dark:hover:bg-slate-900/10 transition opacity-70">
+                                    <td class="py-4 px-6 font-semibold text-slate-700 dark:text-slate-350 capitalize">
+                                        <a href="{{ route('employees.show', $emp->id) }}" class="text-primary hover:underline">
+                                            {{ $emp->name }}
+                                        </a>
+                                    </td>
+                                    <td class="py-4 px-6 text-slate-505 font-mono text-xs">{{ $emp->email }}</td>
+                                    <td class="py-4 px-6 capitalize">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-800/50 text-slate-500">
+                                            {{ $emp->role }}
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-6 text-right space-x-2">
+                                        <form action="{{ route('employees.unarchive', $emp->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" onclick="return confirm('Restore this employee to active status?')"
+                                                    class="text-xs font-semibold text-green-600 dark:text-green-400 hover:text-green-500">
+                                                Restore
+                                            </button>
+                                        </form>
+                                        @if($emp->id !== auth()->id())
+                                            <form action="{{ route('employees.destroy', $emp->id) }}" method="POST" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" onclick="return confirm('Permanently delete this employee record?')"
+                                                        class="text-xs font-semibold text-red-550 dark:text-red-400 hover:text-red-500">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
     </div>
 
 </div>

@@ -73,8 +73,8 @@ class JobCardController extends Controller
 
         $vehicles = Vehicle::with('client')->latest()->get();
         $shops = Shop::all();
-        $workers = User::where('role', 'worker')->get();
-        $managers = User::whereIn('role', ['super-manager', 'manager'])->get();
+        $workers = User::where('role', 'worker')->where('is_archived', false)->get();
+        $managers = User::whereIn('role', ['super-manager', 'manager'])->where('is_archived', false)->get();
 
         return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers', 'startDate', 'endDate'));
     }
@@ -95,7 +95,7 @@ class JobCardController extends Controller
             'services'
         ]);
 
-        $allWorkers = User::where('role', 'worker')->get();
+        $allWorkers = User::where('role', 'worker')->where('is_archived', false)->get();
         $inventoryItems = Inventory::where('quantity', '>', 0)
             ->with(['purchaseBatches' => function ($q) {
                 $q->where('quantity_remaining', '>', 0)->orderBy('purchased_at', 'asc')->orderBy('id', 'asc');

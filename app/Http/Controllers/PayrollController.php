@@ -26,7 +26,8 @@ class PayrollController extends Controller
             ->latest()
             ->get();
 
-        $users = User::orderBy('name')->get();
+        $users = User::where('is_archived', false)->orderBy('name')->get();
+        $archivedUsers = User::where('is_archived', true)->orderBy('name')->get();
         $categories = PayrollCategory::all();
         $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
 
@@ -36,7 +37,7 @@ class PayrollController extends Controller
             ->get()
             ->groupBy('user_id');
 
-        return view('payroll.index', compact('slips', 'users', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData'));
+        return view('payroll.index', compact('slips', 'users', 'archivedUsers', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData'));
     }
 
     /**
@@ -363,10 +364,12 @@ class PayrollController extends Controller
     }
 
     /**
-     * Show employee profile with ticket utilization, active working hours, and overtime.
+     * Show employee profile with ticket utilization, active working hours, overtime, and attendance calendar.
      */
-    public function employeeShow(User $user)
+    public function employeeShow(User $user, Request $request)
     {
+        $selectedYear = (int)$request->input('year', date('Y'));
+
         // Fetch all assignments for this employee
         $assignments = \App\Models\JobCardAssignment::where('user_id', $user->id)
             ->with('jobCard.vehicle')
@@ -408,6 +411,38 @@ class PayrollController extends Controller
             $ticketBreakdown[$jcId]['total_hours'] = round(($data['regular_seconds'] + $data['overtime_seconds']) / 3600, 2);
         }
 
-        return view('payroll.employee_show', compact('user', 'totalActiveHours', 'totalOvertimeHours', 'ticketBreakdown'));
+        // Fetch yearly attendance
+        $yearlyAttendance = Attendance::where('user_id', $user->id)
+            ->whereYear('date', $selectedYear)
+            ->get()
+            ->keyBy(function ($record) {
+                return is_string($record->date) ? substr($record->date, 0, 10) : $record->date->format('Y-m-d');
+            });
+
+        return view('payroll.employee_show', compact('user', 'totalActiveHours', 'totalOvertimeHours', 'ticketBreakdown', 'yearlyAttendance', 'selectedYear'));
+    }
+
+    /**
+     * Archive an employee.
+     */
+    public function employeeArchive(User $user)
+    {
+        if ($user->id === auth()->id()) {
+            return back()->withErrors(['archive' => 'You cannot archive your own user account.']);
+        }
+
+        $user->update(['is_archived' => true]);
+
+        return redirect()->route('payroll.index')->with('success', 'Employee archived successfully.');
+    }
+
+    /**
+     * Restore/Unarchive an employee.
+     */
+    public function employeeUnarchive(User $user)
+    {
+        $user->update(['is_archived' => false]);
+
+        return redirect()->route('payroll.index')->with('success', 'Employee restored successfully.');
     }
 }

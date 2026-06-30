@@ -80,9 +80,107 @@
         </div>
     </div>
 
+    <!-- Yearly Attendance Calendar -->
+    <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
+                <i data-lucide="calendar" class="w-4 h-4 text-primary"></i>
+                <span>Yearly Attendance Calendar</span>
+            </h3>
+
+            <!-- Year Selector Form -->
+            <form action="{{ route('employees.show', $user->id) }}" method="GET" class="flex items-center gap-2">
+                <label for="year" class="text-xs font-semibold text-slate-500">Select Year:</label>
+                <select name="year" id="year" onchange="this.form.submit()" class="px-2 py-1 app-input rounded-lg text-xs font-semibold focus:outline-none focus:border-primary">
+                    @for($y = (int)date('Y') + 1; $y >= (int)date('Y') - 4; $y--)
+                        <option value="{{ $y }}" {{ $selectedYear == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endfor
+                </select>
+            </form>
+        </div>
+
+        <!-- 12 Months Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-2">
+            @for($m = 1; $m <= 12; $m++)
+                @php
+                    $monthStart = \Carbon\Carbon::create($selectedYear, $m, 1);
+                    $monthName = $monthStart->format('F');
+                    $daysInMonth = $monthStart->daysInMonth;
+                    $firstDayOfWeek = $monthStart->dayOfWeekIso - 1; // 0=Mon, 6=Sun
+                @endphp
+                <div class="p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/80 rounded-2xl flex flex-col items-center">
+                    <h4 class="text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-2.5 uppercase tracking-wider">{{ $monthName }}</h4>
+                    
+                    <!-- Weekday Headers -->
+                    <div class="grid grid-cols-7 gap-1 text-[8px] font-bold text-center text-slate-400 dark:text-slate-500 mb-1.5 w-full">
+                        <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-7 gap-1 text-[9px] text-center font-mono w-full">
+                        <!-- Empty slots before the first day -->
+                        @for($i = 0; $i < $firstDayOfWeek; $i++)
+                            <span class="w-5.5 h-5.5 flex items-center justify-center"></span>
+                        @endfor
+                        
+                        <!-- Days of the month -->
+                        @for($d = 1; $d <= $daysInMonth; $d++)
+                            @php
+                                $dateStr = sprintf('%04d-%02d-%02d', $selectedYear, $m, $d);
+                                $record = $yearlyAttendance->get($dateStr);
+                                
+                                $bgClass = 'bg-slate-100/50 dark:bg-slate-850/30 text-slate-400 dark:text-slate-600 hover:bg-slate-200/55';
+                                $title = 'Unmarked';
+                                
+                                if ($record) {
+                                    if ($record->status === 'present') {
+                                        $bgClass = 'bg-green-600 text-white font-bold shadow-sm shadow-green-500/20';
+                                        $title = 'Present';
+                                    } elseif ($record->status === 'half_day') {
+                                        $bgClass = 'bg-amber-500 text-white font-bold shadow-sm shadow-amber-500/20';
+                                        $title = 'Half Day';
+                                    } elseif ($record->status === 'absent') {
+                                        $bgClass = 'bg-red-500 text-white font-bold shadow-sm shadow-red-500/20';
+                                        $title = 'Absent';
+                                    } elseif ($record->status === 'leave') {
+                                        $bgClass = 'bg-blue-500 text-white font-bold shadow-sm shadow-blue-500/20';
+                                        $title = 'Leave';
+                                    }
+                                }
+                            @endphp
+                            <span class="w-5.5 h-5.5 flex items-center justify-center rounded-md text-[9px] {{ $bgClass }} cursor-default transition-all duration-150" title="{{ $d }} {{ $monthName }}: {{ $title }}">
+                                {{ $d }}
+                            </span>
+                        @endfor
+                    </div>
+                </div>
+            @endfor
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center gap-4 text-[10px] mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <span class="font-bold uppercase tracking-wider text-slate-450">Legend:</span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-green-600 shadow-sm shadow-green-500/20"></span>
+                <span class="text-slate-650 dark:text-slate-350">Present</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-amber-500 shadow-sm shadow-amber-500/20"></span>
+                <span class="text-slate-650 dark:text-slate-350">Half Day</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-red-500 shadow-sm shadow-red-500/20"></span>
+                <span class="text-slate-650 dark:text-slate-350">Absent</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-3.5 h-3.5 rounded bg-blue-500 shadow-sm shadow-blue-500/20"></span>
+                <span class="text-slate-650 dark:text-slate-350">Approved Leave</span>
+            </span>
+        </div>
+    </div>
+
     <!-- Ticket Breakdown List -->
     <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
-        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-505 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
             <i data-lucide="receipt" class="w-4 h-4 text-primary"></i>
             <span>Ticket Allocation & Hours Breakdown</span>
         </h3>
