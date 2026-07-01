@@ -35,6 +35,10 @@
                     <span class="font-semibold text-slate-700 dark:text-slate-300 font-mono mt-0.5 block text-xs break-all">{{ $user->email }}</span>
                 </div>
                 <div>
+                    <span class="text-slate-500 block text-xs font-semibold">Contact Number</span>
+                    <span class="font-semibold text-slate-700 dark:text-slate-300 font-mono mt-0.5 block text-xs">{{ $user->contact_number ?? 'Not Configured' }}</span>
+                </div>
+                <div>
                     <span class="text-slate-500 block text-xs font-semibold">System Role</span>
                     <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700 capitalize mt-1 inline-block">
                         {{ $user->role }}

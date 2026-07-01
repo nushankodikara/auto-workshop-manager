@@ -328,6 +328,7 @@
                     <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                         <th class="py-4 px-6">Name</th>
                         <th class="py-4 px-6">Email</th>
+                        <th class="py-4 px-6">Contact Number</th>
                         <th class="py-4 px-6">Role</th>
                         <th class="py-4 px-6">Base Salary</th>
                         <th class="py-4 px-6">Required Days</th>
@@ -344,6 +345,7 @@
                                 </a>
                             </td>
                             <td class="py-4 px-6 text-slate-650 dark:text-slate-400 font-mono text-xs">{{ $emp->email }}</td>
+                            <td class="py-4 px-6 text-slate-650 dark:text-slate-400 font-mono text-xs">{{ $emp->contact_number ?? '-' }}</td>
                             <td class="py-4 px-6 capitalize">
                                 <span class="px-2 py-0.5 rounded text-xs font-semibold border {{ $emp->isSuperManager() ? 'bg-red-500/10 text-red-550 border-red-500/20' : ($emp->isManager() ? 'bg-blue-500/10 text-blue-550 border-blue-500/20' : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-550/20') }}">
                                     {{ $emp->role }}
@@ -396,6 +398,7 @@
                             <tr class="bg-slate-100/40 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                                 <th class="py-4 px-6">Name</th>
                                 <th class="py-4 px-6">Email</th>
+                                <th class="py-4 px-6">Contact Number</th>
                                 <th class="py-4 px-6">Role</th>
                                 <th class="py-4 px-6 text-right">Actions</th>
                             </tr>
@@ -409,6 +412,7 @@
                                         </a>
                                     </td>
                                     <td class="py-4 px-6 text-slate-505 font-mono text-xs">{{ $emp->email }}</td>
+                                    <td class="py-4 px-6 text-slate-505 font-mono text-xs">{{ $emp->contact_number ?? '-' }}</td>
                                     <td class="py-4 px-6 capitalize">
                                         <span class="px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-800/50 text-slate-500">
                                             {{ $emp->role }}
@@ -472,6 +476,12 @@
                         <div>
                             <label for="emp_email" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
                             <input type="email" name="email" id="emp_email" required placeholder="alice@workshop.com"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="emp_contact_number" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mobile / Contact Number</label>
+                            <input type="text" name="contact_number" id="emp_contact_number" placeholder="e.g. 0771234567"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
@@ -559,6 +569,12 @@
                         </div>
 
                         <div>
+                            <label for="edit_emp_contact_number" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mobile / Contact Number</label>
+                            <input type="text" name="contact_number" id="edit_emp_contact_number" placeholder="e.g. 0771234567"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
                             <label for="edit_emp_password" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Password (Leave blank to keep current)</label>
                             <input type="password" name="password" id="edit_emp_password" placeholder="••••••••"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
@@ -640,6 +656,7 @@
         document.getElementById('edit-employee-form').action = `/employees/${emp.id}`;
         document.getElementById('edit_emp_name').value = emp.name;
         document.getElementById('edit_emp_email').value = emp.email;
+        document.getElementById('edit_emp_contact_number').value = emp.contact_number || '';
         document.getElementById('edit_emp_role').value = emp.role;
         document.getElementById('edit_emp_salary').value = emp.basic_salary;
         document.getElementById('edit_emp_req_days').value = emp.required_days;

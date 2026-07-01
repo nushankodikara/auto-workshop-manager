@@ -209,4 +209,61 @@ class BroadcastTest extends TestCase
         $this->assertEquals('Email Campaign Subject', $notifications[0]['subject']);
         $this->assertEquals('Test Email broadcast campaign body', $notifications[0]['message']);
     }
+
+    /**
+     * Test broadcasting SMS and Email campaigns to employees.
+     */
+    public function test_employee_broadcast_sms_and_email()
+    {
+        putenv('NOTIFICATION_MOCK=true');
+
+        // Create workers with and without contact details
+        $worker1 = User::create([
+            'name' => 'Worker One',
+            'email' => 'worker1@test.com',
+            'password' => bcrypt('Password123!'),
+            'role' => 'worker',
+            'contact_number' => '0779998888'
+        ]);
+
+        $worker2 = User::create([
+            'name' => 'Worker Two',
+            'email' => 'worker2@test.com',
+            'password' => bcrypt('Password123!'),
+            'role' => 'worker',
+            'contact_number' => ''
+        ]);
+
+        // 1. Get index list of employees
+        $response = $this->actingAs($this->superManager)->get(route('broadcast.index', ['target' => 'employees']));
+        $response->assertStatus(200);
+        $response->assertViewHas('employees');
+        $this->assertGreaterThanOrEqual(2, count($response->viewData('employees')));
+
+        // 2. Send SMS to employees
+        $response = $this->actingAs($this->superManager)->post(route('broadcast.send'), [
+            'target' => 'employees',
+            'recipients' => [$worker1->id, $worker2->id],
+            'type' => 'sms',
+            'message' => 'Staff meeting at 5 PM today'
+        ]);
+
+        $response->assertRedirect();
+        // worker1 has phone, worker2 doesn't. So 1 sent, 1 failed/skipped
+        $this->assertStringContainsString('Successfully sent via SMS to 1 employees', session('success'));
+        $this->assertStringContainsString('Failed or skipped for 1 employees', session('success'));
+
+        // 3. Send Email to employees
+        $response = $this->actingAs($this->superManager)->post(route('broadcast.send'), [
+            'target' => 'employees',
+            'recipients' => [$worker1->id, $worker2->id],
+            'type' => 'email',
+            'subject' => 'Staff Meeting Schedule',
+            'message' => 'Meeting at 5 PM.'
+        ]);
+
+        $response->assertRedirect();
+        // Both have emails, so 2 sent, 0 failed
+        $this->assertStringContainsString('Successfully sent via EMAIL to 2 employees', session('success'));
+    }
 }

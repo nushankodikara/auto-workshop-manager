@@ -310,6 +310,7 @@ class PayrollController extends Controller
             'basic_salary' => 'required|numeric|min:0',
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
+            'contact_number' => 'nullable|string|max:30',
         ]);
 
         $data['password'] = bcrypt($data['password']);
@@ -338,6 +339,7 @@ class PayrollController extends Controller
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
             'password' => 'nullable|string|min:6',
+            'contact_number' => 'nullable|string|max:30',
         ]);
 
         if (!empty($data['password'])) {
