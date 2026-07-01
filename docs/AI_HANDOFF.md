@@ -17,7 +17,7 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - Communication: FitSMS for SMS, Laravel Mail/SMTP for email
 - Tax: No tax in v1. The `tax` field on the bills is optional to support numeric `0` values.
 - Payroll: flexible salary slip setup
-- Backups: cron-driven SQLite DB backup service
+- Backups: cron-driven SQLite DB backup service scheduled at 1-hour intervals (`0 * * * *`). The crontab entry explicitly prefixes the command with the container's `DB_DATABASE` environment variable path to prevent cron from defaulting to standard `.env` paths and backing up empty databases.
 - Backup directory env: `BACKUP_DIR=./backups`
 - Restore helper: `ops/backup/restore.sh ARCHIVE_PATH`
 

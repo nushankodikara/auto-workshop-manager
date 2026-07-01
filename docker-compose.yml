@@ -35,7 +35,7 @@ services:
     depends_on:
       run-migrations:
         condition: service_completed_successfully
-    entrypoint: ["sh", "-c", "echo '* * * * * cd /var/www/html && /usr/local/bin/php artisan db:backup >> /var/log/cron.log 2>&1' > /etc/cron.d/backup-cron && chmod 0644 /etc/cron.d/backup-cron && crontab /etc/cron.d/backup-cron && cron -f"]
+    entrypoint: ["sh", "-c", "echo '0 * * * * cd /var/www/html && DB_DATABASE=/var/www/html/database/database.sqlite /usr/local/bin/php artisan db:backup >> /var/log/cron.log 2>&1' > /etc/cron.d/backup-cron && chmod 0644 /etc/cron.d/backup-cron && crontab /etc/cron.d/backup-cron && cron -f"]
 
   queue-worker:
     build:
