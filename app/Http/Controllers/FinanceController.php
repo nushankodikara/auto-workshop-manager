@@ -166,6 +166,78 @@ class FinanceController extends Controller
     }
 
     /**
+     * Update an existing manual double entry transaction.
+     */
+    public function updateJournalEntry(Request $request, JournalEntry $journalEntry)
+    {
+        $this->checkAccess();
+
+        $data = $request->validate([
+            'entry_date' => 'required|date',
+            'reference' => 'nullable|string|max:50',
+            'description' => 'required|string',
+            'lines' => 'required|array|min:2',
+            'lines.*.account_id' => 'required|exists:accounts,id',
+            'lines.*.debit' => 'required|numeric|min:0',
+            'lines.*.credit' => 'required|numeric|min:0',
+            'lines.*.customer_mobile' => 'nullable|string|max:20',
+        ]);
+
+        // Validate debits equal credits
+        $totalDebit = 0;
+        $totalCredit = 0;
+        foreach ($data['lines'] as $line) {
+            $totalDebit += floatval($line['debit']);
+            $totalCredit += floatval($line['credit']);
+        }
+
+        if (abs($totalDebit - $totalCredit) > 0.001) {
+            return back()->withErrors(['balance' => 'Transaction unbalanced! Total Debits must equal Total Credits. (Debits: ' . number_format($totalDebit, 2) . ', Credits: ' . number_format($totalCredit, 2) . ')'])->withInput();
+        }
+
+        DB::transaction(function () use ($data, $journalEntry) {
+            // Delete old items
+            $journalEntry->items()->delete();
+
+            // Update entry headers
+            $journalEntry->update([
+                'entry_date' => $data['entry_date'],
+                'reference' => $data['reference'] ?? null,
+                'description' => $data['description']
+            ]);
+
+            // Re-create items
+            foreach ($data['lines'] as $line) {
+                // Skip if both debit and credit are zero
+                if (floatval($line['debit']) == 0 && floatval($line['credit']) == 0) {
+                    continue;
+                }
+
+                $journalEntry->items()->create([
+                    'account_id' => $line['account_id'],
+                    'debit' => floatval($line['debit']),
+                    'credit' => floatval($line['credit']),
+                    'customer_mobile' => $line['customer_mobile'] ?? null
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Double-entry transaction updated successfully.');
+    }
+
+    /**
+     * Delete an existing manual double entry transaction.
+     */
+    public function destroyJournalEntry(JournalEntry $journalEntry)
+    {
+        $this->checkAccess();
+
+        $journalEntry->delete();
+
+        return back()->with('success', 'Transaction deleted successfully.');
+    }
+
+    /**
      * Export chart of accounts to CSV.
      */
     public function exportAccountsCsv()

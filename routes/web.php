@@ -104,6 +104,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
     Route::post('/finance/accounts', [FinanceController::class, 'storeAccount'])->name('finance.accounts.store');
     Route::post('/finance/ledger', [FinanceController::class, 'storeJournalEntry'])->name('finance.ledger.store');
+    Route::put('/finance/entries/{journalEntry}', [FinanceController::class, 'updateJournalEntry'])->name('finance.entries.update');
+    Route::delete('/finance/entries/{journalEntry}', [FinanceController::class, 'destroyJournalEntry'])->name('finance.entries.destroy');
     Route::get('/finance/export/accounts', [FinanceController::class, 'exportAccountsCsv'])->name('finance.export.accounts');
     Route::get('/finance/export/ledger', [FinanceController::class, 'exportLedgerCsv'])->name('finance.export.ledger');
     Route::get('/finance/export/customers', [FinanceController::class, 'exportCustomerBooksCsv'])->name('finance.export.customers');

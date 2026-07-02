@@ -70,6 +70,7 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
   - Automatically posts client billing invoices (AR debit, Revenues credit), Cost of Goods Sold (COGS debit, Parts Inventory credit), and payment receipts (Cash Drawer debit, AR credit).
   - Automatically posts stock batch purchases (Parts Inventory debit, Cash Drawer credit) and paid salary slips (Salaries Expense debit, Cash Drawer credit).
   - Enforces balanced transactions (Debits = Credits) on manual journal logs.
+  - Supports editing and deletion/voiding of double-entry ledger transactions directly from the General Ledger log. Editing automatically clears previous items, updates headers, recreates balanced lines, and recalculates account balances.
   - Dynamically calculates Share Value based on Book Equity (Assets - Liabilities) divided by configured total company shares.
   - Provides stream CSV download exports for Chart of Accounts, General Ledger, and Customer balances.
   - **Retroactive Data Sync Migration**: A subsequent migration [2026_06_30_120000_retroactive_import_batches_and_slips.php](file:///Users/nushan/Projects/TDC%20Laravel/database/migrations/2026_06_30_120000_retroactive_import_batches_and_slips.php) force-imports pre-existing stock purchase batches and paid payroll slips into the ledger.

@@ -249,4 +249,70 @@ class FinanceBookkeepingTest extends TestCase
         $response->assertViewHas('totalExpenditure', 1500.00);
         $response->assertViewHas('netProfit', 3500.00);
     }
+
+    /**
+     * Test editing and deleting manual journal entries.
+     */
+    public function test_journal_entry_editing_and_deletion()
+    {
+        $cashAcc = Account::where('code', '1000')->first();
+        $investAcc = Account::where('code', '3200')->first();
+
+        // 1. Create a balanced journal entry
+        $entry = JournalEntry::create([
+            'entry_date' => '2026-06-30',
+            'reference' => 'EDIT-01',
+            'description' => 'Original Entry Description'
+        ]);
+        $entry->items()->create(['account_id' => $cashAcc->id, 'debit' => 1000.00, 'credit' => 0.00]);
+        $entry->items()->create(['account_id' => $investAcc->id, 'debit' => 0.00, 'credit' => 1000.00]);
+
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'EDIT-01', 'description' => 'Original Entry Description']);
+        $this->assertEquals(1000.00, $cashAcc->balance);
+
+        // 2. Edit/Update it to Debit $1500 and Credit $1500
+        $response = $this->actingAs($this->superManager)->put(route('finance.entries.update', $entry->id), [
+            'entry_date' => '2026-06-30',
+            'reference' => 'EDIT-01-REV',
+            'description' => 'Updated Entry Description',
+            'lines' => [
+                [
+                    'account_id' => $cashAcc->id,
+                    'debit' => 1500.00,
+                    'credit' => 0.00,
+                    'customer_mobile' => '94770002222'
+                ],
+                [
+                    'account_id' => $investAcc->id,
+                    'debit' => 0.00,
+                    'credit' => 1500.00,
+                    'customer_mobile' => null
+                ]
+            ]
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('journal_entries', [
+            'id' => $entry->id,
+            'reference' => 'EDIT-01-REV',
+            'description' => 'Updated Entry Description'
+        ]);
+
+        // Total cash balance should now be updated to 1500
+        $this->assertEquals(1500.00, $cashAcc->fresh()->balance);
+
+        // 3. Delete/Destroy the entry
+        $response = $this->actingAs($this->superManager)->delete(route('finance.entries.destroy', $entry->id));
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        // Check entry and items are deleted
+        $this->assertDatabaseMissing('journal_entries', ['id' => $entry->id]);
+        $this->assertDatabaseMissing('journal_items', ['journal_entry_id' => $entry->id]);
+
+        // Cash balance should return to 0.00
+        $this->assertEquals(0.00, $cashAcc->fresh()->balance);
+    }
 }

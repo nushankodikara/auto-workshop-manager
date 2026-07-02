@@ -111,11 +111,30 @@
                                 <span class="text-xs font-bold text-slate-400 font-mono">{{ $entry->entry_date->format('Y-m-d') }}</span>
                                 <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 mt-0.5">{{ $entry->description }}</h4>
                             </div>
-                            @if($entry->reference)
-                                <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                                    Ref: {{ $entry->reference }}
-                                </span>
-                            @endif
+                            <div class="flex items-center gap-3">
+                                @if($entry->reference)
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                        Ref: {{ $entry->reference }}
+                                    </span>
+                                @endif
+                                
+                                <div class="flex items-center gap-2">
+                                    <button onclick="openEditEntryDrawer({{ json_encode($entry) }})" 
+                                            class="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer">
+                                        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                                        <span>Edit</span>
+                                    </button>
+                                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                                    <form action="{{ route('finance.entries.destroy', $entry->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this ledger transaction? This action is permanent and cannot be undone.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs font-semibold text-red-500 hover:underline flex items-center gap-1 cursor-pointer">
+                                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                            <span>Delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Double Entry lines -->
@@ -502,6 +521,105 @@
     </div>
 </div>
 
+<!-- 1.5 DRAWER: Edit Journal Entry Form -->
+<div id="edit-journal-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs transition-opacity" onclick="document.getElementById('edit-journal-drawer').classList.add('hidden')"></div>
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+                <div class="px-6 py-5 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="edit-3" class="w-4 h-4 text-primary"></i>
+                        <span>Edit Double-Entry Journal Transaction</span>
+                    </h2>
+                    <button onclick="document.getElementById('edit-journal-drawer').classList.add('hidden')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <form id="edit-journal-form" action="" method="POST" class="flex-1 flex flex-col justify-between overflow-y-auto">
+                    @csrf
+                    @method('PUT')
+                    <div class="p-6 space-y-6">
+                        <!-- Top details -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit_entry_date" class="block text-xs font-semibold text-slate-550 mb-1.5">Transaction Date *</label>
+                                <input type="date" name="entry_date" id="edit_entry_date" required
+                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                            </div>
+                            <div>
+                                <label for="edit_reference" class="block text-xs font-semibold text-slate-550 mb-1.5">Reference / Doc No. (Optional)</label>
+                                <input type="text" name="reference" id="edit_reference" placeholder="e.g. BILL-1025, SH-CAPITAL"
+                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="edit_description" class="block text-xs font-semibold text-slate-550 mb-1.5">Transaction Description *</label>
+                            <input type="text" name="description" id="edit_description" placeholder="e.g. Capital injection from John, Paid utility bill" required
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                        </div>
+
+                        <!-- Double Entry lines list -->
+                        <div class="space-y-3 pt-2">
+                            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2">
+                                <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Journal Lines</h4>
+                                <button type="button" onclick="addEditJournalLineRow()" 
+                                        class="px-2.5 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-250 font-bold rounded-lg text-[10px] transition flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    <span>Add Row</span>
+                                </button>
+                            </div>
+
+                            <!-- Validation Balance indicator -->
+                            <div id="edit-unbalance-warning" class="bg-red-500/10 text-red-500 border border-red-500/20 text-[11px] p-2.5 rounded-lg flex items-center gap-1.5 font-semibold">
+                                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+                                <span>Unbalanced! Total Debits must equal Total Credits. (Diff: <span id="edit-balance-diff" class="font-mono">0.00</span>)</span>
+                            </div>
+
+                            <!-- Header -->
+                            <div class="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-450 uppercase tracking-wider px-1">
+                                <span class="col-span-4">Account *</span>
+                                <span class="col-span-2 text-right">Debit *</span>
+                                <span class="col-span-2 text-right">Credit *</span>
+                                <span class="col-span-3">Cust Mobile</span>
+                                <span class="col-span-1 text-center"></span>
+                            </div>
+
+                            <!-- Rows Container -->
+                            <div id="edit-journal-lines-container" class="space-y-2">
+                                <!-- Dynamically populated rows go here -->
+                            </div>
+
+                            <!-- Totals footer summary inside drawer -->
+                            <div class="grid grid-cols-12 gap-2 font-mono text-xs font-bold border-t border-slate-200 dark:border-slate-800 pt-3 px-1">
+                                <span class="col-span-4 text-right">Totals:</span>
+                                <span class="col-span-2 text-right text-slate-850 dark:text-slate-200" id="edit-total-debit-val">0.00</span>
+                                <span class="col-span-2 text-right text-slate-850 dark:text-slate-200" id="edit-total-credit-val">0.00</span>
+                                <span class="col-span-4"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer actions -->
+                    <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('edit-journal-drawer').classList.add('hidden')"
+                                class="px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" id="edit-submit-journal-btn" disabled
+                                class="px-4 py-2.5 bg-primary hover:bg-primary-hover disabled:bg-slate-350 dark:disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span>Save Transaction</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 2. DRAWER: New Account Form -->
 <div id="new-account-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
     <div class="absolute inset-0 overflow-hidden">
@@ -647,6 +765,118 @@
             } else {
                 warnBox.classList.remove('hidden');
                 document.getElementById('balance-diff').innerText = 'Volume must be > 0.00';
+                submitBtn.disabled = true;
+            }
+        }
+    }
+
+    // Edit Ledger Entries Logic
+    let editRowIndex = 0;
+    
+    function openEditEntryDrawer(entry) {
+        // Set action url
+        const form = document.getElementById('edit-journal-form');
+        form.action = `/finance/entries/${entry.id}`;
+
+        // Populate fields
+        const dateVal = entry.entry_date.split('T')[0];
+        document.getElementById('edit_entry_date').value = dateVal;
+        document.getElementById('edit_reference').value = entry.reference || '';
+        document.getElementById('edit_description').value = entry.description;
+
+        // Clear existing rows
+        const container = document.getElementById('edit-journal-lines-container');
+        container.innerHTML = '';
+        editRowIndex = 0;
+
+        // Populate rows
+        entry.items.forEach(item => {
+            addEditJournalLineRow(item);
+        });
+
+        // Open drawer
+        document.getElementById('edit-journal-drawer').classList.remove('hidden');
+        calculateEditJournalTotals();
+    }
+
+    function addEditJournalLineRow(item = null) {
+        const container = document.getElementById('edit-journal-lines-container');
+        const rowId = editRowIndex++;
+
+        const div = document.createElement('div');
+        div.className = 'grid grid-cols-12 gap-2 items-center journal-row';
+        
+        const selectedAccountId = item ? item.account_id : '';
+        const debitVal = item ? parseFloat(item.debit).toFixed(2) : '0.00';
+        const creditVal = item ? parseFloat(item.credit).toFixed(2) : '0.00';
+        const custMobile = item ? (item.customer_mobile || '') : '';
+
+        // Accounts dropdown options
+        let optionsHtml = '';
+        @foreach($accounts as $acc)
+            optionsHtml += `<option value="{{ $acc->id }}" ${selectedAccountId == {{ $acc->id }} ? 'selected' : ''}>{{ $acc->code }} - {{ $acc->name }}</option>`;
+        @endforeach
+
+        div.innerHTML = `
+            <div class="col-span-4">
+                <select name="lines[${rowId}][account_id]" required class="w-full px-2 py-1.5 app-input rounded-lg text-slate-850 dark:text-slate-200 text-xs">
+                    ${optionsHtml}
+                </select>
+            </div>
+            <div class="col-span-2">
+                <input type="number" name="lines[${rowId}][debit]" step="0.01" min="0" value="${debitVal}" oninput="calculateEditJournalTotals()"
+                       class="w-full px-2 py-1.5 app-input rounded-lg text-slate-850 dark:text-slate-200 text-right font-mono text-xs edit-debit-input">
+            </div>
+            <div class="col-span-2">
+                <input type="number" name="lines[${rowId}][credit]" step="0.01" min="0" value="${creditVal}" oninput="calculateEditJournalTotals()"
+                       class="w-full px-2 py-1.5 app-input rounded-lg text-slate-850 dark:text-slate-200 text-right font-mono text-xs edit-credit-input">
+            </div>
+            <div class="col-span-3">
+                <input type="text" name="lines[${rowId}][customer_mobile]" value="${custMobile}" placeholder="e.g. 94771112222"
+                       class="w-full px-2 py-1.5 app-input rounded-lg text-slate-850 dark:text-slate-200 text-xs">
+            </div>
+            <div class="col-span-1 text-center">
+                <button type="button" onclick="removeJournalRow(this)" class="text-red-500 hover:text-red-650 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+        `;
+        container.appendChild(div);
+        calculateEditJournalTotals();
+    }
+
+    function calculateEditJournalTotals() {
+        let totalDebit = 0;
+        let totalCredit = 0;
+
+        document.querySelectorAll('.edit-debit-input').forEach(input => {
+            totalDebit += parseFloat(input.value) || 0;
+        });
+
+        document.querySelectorAll('.edit-credit-input').forEach(input => {
+            totalCredit += parseFloat(input.value) || 0;
+        });
+
+        document.getElementById('edit-total-debit-val').innerText = totalDebit.toFixed(2);
+        document.getElementById('edit-total-credit-val').innerText = totalCredit.toFixed(2);
+
+        const diff = Math.abs(totalDebit - totalCredit);
+        const warnBox = document.getElementById('edit-unbalance-warning');
+        const submitBtn = document.getElementById('edit-submit-journal-btn');
+
+        if (diff > 0.001) {
+            warnBox.classList.remove('hidden');
+            document.getElementById('edit-balance-diff').innerText = diff.toFixed(2);
+            submitBtn.disabled = true;
+        } else {
+            if (totalDebit > 0) {
+                warnBox.classList.add('hidden');
+                submitBtn.disabled = false;
+            } else {
+                warnBox.classList.remove('hidden');
+                document.getElementById('edit-balance-diff').innerText = 'Volume must be > 0.00';
                 submitBtn.disabled = true;
             }
         }
