@@ -23,7 +23,7 @@ class BroadcastController extends Controller
 
     private function checkAccess()
     {
-        if (!Auth::user() || !Auth::user()->isSuperManager()) {
+        if (!Auth::user() || !Auth::user()->hasModuleAccess('broadcast')) {
             abort(403, 'Unauthorized module access.');
         }
     }

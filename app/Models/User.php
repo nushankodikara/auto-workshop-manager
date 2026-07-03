@@ -54,8 +54,13 @@ class User extends Authenticatable
 
     public function hasModuleAccess(string $module): bool
     {
-        if ($this->isSuperManager()) {
+        if ($this->role === 'super-manager') {
             return true;
+        }
+
+        $roleRecord = \App\Models\Role::where('name', $this->role)->first();
+        if ($roleRecord) {
+            return in_array($module, $roleRecord->allowed_modules ?? []);
         }
 
         if ($this->isManager()) {
@@ -65,6 +70,7 @@ class User extends Authenticatable
 
         return false;
     }
+
 
     // Relationships
     public function jobCards()

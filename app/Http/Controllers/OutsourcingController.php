@@ -10,7 +10,7 @@ class OutsourcingController extends Controller
 {
     private function checkAccess()
     {
-        if (!Auth::user() || !Auth::user()->isSuperManager()) {
+        if (!Auth::user() || !Auth::user()->hasModuleAccess('outsourcing')) {
             abort(403, 'Unauthorized module access.');
         }
     }

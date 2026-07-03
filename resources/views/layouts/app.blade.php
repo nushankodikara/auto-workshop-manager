@@ -97,36 +97,49 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->isSuperManager())
+                @if(auth()->user()->hasModuleAccess('insights'))
                     <a href="{{ route('dashboard.insights') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('dashboard.insights') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="line-chart" class="w-4 h-4"></i>
                         <span>Data Insights</span>
                     </a>
+                @endif
+                @if(auth()->user()->hasModuleAccess('statistics'))
                     <a href="{{ route('dashboard.statistics') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('dashboard.statistics') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="trending-up" class="w-4 h-4"></i>
                         <span>Statistics & Finance</span>
                     </a>
+                @endif
+                @if(auth()->user()->hasModuleAccess('finance'))
                     <a href="{{ route('finance.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('finance.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="wallet" class="w-4 h-4"></i>
                         <span>Bookkeeping & Ledger</span>
                     </a>
+                @endif
+                @if(auth()->user()->hasModuleAccess('outsourcing'))
                     <a href="{{ route('outsourcing.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('outsourcing.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="handshake" class="w-4 h-4"></i>
                         <span>Outsourcing Partners</span>
                     </a>
-                    <a href="{{ route('services.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('services.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                @endif
+                @if(auth()->user()->hasModuleAccess('predefined-services'))
+                    <a href="{{ route('services.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('services.*') ? 'bg-primary text-white' : 'text-slate-650 dark:text-slate-405 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-105' }}">
                         <i data-lucide="clipboard-list" class="w-4 h-4"></i>
                         <span>Predefined Services</span>
                     </a>
+                @endif
+                @if(auth()->user()->hasModuleAccess('broadcast'))
                     <a href="{{ route('broadcast.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('broadcast.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="megaphone" class="w-4 h-4"></i>
                         <span>Broadcast Messages</span>
                     </a>
+                @endif
+                @if(auth()->user()->hasModuleAccess('settings'))
                     <a href="{{ route('settings.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('settings.index') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="settings" class="w-4 h-4"></i>
                         <span>Settings & Backups</span>
                     </a>
                 @endif
+
             </nav>
         </div>
 

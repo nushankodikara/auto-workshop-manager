@@ -495,9 +495,13 @@
                             <label for="emp_role" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">System Role</label>
                             <select name="role" id="emp_role" required
                                     class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
-                                <option value="worker">Worker (Technician)</option>
-                                <option value="manager">Workshop Manager</option>
+                                @foreach(\App\Models\Role::all() as $roleOption)
+                                    @if($roleOption->name !== 'super-manager' || auth()->user()->isSuperManager())
+                                        <option value="{{ $roleOption->name }}">{{ $roleOption->label }}</option>
+                                    @endif
+                                @endforeach
                             </select>
+
                         </div>
 
                         <div>
@@ -587,10 +591,13 @@
                             <label for="edit_emp_role" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">System Role</label>
                             <select name="role" id="edit_emp_role" required
                                     class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
-                                <option value="worker">Worker (Technician)</option>
-                                <option value="manager">Workshop Manager</option>
-                                <option value="super-manager">Super Administrator</option>
+                                @foreach(\App\Models\Role::all() as $roleOption)
+                                    @if($roleOption->name !== 'super-manager' || auth()->user()->isSuperManager())
+                                        <option value="{{ $roleOption->name }}">{{ $roleOption->label }}</option>
+                                    @endif
+                                @endforeach
                             </select>
+
                         </div>
 
                         <div>

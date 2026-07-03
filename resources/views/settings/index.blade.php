@@ -317,7 +317,145 @@
         </div>
     </div>
 
+    <!-- Section 4: Dynamic Role & Feature Access Management -->
+    <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-primary"></i>
+                    <span>User Roles & Feature Access Control</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Configure feature visibility and permissions for each system and custom role.</p>
+            </div>
+        </div>
+
+        @error('role')
+            <div class="px-4 py-3 rounded-lg bg-red-550/10 border border-red-500/20 text-red-650 dark:text-red-400 text-xs font-semibold animate-pulse">
+                {{ $message }}
+            </div>
+        @enderror
+
+        <!-- Roles Grid -->
+        <div class="grid grid-cols-1 gap-6">
+            @foreach($roles as $role)
+                <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/45 dark:bg-slate-900/30 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <span class="capitalize">{{ $role->label }}</span>
+                                <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-550">{{ $role->name }}</span>
+                            </h4>
+                        </div>
+                        @if($role->is_custom)
+                            <form action="{{ route('settings.roles.destroy', $role) }}" method="POST" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" onclick="return confirm('Are you sure you want to delete this custom role?')" 
+                                        class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-650 dark:text-red-450 font-bold rounded text-[10px] transition cursor-pointer">
+                                    Delete Role
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+
+                    <!-- Permissions Checkboxes Form -->
+                    <form action="{{ route('settings.roles.update', $role) }}" method="POST" class="space-y-4">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2.5">Enabled Features / Access</label>
+                            
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                @foreach(\App\Models\Role::$modules as $modKey => $modLabel)
+                                    @php
+                                        $checked = in_array($modKey, $role->allowed_modules ?? []);
+                                        if ($role->name === 'super-manager') {
+                                            $checked = true;
+                                        }
+                                    @endphp
+                                    <label class="flex items-start gap-2.5 p-2 rounded-lg border border-slate-200/60 dark:border-slate-800/40 bg-white dark:bg-slate-950/40 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 cursor-pointer transition text-xs select-none">
+                                        <input type="checkbox" name="allowed_modules[]" value="{{ $modKey }}" 
+                                               {{ $checked ? 'checked' : '' }}
+                                               {{ $role->name === 'super-manager' ? 'disabled' : '' }}
+                                               class="h-4 w-4 text-primary rounded bg-white dark:bg-slate-905 border-slate-300 dark:border-slate-800 focus:ring-primary mt-0.5">
+                                        <div>
+                                            <span class="font-semibold text-slate-800 dark:text-slate-200">{{ $modLabel }}</span>
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- Update role fields -->
+                        <div class="flex items-center gap-3 pt-2">
+                            <div class="w-full max-w-xs">
+                                <label class="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">Role Display Name</label>
+                                <input type="text" name="label" value="{{ $role->label }}" required
+                                       class="w-full px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                            </div>
+                            <button type="submit" 
+                                    class="px-3.5 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1 mt-4 shadow-xs cursor-pointer">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                <span>Save Permissions</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+
+        <!-- Add Custom Role Section -->
+        <div class="border-t border-slate-200 dark:border-slate-800 pt-6">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5">
+                <i data-lucide="plus" class="w-3.5 h-3.5 text-primary"></i>
+                <span>Add Custom Role</span>
+            </h4>
+
+            <form action="{{ route('settings.roles.store') }}" method="POST" class="space-y-5">
+                @csrf
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="role_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Role Identifier Slug (lowercase, no spaces)</label>
+                        <input type="text" name="name" id="role_name" required placeholder="e.g. cashier"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                    <div>
+                        <label for="role_label" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Display Label</label>
+                        <input type="text" name="label" id="role_label" required placeholder="e.g. Head Cashier"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">Allowed Features / View Access</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        @foreach(\App\Models\Role::$modules as $modKey => $modLabel)
+                            <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50/20 dark:bg-slate-950/20 hover:bg-slate-100/50 dark:hover:bg-slate-900/20 cursor-pointer transition text-xs select-none">
+                                <input type="checkbox" name="allowed_modules[]" value="{{ $modKey }}" 
+                                       class="h-4 w-4 text-primary rounded bg-white dark:bg-slate-955 border-slate-300 dark:border-slate-800 focus:ring-primary mt-0.5">
+                                <div>
+                                    <span class="font-semibold text-slate-800 dark:text-slate-200">{{ $modLabel }}</span>
+                                </div>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" 
+                            class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Create Role</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
+
 
 <!-- Cropper.js JavaScript CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>

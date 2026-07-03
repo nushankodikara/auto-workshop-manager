@@ -226,6 +226,13 @@ class PasswordResetTest extends TestCase
     {
         $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
 
+        $managerRole = \App\Models\Role::where('name', 'manager')->first();
+        if ($managerRole) {
+            $modules = $managerRole->allowed_modules ?? [];
+            $modules[] = 'payroll';
+            $managerRole->update(['allowed_modules' => $modules]);
+        }
+
         $manager = User::create([
             'name' => 'John Manager',
             'email' => 'manager@totaldrivecare.com',

@@ -310,7 +310,7 @@ class PayrollController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:manager,worker,super-manager',
+            'role' => 'required|exists:roles,name',
             'basic_salary' => 'required|numeric|min:0',
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
@@ -323,13 +323,9 @@ class PayrollController extends Controller
 
         $data['password'] = bcrypt($data['password']);
         
-        if ($data['role'] === 'manager') {
-            $data['allowed_modules'] = ['dashboard', 'job-cards', 'clients', 'inventory', 'billing'];
-        } elseif ($data['role'] === 'super-manager') {
-            $data['allowed_modules'] = ['dashboard', 'job-cards', 'clients', 'inventory', 'billing', 'payroll', 'settings'];
-        } else {
-            $data['allowed_modules'] = [];
-        }
+        $roleRecord = \App\Models\Role::where('name', $data['role'])->first();
+        $data['allowed_modules'] = $roleRecord ? $roleRecord->allowed_modules : [];
+
 
         User::create($data);
 
@@ -348,13 +344,14 @@ class PayrollController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|in:manager,worker,super-manager',
+            'role' => 'required|exists:roles,name',
             'basic_salary' => 'required|numeric|min:0',
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
             'password' => 'nullable|string|min:6',
             'contact_number' => 'nullable|string|max:30',
         ]);
+
 
         if (!empty($data['password'])) {
             if (!auth()->user()->isSuperManager()) {
@@ -373,10 +370,14 @@ class PayrollController extends Controller
             }
         }
 
+        $roleRecord = \App\Models\Role::where('name', $data['role'])->first();
+        $data['allowed_modules'] = $roleRecord ? $roleRecord->allowed_modules : [];
+
         $user->update($data);
 
         return back()->with('success', 'Employee profile updated successfully.');
     }
+
 
     /**
      * Delete an employee.

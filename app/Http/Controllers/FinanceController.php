@@ -14,10 +14,11 @@ class FinanceController extends Controller
 {
     private function checkAccess()
     {
-        if (!Auth::user() || !Auth::user()->isSuperManager()) {
+        if (!Auth::user() || !Auth::user()->hasModuleAccess('finance')) {
             abort(403, 'Unauthorized module access.');
         }
     }
+
 
     /**
      * Show financial dashboard, double ledger, chart of accounts, and investor log.

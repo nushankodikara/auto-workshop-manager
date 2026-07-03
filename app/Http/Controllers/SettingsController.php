@@ -9,14 +9,20 @@ use Illuminate\Support\Facades\File;
 
 class SettingsController extends Controller
 {
+    private function checkAccess()
+    {
+        if (!Auth::user() || !Auth::user()->hasModuleAccess('settings')) {
+            abort(403, 'Unauthorized module access.');
+        }
+    }
+
     /**
      * Show settings and backups console.
      */
     public function index()
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized module access.');
-        }
+        $this->checkAccess();
+
 
         $backupDir = env('BACKUP_DIR', base_path('backups'));
         $backups = [];
@@ -37,18 +43,19 @@ class SettingsController extends Controller
         }
 
         $shops = \App\Models\Shop::all();
+        $roles = \App\Models\Role::all();
 
-        return view('settings.index', compact('backups', 'shops'));
+        return view('settings.index', compact('backups', 'shops', 'roles'));
     }
+
 
     /**
      * Trigger a database backup.
      */
     public function backup()
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         Artisan::call('db:backup');
 
@@ -60,9 +67,8 @@ class SettingsController extends Controller
      */
     public function restore(Request $request)
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         $filename = $request->input('filename');
 
@@ -79,9 +85,8 @@ class SettingsController extends Controller
      */
     public function uploadLogo(Request $request)
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         $request->validate([
             'logo_base64' => 'required|string',
@@ -116,9 +121,8 @@ class SettingsController extends Controller
      */
     public function deleteLogo()
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         $logoPath = public_path('images/logo.png');
 
@@ -135,9 +139,8 @@ class SettingsController extends Controller
      */
     public function updateSettings(Request $request)
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         $data = $request->validate([
             'job_card_prefix' => 'required|string|max:50',
@@ -159,9 +162,8 @@ class SettingsController extends Controller
      */
     public function storeShop(Request $request)
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -178,9 +180,8 @@ class SettingsController extends Controller
      */
     public function deleteShop(\App\Models\Shop $shop)
     {
-        if (!Auth::user()->isSuperManager()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->checkAccess();
+
 
         if ($shop->jobCards()->exists()) {
             return back()->withErrors(['shop' => 'Cannot delete shop location because it is linked to existing job cards.']);
@@ -190,4 +191,76 @@ class SettingsController extends Controller
 
         return back()->with('success', 'Shop location deleted successfully.');
     }
+
+    /**
+     * Create a custom user role.
+     */
+    public function storeRole(Request $request)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:50|unique:roles,name|regex:/^[a-z0-9\-]+$/',
+            'label' => 'required|string|max:255',
+            'allowed_modules' => 'nullable|array',
+        ]);
+
+        \App\Models\Role::create([
+            'name' => $data['name'],
+            'label' => $data['label'],
+            'allowed_modules' => $data['allowed_modules'] ?? [],
+            'is_custom' => true
+        ]);
+
+        return back()->with('success', 'Custom user role created successfully.');
+    }
+
+    /**
+     * Update permissions/allowed modules for a role.
+     */
+    public function updateRole(Request $request, \App\Models\Role $role)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $data = $request->validate([
+            'label' => 'required|string|max:255',
+            'allowed_modules' => 'nullable|array',
+        ]);
+
+        // Don't allow changing name slug of system roles, only update label & modules
+        $role->update([
+            'label' => $data['label'],
+            'allowed_modules' => $data['allowed_modules'] ?? []
+        ]);
+
+        return back()->with('success', "Permissions for role '{$role->label}' updated successfully.");
+    }
+
+    /**
+     * Delete a custom role.
+     */
+    public function destroyRole(\App\Models\Role $role)
+    {
+        if (!Auth::user()->isSuperManager()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!$role->is_custom) {
+            return back()->withErrors(['role' => 'Cannot delete system default roles.']);
+        }
+
+        // Check if role is in use
+        if (\App\Models\User::where('role', $role->name)->exists()) {
+            return back()->withErrors(['role' => "Cannot delete role '{$role->label}' because it is assigned to one or more employees."]);
+        }
+
+        $role->delete();
+
+        return back()->with('success', "Role '{$role->label}' has been deleted.");
+    }
 }
+

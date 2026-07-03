@@ -65,10 +65,11 @@ class DashboardController extends Controller
      */
     public function insights(Request $request)
     {
-        // Restrict to super-manager
-        if (!Auth::user()->isSuperManager()) {
+        // Restrict based on module access
+        if (!Auth::user()->hasModuleAccess('insights')) {
             abort(403, 'Unauthorized module access.');
         }
+
 
         $startDate = $request->input('start_date', date('Y-m-01'));
         $endDate = $request->input('end_date', date('Y-m-d'));
@@ -165,9 +166,10 @@ class DashboardController extends Controller
      */
     public function statistics(Request $request)
     {
-        if (!Auth::user()->isSuperManager()) {
+        if (!Auth::user()->hasModuleAccess('statistics')) {
             abort(403, 'Unauthorized module access.');
         }
+
 
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');

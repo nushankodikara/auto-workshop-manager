@@ -158,6 +158,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/update', [App\Http\Controllers\SettingsController::class, 'updateSettings'])->name('settings.update');
     Route::post('/settings/shops', [App\Http\Controllers\SettingsController::class, 'storeShop'])->name('settings.shops.store');
     Route::delete('/settings/shops/{shop}', [App\Http\Controllers\SettingsController::class, 'deleteShop'])->name('settings.shops.delete');
+    Route::post('/settings/roles', [App\Http\Controllers\SettingsController::class, 'storeRole'])->name('settings.roles.store');
+    Route::put('/settings/roles/{role}', [App\Http\Controllers\SettingsController::class, 'updateRole'])->name('settings.roles.update');
+    Route::delete('/settings/roles/{role}', [App\Http\Controllers\SettingsController::class, 'destroyRole'])->name('settings.roles.destroy');
+
 
     // Customer Broadcast Messaging (Super Manager Only)
     Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcast.index');
