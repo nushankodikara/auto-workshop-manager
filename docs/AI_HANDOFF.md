@@ -75,6 +75,30 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
   - Provides stream CSV download exports for Chart of Accounts, General Ledger, and Customer balances.
   - **Retroactive Data Sync Migration**: A subsequent migration [2026_06_30_120000_retroactive_import_batches_and_slips.php](file:///Users/nushan/Projects/TDC%20Laravel/database/migrations/2026_06_30_120000_retroactive_import_batches_and_slips.php) force-imports pre-existing stock purchase batches and paid payroll slips into the ledger.
 - **Unified Statistics**: Integrated the Statistics & Finance dashboard directly with the double-entry bookkeeping ledger, computing cash flows and segment margins based on ledger account balances instead of raw table sums to keep both modules perfectly coherent.
+- **Employee Password Reset Flow**: Added support for employee self-service password reset using a 6-digit email verification code. Renders a `/forgot-password` form to enter email, which generates a 6-digit verification code stored securely (hashed) in `password_reset_tokens` and sent via SMTP (or mocked to UI/log) using `EmailService`. Renders `/reset-password` form to enter email, verification code, and new password. Also restricts password changes via administrative forms (`employeeUpdate`) to `super-manager` (Super Admin) only.
+- **PWA Capabilities**: Added Progressive Web App capabilities, including a dynamic `/manifest.json` config, service worker cache management ([sw.js](file:///Users/nushan/Projects/TDC%20Laravel/public/sw.js)), and a customizable icon system. The PWA manifest dynamically references the custom brand logo (`logo.png`) if uploaded, falling back automatically to the premium generic shop icon ([generic-icon.png](file:///Users/nushan/Projects/TDC%20Laravel/public/images/generic-icon.png)). Serves a glassmorphic offline page ([offline.blade.php](file:///Users/nushan/Projects/TDC%20Laravel/resources/views/errors/offline.blade.php)) for fallback when connection drops.
+
+
+## Known Issues, Status & Workarounds
+
+### 1. Direct DB Seeding vs. Ledger Sync (CommerceTest Failure)
+- **Status/Symptom**: `CommerceTest` has one failing assertion (`statistics calculation matches totals`) expecting `totalStockPurchases` to be 20,000.00, but receiving 4,000.00.
+- **Cause**: Seeding initial stock purchase batches or slips directly via Eloquent models bypasses the double-entry accounting ledger entries. The unified finance dashboard calculates expenditure based on ledger account balances rather than raw table sums.
+- **Workaround/Resolution**: For correct ledger tracking, stock batches and slip entries must be posted through the web interface/controllers or via designated synchronization scripts/migrations (like `2026_06_30_120000_retroactive_import_batches_and_slips.php`). In tests, manually create the corresponding journal entries when directly inserting DB records to keep the ledger and totals aligned.
+
+### 2. FitSMS Phone Number Normalization
+- **Status/Symptom**: FitSMS messages fail to deliver if numbers are not formatted exactly to Sri Lankan standard.
+- **Cause**: FitSMS API requires country code `94` without any prefixing `+`, dashes, or spaces.
+- **Workaround/Resolution**: The system implements an automatic outbound normalizer that sanitizes phone inputs to standard country format (e.g. converting `0771234567` to `94771234567`).
+
+### 3. Outbound Message Mocking (Development Mode)
+- **Status/Symptom**: During local testing, real SMS/SMTP deliveries are not sent or throw relay connection errors.
+- **Workaround/Resolution**: Toggle the setting `NOTIFICATION_MOCK=true` in `.env` to output SMS and Emails to the docker stdout log and flash them as toast notification cards directly on the frontend views.
+
+### 4. Queue Workers
+- **Status/Symptom**: Emailed reports or notifications do not go out immediately when mock mode is off.
+- **Cause**: Notification events are queued by default to prevent blocking requests.
+- **Workaround/Resolution**: Run the docker container `queue-worker` (`php artisan queue:work`) to process the database-backed queue.
 
 
 ## Working agreement

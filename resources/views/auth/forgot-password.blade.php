@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | {{ config('app.name', 'Auto Workshop Manager') }}</title>
+    <title>Forgot Password | {{ config('app.name', 'Auto Workshop Manager') }}</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,12 +46,15 @@
             <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
                 {{ config('app.name', 'Auto Workshop Manager') }}
             </h1>
-            <p class="text-slate-550 dark:text-slate-400 text-sm mt-2">Manage mechanical, electrical, and parts inventory</p>
+            <p class="text-slate-550 dark:text-slate-400 text-sm mt-2">Employee Password Recovery</p>
         </div>
 
         <!-- Corporate card form -->
         <div class="app-card rounded-2xl p-8 shadow-sm">
-            <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-6">Sign In</h2>
+            <h2 class="text-xl font-semibold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
+                <i data-lucide="key-round" class="w-5 h-5 text-primary"></i>
+                <span>Forgot Password</span>
+            </h2>
 
             <!-- Errors -->
             @if ($errors->any())
@@ -65,47 +68,37 @@
             @endif
 
             @if (session('success'))
-                <div class="mb-4 p-3 rounded-lg bg-green-550/10 border border-green-550/20 text-green-600 dark:text-green-400 text-xs font-semibold">
+                <div class="mb-4 p-3 rounded-lg bg-green-550/10 border border-green-550/20 text-green-600 dark:text-green-400 text-xs">
                     {{ session('success') }}
                 </div>
             @endif
 
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                Enter your email address below, and we will send you a 6-digit verification code to reset your password.
+            </p>
 
-            <form action="{{ route('login') }}" method="POST" class="space-y-5">
+            <form action="{{ route('password.email') }}" method="POST" class="space-y-5">
                 @csrf
 
                 <div>
                     <label for="email" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
-                    <input type="email" name="email" id="email" required value="{{ old('email') }}" placeholder="admin@totaldrivecare.com"
+                    <input type="email" name="email" id="email" required value="{{ old('email') }}" placeholder="employee@totaldrivecare.com"
                            class="w-full px-4 py-3 app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary transition text-sm">
                 </div>
-
-                <div>
-                    <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Password</label>
-                    <input type="password" name="password" id="password" required placeholder="••••••••"
-                           class="w-full px-4 py-3 app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary transition text-sm">
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <input type="checkbox" name="remember" id="remember" class="h-4 w-4 bg-white dark:bg-slate-950 border border-slate-350 dark:border-slate-800 text-primary rounded focus:ring-primary">
-                        <label for="remember" class="ml-2 text-xs text-slate-550 dark:text-slate-400">Remember me</label>
-                    </div>
-                    <a href="{{ route('password.request') }}" class="text-xs font-semibold text-primary hover:underline">Forgot Password?</a>
-                </div>
-
 
                 <button type="submit"
                         class="w-full py-3 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg transition-all text-sm shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
-                    <i data-lucide="log-in" class="w-4 h-4"></i>
-                    <span>Sign In to Portal</span>
+                    <i data-lucide="mail" class="w-4 h-4"></i>
+                    <span>Send Verification Code</span>
                 </button>
             </form>
-        </div>
-        
-        <!-- Default login helper text for demo -->
-        <div class="text-center mt-6">
-            <p class="text-xs text-slate-450">Demo Credentials: <span class="text-slate-500 font-mono">admin@totaldrivecare.com</span> / <span class="text-slate-500 font-mono">Password123!</span></p>
+
+            <div class="mt-6 text-center">
+                <a href="{{ route('login') }}" class="text-xs font-semibold text-primary hover:underline flex items-center justify-center gap-1">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>Back to Sign In</span>
+                </a>
+            </div>
         </div>
     </div>
 

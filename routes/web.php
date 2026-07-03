@@ -15,6 +15,45 @@ use Illuminate\Http\Request;
 // Guest Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+Route::post('/forgot-password', [AuthController::class, 'sendResetCode'])->name('password.email');
+Route::get('/reset-password', [AuthController::class, 'showResetPassword'])->name('password.reset');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+
+// PWA Routes
+Route::get('/manifest.json', function () {
+    $hasCustomLogo = file_exists(public_path('images/logo.png'));
+    $iconPath = $hasCustomLogo ? asset('images/logo.png') : asset('images/generic-icon.png');
+
+    return response()->json([
+        'name' => config('app.name', 'Auto Workshop Manager'),
+        'short_name' => config('app.name', 'Workshop'),
+        'start_url' => '/',
+        'display' => 'standalone',
+        'background_color' => '#0f172a',
+        'theme_color' => '#3b82f6',
+        'icons' => [
+            [
+                'src' => $iconPath,
+                'sizes' => '192x192',
+                'type' => 'image/png',
+                'purpose' => 'any maskable'
+            ],
+            [
+                'src' => $iconPath,
+                'sizes' => '512x512',
+                'type' => 'image/png',
+                'purpose' => 'any maskable'
+            ]
+        ]
+    ]);
+});
+
+Route::get('/offline', function () {
+    return view('errors.offline');
+})->name('offline');
+
+
 
 // Authenticated Routes
 Route::middleware('auth')->group(function () {

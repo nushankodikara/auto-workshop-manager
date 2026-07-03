@@ -302,21 +302,31 @@ class PayrollController extends Controller
      */
     public function employeeStore(Request $request)
     {
+        if (!auth()->user()->isSuperManager() && !auth()->user()->hasModuleAccess('payroll')) {
+            abort(403, 'Unauthorized');
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:manager,worker',
+            'role' => 'required|in:manager,worker,super-manager',
             'basic_salary' => 'required|numeric|min:0',
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
             'contact_number' => 'nullable|string|max:30',
         ]);
 
+        if ($data['role'] === 'super-manager' && !auth()->user()->isSuperManager()) {
+            return back()->withErrors(['role' => 'Only the super admin can create a super admin account.']);
+        }
+
         $data['password'] = bcrypt($data['password']);
         
         if ($data['role'] === 'manager') {
             $data['allowed_modules'] = ['dashboard', 'job-cards', 'clients', 'inventory', 'billing'];
+        } elseif ($data['role'] === 'super-manager') {
+            $data['allowed_modules'] = ['dashboard', 'job-cards', 'clients', 'inventory', 'billing', 'payroll', 'settings'];
         } else {
             $data['allowed_modules'] = [];
         }
@@ -331,6 +341,10 @@ class PayrollController extends Controller
      */
     public function employeeUpdate(Request $request, User $user)
     {
+        if (!auth()->user()->isSuperManager() && !auth()->user()->hasModuleAccess('payroll')) {
+            abort(403, 'Unauthorized');
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
@@ -343,9 +357,20 @@ class PayrollController extends Controller
         ]);
 
         if (!empty($data['password'])) {
+            if (!auth()->user()->isSuperManager()) {
+                return back()->withErrors(['password' => 'Only the super admin is authorized to reset passwords.']);
+            }
             $data['password'] = bcrypt($data['password']);
         } else {
             unset($data['password']);
+        }
+
+        if ($user->role !== $data['role']) {
+            if ($user->role === 'super-manager' || $data['role'] === 'super-manager') {
+                if (!auth()->user()->isSuperManager()) {
+                    return back()->withErrors(['role' => 'Only the super admin can modify super admin roles.']);
+                }
+            }
         }
 
         $user->update($data);
@@ -358,14 +383,23 @@ class PayrollController extends Controller
      */
     public function employeeDestroy(User $user)
     {
+        if (!auth()->user()->isSuperManager() && !auth()->user()->hasModuleAccess('payroll')) {
+            abort(403, 'Unauthorized');
+        }
+
         if ($user->id === auth()->id()) {
             return back()->withErrors(['error' => 'You cannot delete yourself.']);
+        }
+
+        if ($user->role === 'super-manager' && !auth()->user()->isSuperManager()) {
+            return back()->withErrors(['error' => 'Only the super admin can delete a super admin account.']);
         }
 
         $user->delete();
 
         return back()->with('success', 'Employee profile deleted.');
     }
+
 
     /**
      * Show employee profile with ticket utilization, active working hours, overtime, and attendance calendar.

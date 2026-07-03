@@ -27,8 +27,13 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- PWA Capabilities -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
 </head>
 <body class="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+
 
     <!-- Sidebar Navigation -->
     <aside class="w-full md:w-64 bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 transition-colors duration-200">
@@ -279,5 +284,17 @@
             html.className = (isDark ? 'dark' : '') + ' accent-' + color + ' h-full';
         }
     </script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered successfully.', reg))
+                    .catch(err => console.log('Service Worker registration failed.', err));
+            });
+        }
+    </script>
 </body>
 </html>
+
