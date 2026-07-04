@@ -190,9 +190,25 @@ class DashboardController extends Controller
         }
         $totalIncome = (double)$incomeQuery->sum('credit');
 
-        // Total Expenses query (Type: Expense accounts)
+        // Stock Purchases (Code 1300 debit)
+        $stockPurchasesQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
+            $q->where('code', '1300');
+        });
+        if ($startDate) {
+            $stockPurchasesQuery->whereHas('entry', function ($q) use ($startDate) {
+                $q->whereDate('entry_date', '>=', $startDate);
+            });
+        }
+        if ($endDate) {
+            $stockPurchasesQuery->whereHas('entry', function ($q) use ($endDate) {
+                $q->whereDate('entry_date', '<=', $endDate);
+            });
+        }
+        $totalStockPurchases = (double)$stockPurchasesQuery->sum('debit');
+
+        // Total Expenses query (Type: Expense accounts, excluding COGS 5000)
         $expenditureQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
-            $q->where('type', 'expense');
+            $q->where('type', 'expense')->where('code', '!=', '5000');
         });
         if ($startDate) {
             $expenditureQuery->whereHas('entry', function ($q) use ($startDate) {
@@ -204,7 +220,7 @@ class DashboardController extends Controller
                 $q->whereDate('entry_date', '<=', $endDate);
             });
         }
-        $totalExpenditure = (double)$expenditureQuery->sum('debit');
+        $expenseTotal = (double)$expenditureQuery->sum('debit');
 
         // Segment Salaries (Code 5100)
         $salariesQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
@@ -220,12 +236,13 @@ class DashboardController extends Controller
                 $q->whereDate('entry_date', '<=', $endDate);
             });
         }
-        $paidBasicSalaries = (double)$salariesQuery->sum('debit');
+        $totalPayroll = (double)$salariesQuery->sum('debit');
+        $paidBasicSalaries = $totalPayroll;
         $paidAllowances = 0.00;
-        $totalPayroll = $paidBasicSalaries;
 
-        // Balance of expenses goes to parts stock purchases and other expenditures (COGS, Rent, Utilities, General Expenses)
-        $totalStockPurchases = max(0, $totalExpenditure - $totalPayroll);
+        // Combined Total Expenditure = Stock Purchases + all other expenses
+        $otherExpenses = max(0, $expenseTotal - $totalPayroll);
+        $totalExpenditure = $totalStockPurchases + $totalPayroll + $otherExpenses;
         $netProfit = $totalIncome - $totalExpenditure;
 
         // Trading profitability (linked to paid bills in timeframe)

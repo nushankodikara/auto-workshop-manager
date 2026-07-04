@@ -90,7 +90,7 @@ class CommerceTest extends TestCase
         ]);
 
         // Create initial batch
-        PurchaseBatch::create([
+        $initBatch = PurchaseBatch::create([
             'inventory_id' => $this->part->id,
             'batch_code' => 'BAT-INIT-01',
             'quantity_received' => 10,
@@ -100,6 +100,7 @@ class CommerceTest extends TestCase
             'supplier' => 'Initial Supplier',
             'purchased_at' => date('Y-m-d')
         ]);
+        \App\Services\DoubleEntryService::postPurchaseBatchTransaction($initBatch);
     }
 
     /**
@@ -232,7 +233,7 @@ class CommerceTest extends TestCase
             ]);
 
         // Seed a paid payroll slip
-        PayrollSlip::create([
+        $slip = PayrollSlip::create([
             'user_id' => $this->worker->id,
             'month' => (int)date('m'),
             'year' => (int)date('Y'),
@@ -242,6 +243,7 @@ class CommerceTest extends TestCase
             'net_salary' => 63000.00,
             'status' => 'paid'
         ]);
+        \App\Services\DoubleEntryService::postPayrollSlipTransaction($slip);
 
         // Fetch statistics page
         $response = $this->actingAs($this->admin)

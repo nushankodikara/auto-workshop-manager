@@ -237,8 +237,13 @@ class DoubleEntryService
                 return;
             }
 
+            $basic = floatval($payrollSlip->basic_salary);
+            $allowance = floatval($payrollSlip->allowance);
+            $deductions = floatval($payrollSlip->deductions);
             $netSalary = floatval($payrollSlip->net_salary);
-            if ($netSalary <= 0) {
+            
+            $grossSalary = $basic + $allowance;
+            if ($grossSalary <= 0) {
                 return;
             }
 
@@ -251,7 +256,7 @@ class DoubleEntryService
             // Debit Salaries Expense (5100)
             $entry->items()->create([
                 'account_id' => $salariesExpenseAcc->id,
-                'debit' => $netSalary,
+                'debit' => $grossSalary,
                 'credit' => 0.00
             ]);
 
@@ -261,6 +266,18 @@ class DoubleEntryService
                 'debit' => 0.00,
                 'credit' => $netSalary
             ]);
+
+            // Credit Accounts Payable (2000) for deductions
+            if ($deductions > 0) {
+                $apAccount = Account::where('code', '2000')->first();
+                if ($apAccount) {
+                    $entry->items()->create([
+                        'account_id' => $apAccount->id,
+                        'debit' => 0.00,
+                        'credit' => $deductions
+                    ]);
+                }
+            }
         } catch (\Exception $e) {
             Log::error("DoubleEntryService postPayrollSlipTransaction Error: " . $e->getMessage());
         }

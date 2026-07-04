@@ -81,8 +81,38 @@ class StatisticsTest extends TestCase
         ]);
 
         // 3. Create a paid bill with some labor revenue to verify margin calculations
+        $shop = \App\Models\Shop::create([
+            'name' => 'Test Shop',
+            'address' => '123 Test Road'
+        ]);
+
+        $client = \App\Models\Client::create([
+            'name' => 'Test Client',
+            'email' => 'client@test.com',
+            'phone' => '+94771112222',
+            'address' => 'Test Town'
+        ]);
+
+        $vehicle = \App\Models\Vehicle::create([
+            'client_id' => $client->id,
+            'make' => 'Toyota',
+            'model' => 'Corolla',
+            'year' => 2018,
+            'plate_number' => 'WP ABC-1234',
+            'vin' => '123456789'
+        ]);
+
+        $jobCard = \App\Models\JobCard::create([
+            'vehicle_id' => $vehicle->id,
+            'shop_id' => $shop->id,
+            'status' => 'received-vehicle',
+            'notes' => 'Test'
+        ]);
+
         $bill = Bill::create([
-            'client_id' => 1, // seeded or fake
+            'job_card_id' => $jobCard->id,
+            'bill_number' => 'BILL-TEST-001',
+            'client_id' => $client->id,
             'status' => 'paid',
             'discount_percent' => 0,
             'tax' => 0,
@@ -90,14 +120,15 @@ class StatisticsTest extends TestCase
             'created_at' => '2026-07-03 12:00:00'
         ]);
 
-        BillItem::create([
+        BillItem::forceCreate([
             'bill_id' => $bill->id,
             'type' => 'labor',
             'description' => 'Test Labor Service',
             'quantity' => 1,
             'cost_price' => 1000.00, // Should be ignored in favor of attendance
             'unit_price' => 5000.00,
-            'total_price' => 5000.00
+            'total_price' => 5000.00,
+            'created_at' => '2026-07-03 12:00:00'
         ]);
 
         // 4. Request statistics dashboard for the target date range

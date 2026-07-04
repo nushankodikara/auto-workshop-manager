@@ -180,7 +180,9 @@
                             <label for="quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Initial Quantity</label>
                             <input type="number" name="quantity" id="quantity" required min="0" value="0"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                        </di                        <!-- Cost Price -->
+                        </div>
+
+                        <!-- Cost Price -->
                         <div>
                             <label for="cost_price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
                             <input type="number" step="0.01" name="cost_price" id="cost_price" required value="0.00"
