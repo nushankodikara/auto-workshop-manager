@@ -188,7 +188,7 @@
                             </span>
                         </div>
                         <div>
-                            <span class="text-slate-500 block">Direct Cost</span>
+                            <span class="text-slate-500 block cursor-help" title="Calculated based on daily wage (basic salary / employee required days) multiplied by worker attendance days (present/half-day).">Direct Cost</span>
                             <span class="font-semibold font-mono text-red-550 dark:text-red-400">
                                 {{ number_format($laborCOGS, 2) }}
                             </span>
@@ -199,6 +199,9 @@
                                 {{ number_format($laborProfit, 2) }}
                             </span>
                         </div>
+                    </div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500 px-1 leading-snug">
+                        * Direct cost computed from worker attendance days & basic salary (excluding managers and admins).
                     </div>
                 </div>
 
@@ -264,8 +267,161 @@
 
             </div>
         </div>
-
     </div>
+
+    <!-- Dynamic Financial Visualizations Chart Card -->
+    <div class="app-card rounded-2xl p-6 shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 text-primary"></i>
+                <span>Interactive Financial Trends</span>
+            </h3>
+            
+            <div class="flex items-center gap-2">
+                <label for="chartMetricSelector" class="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase">Metric:</label>
+                <select id="chartMetricSelector" class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                    <option value="revenue_day">Revenue Generated per Day (Bar Chart)</option>
+                    <option value="income_day">Total Income per Day (Line Chart)</option>
+                    <option value="expenditure_week">Total Expenditure per Week (Trend Chart)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="relative w-full h-80 pt-2">
+            <canvas id="financialChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart.js Script and Dynamic Integration -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('financialChart').getContext('2d');
+            
+            const revenueData = @json($revenueData);
+            const incomeData = @json($incomeData);
+            const expenditureData = @json($expenditureData);
+            
+            let currentChart = null;
+            const metricSelector = document.getElementById('chartMetricSelector');
+            
+            function renderChart(metric) {
+                if (currentChart) {
+                    currentChart.destroy();
+                }
+                
+                let labels = [];
+                let datasetData = [];
+                let label = '';
+                let type = 'bar';
+                let borderColor = '#3b82f6';
+                let backgroundColor = 'rgba(59, 130, 246, 0.15)';
+                
+                if (metric === 'revenue_day') {
+                    labels = revenueData.map(item => item.date);
+                    datasetData = revenueData.map(item => item.total_revenue);
+                    label = 'Daily Trading Revenue';
+                    type = 'bar';
+                    borderColor = '#3b82f6';
+                    backgroundColor = 'rgba(59, 130, 246, 0.5)';
+                } else if (metric === 'income_day') {
+                    labels = incomeData.map(item => item.date);
+                    datasetData = incomeData.map(item => item.total_income);
+                    label = 'Daily Total Ledger Income';
+                    type = 'line';
+                    borderColor = '#10b981';
+                    backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                } else if (metric === 'expenditure_week') {
+                    labels = expenditureData.map(item => item.label);
+                    datasetData = expenditureData.map(item => item.value);
+                    label = 'Weekly Total Ledger Expenditure';
+                    type = 'line';
+                    borderColor = '#ef4444';
+                    backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                }
+                
+                const isDark = document.documentElement.classList.contains('dark');
+                const gridColor = isDark ? '#334155' : '#e2e8f0';
+                const textColor = isDark ? '#94a3b8' : '#64748b';
+                
+                currentChart = new Chart(ctx, {
+                    type: type,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: label,
+                            data: datasetData,
+                            borderColor: borderColor,
+                            backgroundColor: backgroundColor,
+                            borderWidth: 2,
+                            fill: type === 'line',
+                            tension: 0.35,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: textColor,
+                                    font: { family: 'Outfit', size: 11, weight: '500' }
+                                }
+                            },
+                            tooltip: {
+                                titleFont: { family: 'Outfit', size: 12 },
+                                bodyFont: { family: 'Outfit', size: 12 },
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'LKR' }).format(context.parsed.y).replace('LKR', 'Rs. ');
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: gridColor },
+                                ticks: { color: textColor, font: { family: 'Outfit', size: 10 } }
+                            },
+                            y: {
+                                grid: { color: gridColor },
+                                ticks: { 
+                                    color: textColor, 
+                                    font: { family: 'Outfit', size: 10 },
+                                    callback: function(value) {
+                                        return 'Rs. ' + new Intl.NumberFormat('en-US').format(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Initial Render
+            renderChart(metricSelector.value);
+            
+            // Event Listeners
+            metricSelector.addEventListener('change', function () {
+                renderChart(this.value);
+            });
+            
+            // Watch dark-mode toggle
+            const observer = new MutationObserver(function() {
+                renderChart(metricSelector.value);
+            });
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        });
+    </script>
 
 </div>
 @endsection

@@ -50,11 +50,19 @@ class FinanceController extends Controller
         $netEquity = $assetsTotal - $liabilitiesTotal;
         $shareValue = $totalShares > 0 ? max(0, $netEquity / $totalShares) : 0.00;
 
-        // Fetch paginated journal entries
-        $journalEntries = JournalEntry::with('items.account')
+        // Fetch paginated journal entries, optionally filtered by account_id
+        $selectedAccountId = $request->input('account_id');
+        $journalEntriesQuery = JournalEntry::with('items.account');
+        if ($selectedAccountId) {
+            $journalEntriesQuery->whereHas('items', function ($q) use ($selectedAccountId) {
+                $q->where('account_id', $selectedAccountId);
+            });
+        }
+        $journalEntries = $journalEntriesQuery
             ->latest('entry_date')
             ->latest('id')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         // Fetch customer books grouped by mobile number
         $arAccount = Account::where('code', '1200')->first();
@@ -88,7 +96,8 @@ class FinanceController extends Controller
             'shareValue',
             'journalEntries',
             'customerBalances',
-            'investorTransactions'
+            'investorTransactions',
+            'selectedAccountId'
         ));
     }
 

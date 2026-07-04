@@ -315,4 +315,52 @@ class FinanceBookkeepingTest extends TestCase
         // Cash balance should return to 0.00
         $this->assertEquals(0.00, $cashAcc->fresh()->balance);
     }
+
+    /**
+     * Test separate ledger view by filtering by account_id.
+     */
+    public function test_ledger_filtering_by_account()
+    {
+        $cashAcc = Account::where('code', '1000')->first();
+        $bankAcc = Account::where('code', '1010')->first();
+        $investAcc = Account::where('code', '3200')->first();
+
+        // 1. Create a cash transaction (Cash and Investor)
+        $entry1 = JournalEntry::create([
+            'entry_date' => '2026-06-30',
+            'reference' => 'TXN-CASH',
+            'description' => 'Cash contribution'
+        ]);
+        $entry1->items()->create(['account_id' => $cashAcc->id, 'debit' => 1000.00, 'credit' => 0.00]);
+        $entry1->items()->create(['account_id' => $investAcc->id, 'debit' => 0.00, 'credit' => 1000.00]);
+
+        // 2. Create a bank transaction (Bank and Investor)
+        $entry2 = JournalEntry::create([
+            'entry_date' => '2026-06-30',
+            'reference' => 'TXN-BANK',
+            'description' => 'Bank contribution'
+        ]);
+        $entry2->items()->create(['account_id' => $bankAcc->id, 'debit' => 2000.00, 'credit' => 0.00]);
+        $entry2->items()->create(['account_id' => $investAcc->id, 'debit' => 0.00, 'credit' => 2000.00]);
+
+        // 3. Request finance index without filters (should return both entries)
+        $response = $this->actingAs($this->superManager)->get(route('finance.index'));
+        $response->assertStatus(200);
+        $journalEntries = $response->viewData('journalEntries');
+        $this->assertCount(2, $journalEntries->items());
+
+        // 4. Request finance index with account_id filter for Cash Account
+        $responseFilteredCash = $this->actingAs($this->superManager)->get(route('finance.index', ['account_id' => $cashAcc->id]));
+        $responseFilteredCash->assertStatus(200);
+        $cashEntries = $responseFilteredCash->viewData('journalEntries');
+        $this->assertCount(1, $cashEntries->items());
+        $this->assertEquals('TXN-CASH', $cashEntries->first()->reference);
+
+        // 5. Request finance index with account_id filter for Bank Account
+        $responseFilteredBank = $this->actingAs($this->superManager)->get(route('finance.index', ['account_id' => $bankAcc->id]));
+        $responseFilteredBank->assertStatus(200);
+        $bankEntries = $responseFilteredBank->viewData('journalEntries');
+        $this->assertCount(1, $bankEntries->items());
+        $this->assertEquals('TXN-BANK', $bankEntries->first()->reference);
+    }
 }

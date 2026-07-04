@@ -98,8 +98,24 @@
     <!-- 1. TAB: General Ledger -->
     <div id="tab-ledger" class="tab-content space-y-6">
         <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
-            <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-550">General Ledger Transaction Log</h3>
+                
+                <form action="{{ route('finance.index') }}" method="GET" class="flex items-center gap-2">
+                    <label for="ledgerAccountFilter" class="text-[10px] font-bold text-slate-400 uppercase">Filter Ledger:</label>
+                    <select id="ledgerAccountFilter" name="account_id" onchange="this.form.submit()" 
+                            class="px-2.5 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-sans">
+                        <option value="">-- All Accounts --</option>
+                        @foreach($accounts as $acc)
+                            <option value="{{ $acc->id }}" {{ $selectedAccountId == $acc->id ? 'selected' : '' }}>
+                                {{ $acc->code }} - {{ $acc->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @if($selectedAccountId)
+                        <a href="{{ route('finance.index') }}" class="text-xs text-red-500 hover:underline font-bold font-sans ml-1">Clear</a>
+                    @endif
+                </form>
             </div>
             
             <div class="divide-y divide-slate-200 dark:divide-slate-800">
@@ -205,6 +221,7 @@
                         <th class="py-4 px-6">Type</th>
                         <th class="py-4 px-6">Description</th>
                         <th class="py-4 px-6 text-right">Net Balance</th>
+                        <th class="py-4 px-6 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60 font-mono text-xs">
@@ -216,7 +233,7 @@
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold 
                                     {{ $acc->type === 'asset' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' : '' }}
                                     {{ $acc->type === 'liability' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : '' }}
-                                    {{ $acc->type === 'equity' ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20' : '' }}
+                                    {{ $acc->type === 'equity' ? 'bg-indigo-500/10 text-indigo-500 border border-indigo-550/20' : '' }}
                                     {{ $acc->type === 'revenue' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : '' }}
                                     {{ $acc->type === 'expense' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : '' }}
                                 ">
@@ -226,6 +243,12 @@
                             <td class="py-4 px-6 text-slate-500 font-sans max-w-sm truncate">{{ $acc->description ?? '-' }}</td>
                             <td class="py-4 px-6 text-right font-bold text-slate-900 dark:text-slate-100">
                                 {{ config('app.currency', '$') }}{{ number_format($acc->balance, 2) }}
+                            </td>
+                            <td class="py-4 px-6 text-right font-sans">
+                                <a href="{{ route('finance.index', ['account_id' => $acc->id]) }}" 
+                                   class="text-xs font-bold text-primary hover:underline">
+                                    View Ledger
+                                </a>
                             </td>
                         </tr>
                     @endforeach
@@ -905,7 +928,11 @@
 
     // Restore tab
     document.addEventListener('DOMContentLoaded', () => {
-        const activeTab = localStorage.getItem('accounting_active_tab') || 'tab-ledger';
+        const urlParams = new URLSearchParams(window.location.search);
+        let activeTab = localStorage.getItem('accounting_active_tab') || 'tab-ledger';
+        if (urlParams.has('account_id')) {
+            activeTab = 'tab-ledger';
+        }
         switchTab(activeTab);
         calculateJournalTotals();
     });
