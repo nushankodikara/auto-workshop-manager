@@ -290,91 +290,158 @@ class DashboardController extends Controller
         $tradingProfit = $tradingRevenue - $tradingCOGS;
         $tradingMargin = $tradingRevenue > 0 ? ($tradingProfit / $tradingRevenue) * 100 : 0;
 
-        // 1. Daily Trading Revenue (from BillItem for paid bills)
-        $revenueByDayQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($startDate, $endDate) {
-            $q->where('status', 'paid');
-            if ($startDate) {
-                $q->whereDate('created_at', '>=', $startDate);
-            }
-            if ($endDate) {
-                $q->whereDate('created_at', '<=', $endDate);
-            }
-        });
-        $revenueByDay = $revenueByDayQuery
-            ->select(
-                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
-                DB::raw("SUM(total_price) as total_revenue")
-            )
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        // 2. Daily Ledger Income (revenue accounts)
-        $incomeByDayQuery = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+        // Unified Daily Financial Timeline Aggregation
+        // 1. Daily Ledger Income (revenue accounts)
+        $dailyIncome = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
             ->whereHas('account', function ($q) {
                 $q->where('type', 'revenue');
-            });
-        if ($startDate) {
-            $incomeByDayQuery->whereDate('journal_entries.entry_date', '>=', $startDate);
-        }
-        if ($endDate) {
-            $incomeByDayQuery->whereDate('journal_entries.entry_date', '<=', $endDate);
-        }
-        $incomeByDay = $incomeByDayQuery
+            })
             ->select(
                 DB::raw("strftime('%Y-%m-%d', journal_entries.entry_date) as date"),
-                DB::raw("SUM(journal_items.credit) as total_income")
+                DB::raw("SUM(journal_items.credit) as value")
             )
             ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+            ->get()
+            ->pluck('value', 'date');
 
-        // 3. Weekly Ledger Expenditure (expense accounts)
-        $expenditureByWeekQuery = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+        // 2. Daily Ledger Expenditure (expense accounts)
+        $dailyExpenditure = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
             ->whereHas('account', function ($q) {
                 $q->where('type', 'expense');
-            });
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', journal_entries.entry_date) as date"),
+                DB::raw("SUM(journal_items.debit) as value")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('value', 'date');
+
+        // 3. Daily Parts Revenue & COGS (paid bills)
+        $dailyParts = \App\Models\BillItem::where('type', 'part')
+            ->whereHas('bill', function ($q) {
+                $q->where('status', 'paid');
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+                DB::raw("SUM(total_price) as revenue"),
+                DB::raw("SUM(quantity * cost_price) as cogs")
+            )
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
+
+        // 4. Daily Labor Revenue (paid bills)
+        $dailyLaborRev = \App\Models\BillItem::where('type', 'labor')
+            ->whereHas('bill', function ($q) {
+                $q->where('status', 'paid');
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+                DB::raw("SUM(total_price) as revenue")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('revenue', 'date');
+
+        // 5. Daily Labor COGS (based on worker attendance)
+        $workers = \App\Models\User::where('role', 'worker')->get();
+        $workerIds = $workers->pluck('id');
+        $workersMap = $workers->keyBy('id');
+        
+        $dailyLaborCOGSQuery = \App\Models\Attendance::whereIn('user_id', $workerIds)
+            ->select('date', 'user_id', 'status')
+            ->get();
+            
+        $dailyLaborCOGS = [];
+        foreach ($dailyLaborCOGSQuery as $att) {
+            $dateStr = $att->date->format('Y-m-d');
+            $worker = $workersMap->get($att->user_id);
+            if ($worker && $worker->basic_salary > 0) {
+                $reqDays = max(1, (int)($worker->required_days ?? 26));
+                $dailyWage = $worker->basic_salary / $reqDays;
+                
+                if (!isset($dailyLaborCOGS[$dateStr])) {
+                    $dailyLaborCOGS[$dateStr] = 0.00;
+                }
+                
+                if ($att->status === 'present') {
+                    $dailyLaborCOGS[$dateStr] += $dailyWage;
+                } elseif ($att->status === 'half_day') {
+                    $dailyLaborCOGS[$dateStr] += $dailyWage * 0.5;
+                }
+            }
+        }
+
+        // 6. Daily Outsourcing Revenue & COGS (paid bills)
+        $dailyOutsourcing = \App\Models\BillItem::where('type', 'outsourcing')
+            ->whereHas('bill', function ($q) {
+                $q->where('status', 'paid');
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+                DB::raw("SUM(total_price) as revenue"),
+                DB::raw("SUM(cost_price) as cogs")
+            )
+            ->groupBy('date')
+            ->get()
+            ->keyBy('date');
+
+        // Collect all unique dates from all daily logs
+        $allDates = collect()
+            ->merge($dailyIncome->keys())
+            ->merge($dailyExpenditure->keys())
+            ->merge($dailyParts->keys())
+            ->merge($dailyLaborRev->keys())
+            ->merge(array_keys($dailyLaborCOGS))
+            ->merge($dailyOutsourcing->keys())
+            ->unique()
+            ->sort()
+            ->values();
+
+        // Filter unique dates by target bounds
         if ($startDate) {
-            $expenditureByWeekQuery->whereDate('journal_entries.entry_date', '>=', $startDate);
+            $allDates = $allDates->filter(fn($d) => $d >= $startDate);
         }
         if ($endDate) {
-            $expenditureByWeekQuery->whereDate('journal_entries.entry_date', '<=', $endDate);
+            $allDates = $allDates->filter(fn($d) => $d <= $endDate);
         }
-        $expenditureByWeek = $expenditureByWeekQuery
-            ->select(
-                DB::raw("strftime('%Y-%W', journal_entries.entry_date) as week"),
-                DB::raw("SUM(journal_items.debit) as total_expenditure")
-            )
-            ->groupBy('week')
-            ->orderBy('week')
-            ->get();
+        $allDates = $allDates->values();
 
-        $revenueData = $revenueByDay->map(function ($item) {
-            return [
-                'date' => $item->date,
-                'total_revenue' => (double)$item->total_revenue
-            ];
-        });
-
-        $incomeData = $incomeByDay->map(function ($item) {
-            return [
-                'date' => $item->date,
-                'total_income' => (double)$item->total_income
-            ];
-        });
-
-        $expenditureData = $expenditureByWeek->map(function ($item) {
-            $parts = explode('-', $item->week);
-            $year = (int)$parts[0];
-            $week = (int)$parts[1];
+        // Build unified daily timeline
+        $dailyTimeline = $allDates->map(function ($date) use (
+            $dailyIncome, $dailyExpenditure, $dailyParts, $dailyLaborRev, $dailyLaborCOGS, $dailyOutsourcing
+        ) {
+            $inc = (double)($dailyIncome->get($date) ?? 0.00);
+            $exp = (double)($dailyExpenditure->get($date) ?? 0.00);
             
-            $dto = new \DateTime();
-            $dto->setISODate($year, $week);
-            $weekStart = $dto->format('M d');
+            $partRev = 0.00;
+            $partCogs = 0.00;
+            if ($p = $dailyParts->get($date)) {
+                $partRev = (double)$p->revenue;
+                $partCogs = (double)$p->cogs;
+            }
+            
+            $labRev = (double)($dailyLaborRev->get($date) ?? 0.00);
+            $labCogs = (double)($dailyLaborCOGS[$date] ?? 0.00);
+            
+            $outRev = 0.00;
+            $outCogs = 0.00;
+            if ($o = $dailyOutsourcing->get($date)) {
+                $outRev = (double)$o->revenue;
+                $outCogs = (double)$o->cogs;
+            }
             
             return [
-                'label' => "Week {$week} ({$weekStart})",
-                'value' => (double)$item->total_expenditure
+                'date' => $date,
+                'income' => $inc,
+                'expenditure' => $exp,
+                'parts_revenue' => $partRev,
+                'parts_cogs' => $partCogs,
+                'labor_revenue' => $labRev,
+                'labor_cogs' => $labCogs,
+                'outsourcing_revenue' => $outRev,
+                'outsourcing_cogs' => $outCogs
             ];
         });
 
@@ -386,7 +453,7 @@ class DashboardController extends Controller
             'laborRevenue', 'laborCOGS', 'laborProfit', 'laborMargin',
             'outsourcingRevenue', 'outsourcingCOGS', 'outsourcingProfit', 'outsourcingMargin',
             'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin',
-            'revenueData', 'incomeData', 'expenditureData'
+            'dailyTimeline'
         ));
     }
 }

@@ -120,14 +120,20 @@ class StatisticsTest extends TestCase
         // Verify labor margin is 50.0%
         $this->assertEquals(50.0, $response->viewData('laborMargin'));
 
-        // Verify chart data collections are present
-        $this->assertNotNull($response->viewData('revenueData'));
-        $this->assertNotNull($response->viewData('incomeData'));
-        $this->assertNotNull($response->viewData('expenditureData'));
+        // Verify chart dailyTimeline collection is present
+        $this->assertNotNull($response->viewData('dailyTimeline'));
         
-        $revenueData = $response->viewData('revenueData');
-        $this->assertCount(1, $revenueData);
-        $this->assertEquals('2026-07-03', $revenueData->first()['date']);
-        $this->assertEquals(5000.00, $revenueData->first()['total_revenue']);
+        $dailyTimeline = $response->viewData('dailyTimeline');
+        $this->assertCount(4, $dailyTimeline); // 2026-07-02, 2026-07-03, 2026-07-04, 2026-07-05
+        
+        // Find the record for 2026-07-03 which contains the bill/labor revenue
+        $targetDay = $dailyTimeline->firstWhere('date', '2026-07-03');
+        $this->assertNotNull($targetDay);
+        $this->assertEquals(5000.00, $targetDay['labor_revenue']);
+        
+        // Find the record for 2026-07-04 which contains the half day labor COGS (500.00)
+        $halfDay = $dailyTimeline->firstWhere('date', '2026-07-04');
+        $this->assertNotNull($halfDay);
+        $this->assertEquals(500.00, $halfDay['labor_cogs']);
     }
 }
