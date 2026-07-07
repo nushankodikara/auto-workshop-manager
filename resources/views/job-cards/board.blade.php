@@ -139,9 +139,9 @@
 
                                 <!-- Action bar -->
                                 <div class="flex items-center justify-between mt-1 gap-2">
-                                    <!-- Estimated Cost -->
-                                    <span class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">
-                                        {{ config('app.currency', '$') }}{{ number_format($jobCard->estimated_cost, 2) }}
+                                    <!-- Ticket Sum -->
+                                    <span class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300" title="Current Ticket Sum (Services + Parts)">
+                                        {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->ticket_sum, 2) }}
                                     </span>
 
                                     <!-- Status quick change dropdown -->
@@ -228,12 +228,7 @@
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
-                        <!-- Estimated Cost -->
-                        <div>
-                            <label for="estimated_cost" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Estimated Cost ({{ config('app.currency', '$') }})</label>
-                            <input type="number" step="0.01" name="estimated_cost" id="estimated_cost" required value="0.00"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                        </div>
+
 
                         <!-- Notes -->
                         <div>

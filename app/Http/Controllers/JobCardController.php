@@ -41,7 +41,15 @@ class JobCardController extends Controller
         $start = \Carbon\Carbon::parse($startDate)->startOfDay();
         $end = \Carbon\Carbon::parse($endDate)->endOfDay();
 
-        $jobCards = JobCard::with(['vehicle.client', 'shop', 'workers'])
+        $jobCards = JobCard::with([
+            'vehicle.client',
+            'shop',
+            'workers',
+            'bill',
+            'services',
+            'stockMovements.inventory',
+            'stockMovements.purchaseBatch'
+        ])
             ->where(function ($query) use ($start, $end) {
                 // Condition 1: Unfinished tickets created on or before the end of the range
                 $query->where(function ($q) use ($end) {
@@ -114,7 +122,7 @@ class JobCardController extends Controller
             'vehicle_id' => 'required|exists:vehicles,id',
             'shop_id' => 'required|exists:shops,id',
             'notes' => 'nullable|string',
-            'estimated_cost' => 'required|numeric|min:0',
+            'estimated_cost' => 'nullable|numeric|min:0',
             'mileage' => 'nullable|integer|min:0',
             'workers' => 'nullable|array',
             'workers.*' => 'exists:users,id',
@@ -125,7 +133,7 @@ class JobCardController extends Controller
                 'vehicle_id' => $data['vehicle_id'],
                 'shop_id' => $data['shop_id'],
                 'notes' => $data['notes'] ?? null,
-                'estimated_cost' => $data['estimated_cost'],
+                'estimated_cost' => $data['estimated_cost'] ?? 0.00,
                 'status' => 'received-vehicle',
                 'mileage' => $data['mileage'] ?? null
             ]);
@@ -181,14 +189,14 @@ class JobCardController extends Controller
 
         $data = $request->validate([
             'notes' => 'nullable|string',
-            'estimated_cost' => 'required|numeric|min:0',
+            'estimated_cost' => 'nullable|numeric|min:0',
             'mileage' => 'nullable|integer|min:0',
         ]);
 
         DB::transaction(function () use ($jobCard, $data) {
             $jobCard->update([
                 'notes' => $data['notes'] ?? null,
-                'estimated_cost' => $data['estimated_cost'],
+                'estimated_cost' => $data['estimated_cost'] ?? $jobCard->estimated_cost ?? 0.00,
                 'mileage' => $data['mileage'] ?? null
             ]);
 
@@ -302,7 +310,7 @@ class JobCardController extends Controller
                 case 'received-vehicle':
                     $smsMessage = "Dear {$client->name}, your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) has been received at {$appName} for: " . ($jobCard->notes ?: 'general inspection') . ". We will keep you updated.";
                     $emailSubject = "Vehicle Received - Job Card #{$jobCard->id}";
-                    $emailBody = "Hello {$client->name},\n\nWe have successfully received your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) for servicing and diagnostics at {$appName}.\n\nInstructions/Notes:\n" . ($jobCard->notes ?: 'General inspection and maintenance.') . "\n\nEstimated Cost: " . config('app.currency') . number_format($jobCard->estimated_cost, 2) . "\n\nWe will notify you as soon as the repair operations commence.\n\nBest regards,\n{$appName} Team";
+                    $emailBody = "Hello {$client->name},\n\nWe have successfully received your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) for servicing and diagnostics at {$appName}.\n\nInstructions/Notes:\n" . ($jobCard->notes ?: 'General inspection and maintenance.') . "\n\nTicket Sum: " . config('app.currency') . number_format($jobCard->ticket_sum, 2) . "\n\nWe will notify you as soon as the repair operations commence.\n\nBest regards,\n{$appName} Team";
                     break;
 
                 case 'on-going':
@@ -320,7 +328,7 @@ class JobCardController extends Controller
                 case 'waiting-to-pickup':
                     $smsMessage = "Dear {$client->name}, your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) is ready to be picked up from {$appName}. Thank you!";
                     $emailSubject = "Ready for Collection - Job Card #{$jobCard->id}";
-                    $emailBody = "Hello {$client->name},\n\nWe are pleased to inform you that your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) has successfully passed all quality control tests and is ready to be picked up at your convenience.\n\nFinal Cost Summary: " . config('app.currency') . number_format($jobCard->estimated_cost, 2) . "\n\nThank you for choosing {$appName}!\n\nBest regards,\n{$appName} Team";
+                    $emailBody = "Hello {$client->name},\n\nWe are pleased to inform you that your vehicle {$vehicle->make} {$vehicle->model} (Plate: {$vehicle->plate_number}) has successfully passed all quality control tests and is ready to be picked up at your convenience.\n\nFinal Cost Summary: " . config('app.currency') . number_format($jobCard->ticket_sum, 2) . "\n\nThank you for choosing {$appName}!\n\nBest regards,\n{$appName} Team";
                     break;
             }
 

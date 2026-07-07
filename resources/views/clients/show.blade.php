@@ -197,7 +197,7 @@
                                 <div class="text-[10px] text-slate-500 mt-0.5 capitalize">{{ $jc->vehicle->make }} • Status: {{ str_replace('-', ' ', $jc->status) }}</div>
                             </div>
                             <div class="text-right">
-                                <span class="font-semibold text-slate-700 dark:text-slate-350 block font-mono">{{ config('app.currency', '$') }}{{ number_format($jc->estimated_cost, 2) }}</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-350 block font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($jc->ticket_sum, 2) }}</span>
                                 <span class="text-[9px] text-slate-500 block mt-0.5">{{ $jc->created_at->format('Y-m-d') }}</span>
                             </div>
                         </div>

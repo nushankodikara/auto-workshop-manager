@@ -119,4 +119,40 @@ class JobCard extends Model
             'parts' => 2,
         ]);
     }
+
+    public function getTicketSumAttribute()
+    {
+        if ($this->bill) {
+            return (double)$this->bill->total_amount;
+        }
+
+        // Services sum
+        $servicesSum = (double)$this->services()->sum('price');
+
+        // Parts sum
+        $partsSum = 0.00;
+        $allocatedParts = $this->stockMovements()
+            ->where('type', 'out')
+            ->with(['inventory', 'purchaseBatch'])
+            ->get();
+
+        foreach ($allocatedParts as $mov) {
+            $qty = abs($mov->quantity);
+            $sellingPrice = 0.00;
+            if ($mov->purchaseBatch) {
+                $sellingPrice = floatval($mov->purchaseBatch->selling_price);
+            } elseif ($mov->inventory) {
+                $sellingPrice = floatval($mov->inventory->selling_price);
+            }
+            $partsSum += $qty * $sellingPrice;
+        }
+
+        $sum = $servicesSum + $partsSum;
+
+        if ($sum == 0 && $this->estimated_cost > 0) {
+            return (double)$this->estimated_cost;
+        }
+
+        return $sum;
+    }
 }

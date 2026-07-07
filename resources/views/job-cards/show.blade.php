@@ -440,12 +440,7 @@
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
-                        <!-- Estimated Cost -->
-                        <div>
-                            <label for="edit_estimated_cost" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Estimated Cost ({{ config('app.currency', '$') }})</label>
-                            <input type="number" step="0.01" name="estimated_cost" id="edit_estimated_cost" required value="{{ $jobCard->estimated_cost }}"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                        </div>
+
 
                         <!-- Notes -->
                         <div>

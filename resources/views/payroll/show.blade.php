@@ -23,7 +23,7 @@
                     @method('PATCH')
                     <input type="hidden" name="status" value="paid">
                     <button type="submit" 
-                            class="px-4 py-2 bg-green-650 hover:bg-green-650 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
                         <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
                         <span>Mark as Paid</span>
                     </button>

@@ -86,26 +86,21 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - **Employee Password Reset Flow**: Added support for employee self-service password reset using a 6-digit email verification code. Renders a `/forgot-password` form to enter email, which generates a 6-digit verification code stored securely (hashed) in `password_reset_tokens` and sent via SMTP (or mocked to UI/log) using `EmailService`. Renders `/reset-password` form to enter email, verification code, and new password. Also restricts password changes via administrative forms (`employeeUpdate`) to `super-manager` (Super Admin) only.
 - **PWA Capabilities**: Added Progressive Web App capabilities, including a dynamic `/manifest.json` config, service worker cache management ([sw.js](file:///Users/nushan/Projects/TDC%20Laravel/public/sw.js)), and a customizable icon system. The PWA manifest dynamically references the custom brand logo (`logo.png`) if uploaded, falling back automatically to the premium generic shop icon ([generic-icon.png](file:///Users/nushan/Projects/TDC%20Laravel/public/images/generic-icon.png)). Serves a glassmorphic offline page ([offline.blade.php](file:///Users/nushan/Projects/TDC%20Laravel/resources/views/errors/offline.blade.php)) for fallback when connection drops.
 - **Dynamic Role-Based Feature Access Control**: Exposes role and feature access configuration inside the Settings module. Implemented a `roles` table that maps roles (e.g. `super-manager`, `manager`, `worker`, or custom ones like `cashier`) to their allowed modules (features) list. Standard users verify dynamic feature visibility using `hasModuleAccess()`. Enables the Super Admin to add new custom roles and configure checkbox-based feature mappings for all non-root roles.
-
-
+- **Dynamic Ticket Sum & Job Board Improvements**: Removed static, manually entered "Estimated Cost" inputs from Create and Edit Job Card modals. Added a virtual `ticket_sum` attribute to the `JobCard` model that dynamically computes the real-time value of the ticket (sum of assigned service prices + parts quantity multiplied by selling prices) with a backward-compatible fallback to `estimated_cost` when empty. Displays the `ticket_sum` on all kanban board cards, client history reports, and email notifications.
+- **Standardized Action Button Styles**: Resolved the invisible draft payout buttons by replacing the non-standard background classes (`bg-green-650 hover:bg-green-655`) with the standard Tailwind classes (`bg-emerald-600 hover:bg-emerald-700`) on both the Bill Invoice and Employee Payslip views.
 
 ## Known Issues, Status & Workarounds
 
-### 1. Direct DB Seeding vs. Ledger Sync (CommerceTest Failure)
-- **Status/Symptom**: `CommerceTest` has one failing assertion (`statistics calculation matches totals`) expecting `totalStockPurchases` to be 20,000.00, but receiving 4,000.00.
-- **Cause**: Seeding initial stock purchase batches or slips directly via Eloquent models bypasses the double-entry accounting ledger entries. The unified finance dashboard calculates expenditure based on ledger account balances rather than raw table sums.
-- **Workaround/Resolution**: For correct ledger tracking, stock batches and slip entries must be posted through the web interface/controllers or via designated synchronization scripts/migrations (like `2026_06_30_120000_retroactive_import_batches_and_slips.php`). In tests, manually create the corresponding journal entries when directly inserting DB records to keep the ledger and totals aligned.
-
-### 2. FitSMS Phone Number Normalization
+### 1. FitSMS Phone Number Normalization
 - **Status/Symptom**: FitSMS messages fail to deliver if numbers are not formatted exactly to Sri Lankan standard.
 - **Cause**: FitSMS API requires country code `94` without any prefixing `+`, dashes, or spaces.
 - **Workaround/Resolution**: The system implements an automatic outbound normalizer that sanitizes phone inputs to standard country format (e.g. converting `0771234567` to `94771234567`).
 
-### 3. Outbound Message Mocking (Development Mode)
+### 2. Outbound Message Mocking (Development Mode)
 - **Status/Symptom**: During local testing, real SMS/SMTP deliveries are not sent or throw relay connection errors.
 - **Workaround/Resolution**: Toggle the setting `NOTIFICATION_MOCK=true` in `.env` to output SMS and Emails to the docker stdout log and flash them as toast notification cards directly on the frontend views.
 
-### 4. Queue Workers
+### 3. Queue Workers
 - **Status/Symptom**: Emailed reports or notifications do not go out immediately when mock mode is off.
 - **Cause**: Notification events are queued by default to prevent blocking requests.
 - **Workaround/Resolution**: Run the docker container `queue-worker` (`php artisan queue:work`) to process the database-backed queue.

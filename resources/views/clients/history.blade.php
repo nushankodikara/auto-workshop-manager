@@ -195,11 +195,11 @@
                             Total Bill: {{ config('app.currency', '$') }}{{ number_format($jc->bill->total_amount, 2) }}
                         </span>
                     </div>
-                @elseif($jc->estimated_cost > 0)
+                @elseif($jc->ticket_sum > 0)
                     <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950/20 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs price-element print:bg-transparent print:border-black/10 print:p-3">
-                        <span class="font-bold text-slate-500 uppercase tracking-wider print:text-black/70">Estimated Cost</span>
+                        <span class="font-bold text-slate-500 uppercase tracking-wider print:text-black/70">Ticket Sum</span>
                         <span class="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono print:text-black">
-                            {{ config('app.currency', '$') }}{{ number_format($jc->estimated_cost, 2) }}
+                            {{ config('app.currency', 'Rs.') }}{{ number_format($jc->ticket_sum, 2) }}
                         </span>
                     </div>
                 @endif
