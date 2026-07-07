@@ -188,11 +188,34 @@
                             <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
                                 <div>
                                     <span class="font-semibold text-slate-850 dark:text-slate-200">{{ $mov->inventory->name }}</span>
-                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">SKU: {{ $mov->inventory->sku }}</span>
+                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">SKU: {{ $mov->inventory->sku }} • Batch: {{ $mov->purchaseBatch->batch_code ?? 'None' }}</span>
+                                    @if(!empty($mov->notes))
+                                        <span class="text-xs text-slate-450 dark:text-slate-450 block mt-1">Notes: {{ $mov->notes }}</span>
+                                    @endif
                                 </div>
-                                <div class="text-right">
-                                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ abs($mov->quantity) }} {{ $mov->inventory->unit }}</span>
-                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">Price: {{ config('app.currency', 'Rs.') }}{{ number_format(abs($mov->quantity) * ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price), 2) }}</span>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <span class="font-bold text-slate-800 dark:text-slate-200">{{ abs($mov->quantity) }} {{ $mov->inventory->unit }}</span>
+                                        <span class="text-xs text-slate-500 font-mono block mt-0.5">Price: {{ config('app.currency', 'Rs.') }}{{ number_format(abs($mov->quantity) * ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price), 2) }}</span>
+                                    </div>
+                                    @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                                        <div class="flex items-center gap-1">
+                                            <!-- Edit Button -->
+                                            <button onclick="openEditAllocationModal({{ $mov->id }}, {{ abs($mov->quantity) }}, '{{ addslashes($mov->inventory->name) }}', '{{ addslashes($mov->notes) }}')"
+                                                    class="text-blue-600 hover:text-blue-500 p-1 cursor-pointer" title="Edit Quantity">
+                                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                            </button>
+                                            
+                                            <!-- Remove Form -->
+                                            <form action="{{ route('job-cards.deallocate-parts', $mov->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to remove this allocated part and return it to stock?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-650 hover:text-red-500 p-1 cursor-pointer" title="Remove & Return to Stock">
+                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endif
@@ -466,8 +489,71 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Allocation Modal -->
+<div id="edit-allocation-modal" class="fixed inset-0 z-50 flex items-center justify-center p-6 hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-950/75" onclick="closeEditAllocationModal()"></div>
+    
+    <!-- Modal Card -->
+    <div class="app-card w-full max-w-md rounded-2xl relative z-10 overflow-hidden shadow-2xl">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <i data-lucide="package" class="w-4 h-4 text-primary"></i>
+                <span id="edit-alloc-title">Edit Allocated Quantity</span>
+            </h2>
+            <button onclick="closeEditAllocationModal()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+        </div>
+
+        <form id="edit-allocation-form" method="POST" class="p-6 space-y-4 text-xs">
+            @csrf
+            @method('PATCH')
+
+            <div>
+                <label for="edit_alloc_quantity" class="block text-slate-500 mb-1 font-semibold">Allocated Quantity</label>
+                <input type="number" name="quantity" id="edit_alloc_quantity" required min="1"
+                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono">
+            </div>
+
+            <div>
+                <label for="edit_alloc_notes" class="block text-slate-500 mb-1 font-semibold">Allocation Notes</label>
+                <input type="text" name="notes" id="edit_alloc_notes"
+                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary">
+            </div>
+
+            <!-- Buttons -->
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 justify-end">
+                <button type="button" onclick="closeEditAllocationModal()"
+                        class="py-2 px-3 bg-slate-200 dark:bg-slate-850 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg">
+                    Cancel
+                </button>
+                <button type="submit" class="py-2 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg">
+                    Update Quantity
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
     const inventoryData = @json($inventoryItems);
+
+    function openEditAllocationModal(movementId, currentQty, partName, notes) {
+        const modal = document.getElementById('edit-allocation-modal');
+        const form = document.getElementById('edit-allocation-form');
+        const title = document.getElementById('edit-alloc-title');
+        
+        form.action = `/job-cards/allocated-parts/${movementId}`;
+        title.innerText = `Edit Allocation - ${partName}`;
+        document.getElementById('edit_alloc_quantity').value = currentQty;
+        document.getElementById('edit_alloc_notes').value = notes;
+        
+        modal.classList.remove('hidden');
+    }
+
+    function closeEditAllocationModal() {
+        document.getElementById('edit-allocation-modal').classList.add('hidden');
+    }
     
     function updateBatchDropdown() {
         const partSelect = document.getElementById('inventory_id');

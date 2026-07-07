@@ -511,4 +511,86 @@ class CommerceTest extends TestCase
             'unit_price' => 15000.00
         ]);
     }
+
+    /**
+     * Test editing and removing allocated parts on a Job Card.
+     */
+    public function test_allocated_parts_can_be_edited_and_removed()
+    {
+        $batch = PurchaseBatch::create([
+            'inventory_id' => $this->part->id,
+            'batch_code' => 'BAT-TEST-02',
+            'quantity_received' => 20,
+            'quantity_remaining' => 20,
+            'cost_price' => 1500.00,
+            'selling_price' => 2500.00,
+            'purchased_at' => date('Y-m-d')
+        ]);
+
+        // Initial inventory quantity is 10 (seeded in setup) + 20 from this batch = 30
+        $this->part->update(['quantity' => 30]);
+
+        // 1. Allocate 5 parts
+        $response = $this->actingAs($this->admin)
+            ->post("/job-cards/{$this->jobCard->id}/parts", [
+                'inventory_id' => $this->part->id,
+                'purchase_batch_id' => $batch->id,
+                'quantity' => 5
+            ]);
+
+        $response->assertStatus(302);
+        
+        $batch->refresh();
+        $this->part->refresh();
+        $this->assertEquals(15, $batch->quantity_remaining);
+        $this->assertEquals(25, $this->part->quantity);
+
+        $mov = StockMovement::where('job_card_id', $this->jobCard->id)->where('type', 'out')->first();
+        $this->assertNotNull($mov);
+        $this->assertEquals(-5, $mov->quantity);
+
+        // 2. Edit allocation to 8 parts (diff is +3)
+        $response = $this->actingAs($this->admin)
+            ->patch("/job-cards/allocated-parts/{$mov->id}", [
+                'quantity' => 8,
+                'notes' => 'Updated notes'
+            ]);
+
+        $response->assertStatus(302);
+
+        $batch->refresh();
+        $this->part->refresh();
+        $mov->refresh();
+        $this->assertEquals(12, $batch->quantity_remaining);
+        $this->assertEquals(22, $this->part->quantity);
+        $this->assertEquals(-8, $mov->quantity);
+        $this->assertEquals('Updated notes', $mov->notes);
+
+        // 3. Edit allocation to 3 parts (diff is -5)
+        $response = $this->actingAs($this->admin)
+            ->patch("/job-cards/allocated-parts/{$mov->id}", [
+                'quantity' => 3
+            ]);
+
+        $response->assertStatus(302);
+
+        $batch->refresh();
+        $this->part->refresh();
+        $mov->refresh();
+        $this->assertEquals(17, $batch->quantity_remaining);
+        $this->assertEquals(27, $this->part->quantity);
+        $this->assertEquals(-3, $mov->quantity);
+
+        // 4. Remove / deallocate parts
+        $response = $this->actingAs($this->admin)
+            ->delete("/job-cards/allocated-parts/{$mov->id}");
+
+        $response->assertStatus(302);
+
+        $batch->refresh();
+        $this->part->refresh();
+        $this->assertEquals(20, $batch->quantity_remaining);
+        $this->assertEquals(30, $this->part->quantity);
+        $this->assertNull(StockMovement::find($mov->id));
+    }
 }

@@ -550,4 +550,98 @@ class JobCardController extends Controller
 
         return back()->with('success', 'Service operation removed.');
     }
+
+    /**
+     * Update allocated parts quantity and notes on job card.
+     */
+    public function updateAllocatedPart(Request $request, StockMovement $stockMovement)
+    {
+        $jobCard = $stockMovement->jobCard;
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify allocated parts.']);
+        }
+
+        $data = $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        $batch = $stockMovement->purchaseBatch;
+        $part = $stockMovement->inventory;
+
+        if (!$batch || !$part) {
+            return back()->withErrors(['error' => 'Associated inventory part or batch not found.']);
+        }
+
+        $oldQty = abs($stockMovement->quantity);
+        $newQty = intval($data['quantity']);
+        $diff = $newQty - $oldQty;
+
+        if ($diff > 0 && $batch->quantity_remaining < $diff) {
+            return back()->withErrors(['quantity' => "Insufficient stock in batch. Only {$batch->quantity_remaining} {$part->unit} available."]);
+        }
+
+        DB::transaction(function () use ($stockMovement, $jobCard, $batch, $part, $newQty, $oldQty, $diff, $data) {
+            // Adjust stock levels
+            $batch->quantity_remaining -= $diff;
+            $batch->save();
+
+            $part->quantity -= $diff;
+            $part->save();
+
+            $stockMovement->update([
+                'quantity' => -$newQty, // stored as negative
+                'notes' => $data['notes'] ?? $stockMovement->notes
+            ]);
+
+            // Log activity
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'parts_allocated_updated',
+                'details' => "Updated allocation for {$part->name}: quantity changed from {$oldQty} to {$newQty}"
+            ]);
+        });
+
+        return back()->with('success', 'Allocated parts updated successfully.');
+    }
+
+    /**
+     * Remove allocated parts from job card and return to inventory stock.
+     */
+    public function deallocateParts(StockMovement $stockMovement)
+    {
+        $jobCard = $stockMovement->jobCard;
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify allocated parts.']);
+        }
+
+        DB::transaction(function () use ($stockMovement, $jobCard) {
+            $qty = abs($stockMovement->quantity); // since stored as negative
+            $batch = $stockMovement->purchaseBatch;
+            $part = $stockMovement->inventory;
+
+            if ($batch) {
+                $batch->quantity_remaining += $qty;
+                $batch->save();
+            }
+
+            if ($part) {
+                $part->quantity += $qty;
+                $part->save();
+            }
+
+            // Log activity before deletion
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'parts_deallocated',
+                'details' => "Removed allocation of {$qty} " . ($part->unit ?? 'pcs') . " for " . ($part->name ?? 'Unknown') . ($batch ? " from batch {$batch->batch_code}" : '')
+            ]);
+
+            $stockMovement->delete();
+        });
+
+        return back()->with('success', 'Allocated parts successfully removed and returned to stock.');
+    }
 }
