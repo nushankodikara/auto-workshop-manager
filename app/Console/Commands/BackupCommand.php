@@ -62,6 +62,26 @@ class BackupCommand extends Command
             // 5. Cleanup older backups (keep last 30 backups)
             $this->cleanupOldBackups($backupDir);
 
+            // 6. Optionally upload to S3 if configured
+            $s3Enabled = \App\Models\Setting::get('s3_enabled', '0') === '1';
+            if ($s3Enabled) {
+                $this->info('Uploading backup to S3 bucket...');
+                $s3Settings = [
+                    'bucket' => \App\Models\Setting::get('s3_bucket'),
+                    'key' => \App\Models\Setting::get('s3_key'),
+                    'secret' => \App\Models\Setting::get('s3_secret'),
+                    'region' => \App\Models\Setting::get('s3_region', 'us-east-1'),
+                    'endpoint' => \App\Models\Setting::get('s3_endpoint'),
+                ];
+                
+                $uploaded = \App\Services\S3BackupService::uploadFile($backupPath, $s3Settings);
+                if ($uploaded) {
+                    $this->info('Successfully uploaded backup to S3.');
+                } else {
+                    $this->error('Failed to upload backup to S3.');
+                }
+            }
+
             return Command::SUCCESS;
         } catch (\Exception $e) {
             $this->error("Failed to back up database: " . $e->getMessage());

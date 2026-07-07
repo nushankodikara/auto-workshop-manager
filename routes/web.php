@@ -156,6 +156,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
     Route::post('/settings/backup', [App\Http\Controllers\SettingsController::class, 'backup'])->name('settings.backup');
     Route::post('/settings/restore', [App\Http\Controllers\SettingsController::class, 'restore'])->name('settings.restore');
+    Route::get('/settings/backup/download/{filename}', [App\Http\Controllers\SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::post('/settings/backup/upload-restore', [App\Http\Controllers\SettingsController::class, 'uploadRestore'])->name('settings.backup.upload-restore');
     Route::post('/settings/logo', [App\Http\Controllers\SettingsController::class, 'uploadLogo'])->name('settings.logo');
     Route::delete('/settings/logo', [App\Http\Controllers\SettingsController::class, 'deleteLogo'])->name('settings.logo.delete');
     Route::post('/settings/update', [App\Http\Controllers\SettingsController::class, 'updateSettings'])->name('settings.update');

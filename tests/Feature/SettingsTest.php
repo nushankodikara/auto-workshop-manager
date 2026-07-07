@@ -127,4 +127,80 @@ class SettingsTest extends TestCase
         $response = $this->delete(route('settings.logo.delete'));
         $response->assertStatus(403);
     }
+
+    /**
+     * Test S3 settings update.
+     */
+    public function test_s3_settings_update()
+    {
+        $response = $this->actingAs($this->superManager)->post(route('settings.update'), [
+            'job_card_prefix' => 'TEST-',
+            'total_shares' => 50000,
+            's3_enabled' => '1',
+            's3_key' => 'AKIAIOSFODNN7EXAMPLE',
+            's3_secret' => 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+            's3_region' => 'us-west-2',
+            's3_bucket' => 'test-bucket',
+            's3_endpoint' => 'https://custom-s3-endpoint.com'
+        ]);
+
+        $response->assertRedirect();
+        
+        $this->assertEquals('TEST-', \App\Models\Setting::get('job_card_prefix'));
+        $this->assertEquals('50000', \App\Models\Setting::get('total_shares'));
+        $this->assertEquals('1', \App\Models\Setting::get('s3_enabled'));
+        $this->assertEquals('AKIAIOSFODNN7EXAMPLE', \App\Models\Setting::get('s3_key'));
+        $this->assertEquals('wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', \App\Models\Setting::get('s3_secret'));
+        $this->assertEquals('us-west-2', \App\Models\Setting::get('s3_region'));
+        $this->assertEquals('test-bucket', \App\Models\Setting::get('s3_bucket'));
+        $this->assertEquals('https://custom-s3-endpoint.com', \App\Models\Setting::get('s3_endpoint'));
+    }
+
+    /**
+     * Test downloading database backups and uploading to restore.
+     */
+    public function test_backup_download_and_upload_restore()
+    {
+        $this->actingAs($this->superManager);
+
+        // 1. Run manual backup to create a backup file
+        $response = $this->post(route('settings.backup'));
+        $response->assertRedirect();
+
+        $backupDir = env('BACKUP_DIR', base_path('backups'));
+        $files = File::glob($backupDir . '/backup_*.sqlite');
+        $this->assertNotEmpty($files);
+        
+        $latestBackup = basename($files[count($files) - 1]);
+
+        // 2. Download backup
+        $downloadResponse = $this->get(route('settings.backup.download', $latestBackup));
+        $downloadResponse->assertStatus(200);
+        $downloadResponse->assertHeader('Content-Disposition', 'attachment; filename=' . $latestBackup);
+
+        // 3. Copy active DB to a temporary file and upload it to test restore
+        $dbPath = config('database.connections.sqlite.database');
+        $tempUploadFile = tempnam(sys_get_temp_dir(), 'bkp') . '.sqlite';
+        File::copy($dbPath, $tempUploadFile);
+
+        $uploadedFile = new \Illuminate\Http\UploadedFile(
+            $tempUploadFile,
+            'test_upload_backup.sqlite',
+            'application/x-sqlite3',
+            null,
+            true
+        );
+
+        $uploadResponse = $this->post(route('settings.backup.upload-restore'), [
+            'backup_file' => $uploadedFile
+        ]);
+
+        $uploadResponse->assertRedirect();
+        $uploadResponse->assertSessionHas('success');
+
+        // Cleanup temp file
+        if (File::exists($tempUploadFile)) {
+            File::delete($tempUploadFile);
+        }
+    }
 }

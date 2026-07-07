@@ -81,6 +81,59 @@ class SettingsController extends Controller
     }
 
     /**
+     * Download database backup file.
+     */
+    public function downloadBackup($filename)
+    {
+        $this->checkAccess();
+
+        $backupDir = env('BACKUP_DIR', base_path('backups'));
+        $filePath = $backupDir . '/' . basename($filename);
+
+        if (!File::exists($filePath)) {
+            abort(404, 'Backup file not found.');
+        }
+
+        return response()->download($filePath);
+    }
+
+    /**
+     * Upload backup sqlite database and trigger restore.
+     */
+    public function uploadRestore(Request $request)
+    {
+        $this->checkAccess();
+
+        $request->validate([
+            'backup_file' => 'required|file|max:20480' // max 20MB
+        ]);
+
+        $file = $request->file('backup_file');
+        
+        $backupDir = env('BACKUP_DIR', base_path('backups'));
+        if (!File::exists($backupDir)) {
+            File::makeDirectory($backupDir, 0777, true, true);
+        }
+
+        $timestamp = date('Y-m-d_H-i-s');
+        $filename = "uploaded_backup_{$timestamp}.sqlite";
+        $filePath = $backupDir . '/' . $filename;
+        
+        $file->move($backupDir, $filename);
+
+        try {
+            Artisan::call('db:restore', [
+                'filename' => $filePath,
+                '--no-interaction' => true
+            ]);
+            
+            return back()->with('success', 'Backup file successfully uploaded and restored! Active database replaced.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['backup_file' => 'Restore failed: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Upload and save a cropped custom brand logo.
      */
     public function uploadLogo(Request $request)
@@ -145,12 +198,19 @@ class SettingsController extends Controller
         $data = $request->validate([
             'job_card_prefix' => 'required|string|max:50',
             'total_shares' => 'nullable|integer|min:1',
+            's3_key' => 'nullable|string|max:255',
+            's3_secret' => 'nullable|string|max:255',
+            's3_region' => 'nullable|string|max:50',
+            's3_bucket' => 'nullable|string|max:255',
+            's3_endpoint' => 'nullable|string|max:255',
         ]);
+
+        $data['s3_enabled'] = $request->has('s3_enabled') ? '1' : '0';
 
         foreach ($data as $key => $value) {
             \App\Models\Setting::updateOrCreate(
                 ['key' => $key],
-                ['value' => $value]
+                ['value' => $value ?? '']
             );
         }
 

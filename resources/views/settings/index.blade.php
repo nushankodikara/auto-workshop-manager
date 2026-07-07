@@ -141,9 +141,62 @@
                            class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                 </div>
             </div>
+
+            <div class="border-t border-slate-200 dark:border-slate-800/80 pt-4 mt-6">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-3">
+                    <i data-lucide="cloud" class="w-4 h-4 text-primary"></i>
+                    <span>S3 Cloud Backup Integration</span>
+                </h4>
+                
+                <div class="flex items-center gap-2 mb-4">
+                    <input type="checkbox" name="s3_enabled" id="s3_enabled" value="1"
+                           {{ \App\Models\Setting::get('s3_enabled', '0') === '1' ? 'checked' : '' }}
+                           class="rounded text-primary border-slate-350 focus:ring-primary w-4 h-4 cursor-pointer">
+                    <label for="s3_enabled" class="text-xs font-semibold text-slate-655 dark:text-slate-300 cursor-pointer">Enable Automatic Cloud Backups to S3 bucket</label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="s3-config-fields">
+                    <div>
+                        <label for="s3_key" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">AWS Access Key</label>
+                        <input type="text" name="s3_key" id="s3_key" 
+                               value="{{ \App\Models\Setting::get('s3_key', '') }}" 
+                               placeholder="AKIAIOSFODNN7EXAMPLE"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                    <div>
+                        <label for="s3_secret" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">AWS Secret Key</label>
+                        <input type="password" name="s3_secret" id="s3_secret" 
+                               value="{{ \App\Models\Setting::get('s3_secret', '') }}" 
+                               placeholder="••••••••••••••••••••••••••••••••"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                    <div>
+                        <label for="s3_bucket" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">S3 Bucket Name</label>
+                        <input type="text" name="s3_bucket" id="s3_bucket" 
+                               value="{{ \App\Models\Setting::get('s3_bucket', '') }}" 
+                               placeholder="my-workshop-backups"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                    <div>
+                        <label for="s3_region" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">AWS S3 Region</label>
+                        <input type="text" name="s3_region" id="s3_region" 
+                               value="{{ \App\Models\Setting::get('s3_region', 'us-east-1') }}" 
+                               placeholder="us-east-1"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="s3_endpoint" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Custom Endpoint URL (Optional, for Cloudflare R2 / MinIO)</label>
+                        <input type="text" name="s3_endpoint" id="s3_endpoint" 
+                               value="{{ \App\Models\Setting::get('s3_endpoint', '') }}" 
+                               placeholder="https://account-id.r2.cloudflarestorage.com"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <button type="submit" 
-                        class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+                        class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer border-0">
                     <i data-lucide="save" class="w-4 h-4"></i>
                     <span>Save Settings</span>
                 </button>
@@ -236,7 +289,7 @@
 
     <!-- Section 2: Backup Engine -->
     <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
-        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
             <div>
                 <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
                     <i data-lucide="database" class="w-4 h-4 text-primary"></i>
@@ -245,25 +298,37 @@
                 <p class="text-xs text-slate-500 mt-1">Manage SQLite database file archives. Automatic cron backups run every hour.</p>
             </div>
 
-            <!-- Trigger manual backup -->
-            <form action="{{ route('settings.backup') }}" method="POST">
-                @csrf
-                <button type="submit" 
-                        class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                    <span>Run Manual Backup</span>
-                </button>
-            </form>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <!-- Upload Backup form -->
+                <form action="{{ route('settings.backup.upload-restore') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
+                    @csrf
+                    <label for="backup_file" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs border border-slate-200 dark:border-slate-800">
+                        <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                        <span>Upload & Restore</span>
+                    </label>
+                    <input type="file" name="backup_file" id="backup_file" required accept=".sqlite" class="hidden" onchange="if(confirm('WARNING: Uploading this file will immediately restore it and completely overwrite the active database. Proceed?')) { this.form.submit(); }">
+                </form>
+
+                <!-- Trigger manual backup -->
+                <form action="{{ route('settings.backup') }}" method="POST">
+                    @csrf
+                    <button type="submit" 
+                            class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm border-0 cursor-pointer">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Run Manual Backup</span>
+                    </button>
+                </form>
+            </div>
         </div>
 
         <!-- Backups List -->
         <div class="space-y-4">
             @if(empty($backups))
-                <div class="text-slate-500 text-sm py-8 text-center bg-slate-50 dark:bg-slate-950/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                <div class="text-slate-500 text-sm py-8 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
                     No database backup files found inside the backups folder.
                 </div>
             @else
-                <div class="app-card rounded-xl overflow-hidden shadow-xs">
+                <div class="app-card rounded-xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-800">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
                             <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
@@ -280,16 +345,24 @@
                                     <td class="py-3 px-5 text-slate-500">{{ $bkp['size'] }}</td>
                                     <td class="py-3 px-5 text-slate-500 font-mono">{{ $bkp['time'] }}</td>
                                     <td class="py-3 px-5 text-right">
-                                        <!-- Restore form -->
-                                        <form action="{{ route('settings.restore') }}" method="POST" class="inline">
-                                            @csrf
-                                            <input type="hidden" name="filename" value="{{ $bkp['name'] }}">
-                                            <button type="submit" 
-                                                    onclick="return confirm('WARNING: Restoring will completely overwrite the active database. Proceed?')"
-                                                    class="px-2.5 py-1 bg-green-500/10 hover:bg-green-500/25 border border-green-500/20 text-green-600 dark:text-green-400 font-semibold rounded transition text-[10px]">
-                                                Restore Database
-                                            </button>
-                                        </form>
+                                        <div class="flex items-center justify-end gap-2">
+                                            <!-- Download Link -->
+                                            <a href="{{ route('settings.backup.download', $bkp['name']) }}"
+                                               class="px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/25 border border-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold rounded transition text-[10px]">
+                                                Download
+                                            </a>
+                                            
+                                            <!-- Restore form -->
+                                            <form action="{{ route('settings.restore') }}" method="POST" class="inline">
+                                                @csrf
+                                                <input type="hidden" name="filename" value="{{ $bkp['name'] }}">
+                                                <button type="submit" 
+                                                        onclick="return confirm('WARNING: Restoring will completely overwrite the active database. Proceed?')"
+                                                        class="px-2.5 py-1 bg-green-500/10 hover:bg-green-500/25 border border-green-500/20 text-green-600 dark:text-green-400 font-semibold rounded transition text-[10px] cursor-pointer">
+                                                    Restore Database
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
