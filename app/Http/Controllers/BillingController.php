@@ -246,6 +246,9 @@ class BillingController extends Controller
         $oldStatus = $bill->status;
         $bill->update($data);
 
+        // Sync to double entry bookkeeping system
+        \App\Services\DoubleEntryService::postBillTransaction($bill);
+
         if ($oldStatus === 'draft' && $bill->status === 'paid') {
             $jobCard = $bill->jobCard;
             $vehicle = $jobCard->vehicle;

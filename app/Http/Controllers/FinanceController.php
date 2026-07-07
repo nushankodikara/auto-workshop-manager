@@ -86,6 +86,9 @@ class FinanceController extends Controller
                 ->get();
         }
 
+        // Run ledger audit
+        $auditResults = $this->auditLedger();
+
         return view('finance.index', compact(
             'accounts',
             'assetsTotal',
@@ -97,7 +100,8 @@ class FinanceController extends Controller
             'journalEntries',
             'customerBalances',
             'investorTransactions',
-            'selectedAccountId'
+            'selectedAccountId',
+            'auditResults'
         ));
     }
 
@@ -369,5 +373,222 @@ class FinanceController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Audit ledger against operational records to find discrepancies.
+     */
+    private function auditLedger()
+    {
+        $this->checkAccess();
+
+        // 1. Check Bills
+        $missingBills = [];
+        $duplicateBills = [];
+        $bills = \App\Models\Bill::with(['jobCard.vehicle.client', 'items'])->get();
+        foreach ($bills as $bill) {
+            $entries = JournalEntry::where('reference', $bill->bill_number)->get();
+            $payEntries = JournalEntry::where('reference', $bill->bill_number . '-PAY')->get();
+            $cogsEntries = JournalEntry::where('reference', $bill->bill_number . '-COGS')->get();
+
+            // Total parts cost for COGS check
+            $partsCostTotal = 0.00;
+            foreach ($bill->items as $item) {
+                if ($item->type === 'part') {
+                    $partsCostTotal += floatval($item->cost_price) * floatval($item->quantity);
+                }
+            }
+
+            $hasInvoiceEntry = $entries->count() > 0;
+            $hasPayEntry = $payEntries->count() > 0;
+            $needsPayEntry = $bill->status === 'paid';
+            $hasCogsEntry = $cogsEntries->count() > 0;
+            $needsCogsEntry = $partsCostTotal > 0;
+
+            if (!$hasInvoiceEntry || ($needsPayEntry && !$hasPayEntry) || ($needsCogsEntry && !$hasCogsEntry)) {
+                $reasons = [];
+                if (!$hasInvoiceEntry) $reasons[] = 'Invoice entry missing';
+                if ($needsPayEntry && !$hasPayEntry) $reasons[] = 'Payment entry missing';
+                if ($needsCogsEntry && !$hasCogsEntry) $reasons[] = 'COGS entry missing';
+
+                $missingBills[] = [
+                    'id' => $bill->id,
+                    'bill_number' => $bill->bill_number,
+                    'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
+                    'date' => $bill->created_at->format('Y-m-d'),
+                    'total' => $bill->total_amount,
+                    'status' => $bill->status,
+                    'reasons' => $reasons
+                ];
+            }
+
+            if ($entries->count() > 1 || $payEntries->count() > 1 || $cogsEntries->count() > 1) {
+                $duplicateBills[] = [
+                    'id' => $bill->id,
+                    'bill_number' => $bill->bill_number,
+                    'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
+                    'count' => max($entries->count(), $payEntries->count(), $cogsEntries->count())
+                ];
+            }
+        }
+
+        // 2. Check Purchase Batches
+        $missingBatches = [];
+        $duplicateBatches = [];
+        $batches = \App\Models\PurchaseBatch::with('inventory')->get();
+        foreach ($batches as $batch) {
+            $ref = "BATCH-{$batch->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($entries->count() === 0) {
+                $missingBatches[] = [
+                    'id' => $batch->id,
+                    'batch_code' => $batch->batch_code,
+                    'part' => $batch->inventory->name ?? 'Unknown',
+                    'date' => $batch->purchased_at,
+                    'total' => $batch->quantity_received * $batch->cost_price
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicateBatches[] = [
+                    'id' => $batch->id,
+                    'batch_code' => $batch->batch_code,
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
+        // 3. Check Payroll Slips
+        $missingSlips = [];
+        $duplicateSlips = [];
+        $slips = \App\Models\PayrollSlip::with('user')->get();
+        foreach ($slips as $slip) {
+            $ref = "PAYROLL-{$slip->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($slip->status === 'paid' && $entries->count() === 0) {
+                $missingSlips[] = [
+                    'id' => $slip->id,
+                    'employee' => $slip->user->name ?? 'Unknown',
+                    'period' => "{$slip->year}-{$slip->month}",
+                    'total' => $slip->net_salary
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicateSlips[] = [
+                    'id' => $slip->id,
+                    'employee' => $slip->user->name ?? 'Unknown',
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
+        // 4. Check Orphaned Entries
+        $orphanedEntries = [];
+        $allEntries = JournalEntry::all();
+        foreach ($allEntries as $entry) {
+            $ref = $entry->reference;
+            $isOrphan = false;
+            $type = 'Other';
+
+            if (preg_match('/^INV-\d+$/', $ref)) {
+                $type = 'Invoice';
+                $exists = \App\Models\Bill::where('bill_number', $ref)->exists();
+                if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^INV-\d+-PAY$/', $ref)) {
+                $type = 'Invoice Payment';
+                $billNumber = str_replace('-PAY', '', $ref);
+                $exists = \App\Models\Bill::where('bill_number', $billNumber)->exists();
+                if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^INV-\d+-COGS$/', $ref)) {
+                $type = 'COGS';
+                $billNumber = str_replace('-COGS', '', $ref);
+                $exists = \App\Models\Bill::where('bill_number', $billNumber)->exists();
+                if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^BATCH-(\d+)$/', $ref, $matches)) {
+                $type = 'Purchase Batch';
+                $exists = \App\Models\PurchaseBatch::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^PAYROLL-(\d+)$/', $ref, $matches)) {
+                $type = 'Payroll Slip';
+                $exists = \App\Models\PayrollSlip::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
+            }
+
+            if ($isOrphan) {
+                $orphanedEntries[] = [
+                    'id' => $entry->id,
+                    'reference' => $ref,
+                    'description' => $entry->description,
+                    'date' => $entry->entry_date,
+                    'type' => $type
+                ];
+            }
+        }
+
+        return [
+            'missingBills' => $missingBills,
+            'duplicateBills' => $duplicateBills,
+            'missingBatches' => $missingBatches,
+            'duplicateBatches' => $duplicateBatches,
+            'missingSlips' => $missingSlips,
+            'duplicateSlips' => $duplicateSlips,
+            'orphanedEntries' => $orphanedEntries
+        ];
+    }
+
+    /**
+     * Reconcile all ledger discrepancies.
+     */
+    public function reconcile(Request $request)
+    {
+        $this->checkAccess();
+
+        DB::transaction(function () {
+            $audit = $this->auditLedger();
+
+            // 1. Re-sync missing/duplicate bills
+            $affectedBillIds = array_unique(array_merge(
+                array_column($audit['missingBills'], 'id'),
+                array_column($audit['duplicateBills'], 'id')
+            ));
+            foreach ($affectedBillIds as $billId) {
+                $bill = \App\Models\Bill::find($billId);
+                if ($bill) {
+                    \App\Services\DoubleEntryService::postBillTransaction($bill);
+                }
+            }
+
+            // 2. Re-sync missing/duplicate batches
+            $affectedBatchIds = array_unique(array_merge(
+                array_column($audit['missingBatches'], 'id'),
+                array_column($audit['duplicateBatches'], 'id')
+            ));
+            foreach ($affectedBatchIds as $batchId) {
+                JournalEntry::where('reference', "BATCH-{$batchId}")->delete();
+                $batch = \App\Models\PurchaseBatch::find($batchId);
+                if ($batch) {
+                    \App\Services\DoubleEntryService::postPurchaseBatchTransaction($batch);
+                }
+            }
+
+            // 3. Re-sync missing/duplicate slips
+            $affectedSlipIds = array_unique(array_merge(
+                array_column($audit['missingSlips'], 'id'),
+                array_column($audit['duplicateSlips'], 'id')
+            ));
+            foreach ($affectedSlipIds as $slipId) {
+                JournalEntry::where('reference', "PAYROLL-{$slipId}")->delete();
+                $slip = \App\Models\PayrollSlip::find($slipId);
+                if ($slip) {
+                    \App\Services\DoubleEntryService::postPayrollSlipTransaction($slip);
+                }
+            }
+
+            // 4. Delete orphaned entries
+            foreach ($audit['orphanedEntries'] as $orphan) {
+                JournalEntry::where('id', $orphan['id'])->delete();
+            }
+        });
+
+        return back()->with('success', 'Ledger reconciliation completed successfully! All missing entries posted, duplicates resolved, and orphaned records cleaned.');
     }
 }

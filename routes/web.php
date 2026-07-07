@@ -150,6 +150,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/finance/export/accounts', [FinanceController::class, 'exportAccountsCsv'])->name('finance.export.accounts');
     Route::get('/finance/export/ledger', [FinanceController::class, 'exportLedgerCsv'])->name('finance.export.ledger');
     Route::get('/finance/export/customers', [FinanceController::class, 'exportCustomerBooksCsv'])->name('finance.export.customers');
+    Route::post('/finance/reconcile', [FinanceController::class, 'reconcile'])->name('finance.reconcile');
 
     // System Settings & Database Backups (Super Manager Only)
     Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');

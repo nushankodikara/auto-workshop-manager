@@ -3,6 +3,15 @@
 @section('title', 'Double-Entry Bookkeeping & Ledger')
 
 @section('content')
+@php
+    $totalIssues = count($auditResults['missingBills']) +
+                  count($auditResults['duplicateBills']) +
+                  count($auditResults['missingBatches']) +
+                  count($auditResults['duplicateBatches']) +
+                  count($auditResults['missingSlips']) +
+                  count($auditResults['duplicateSlips']) +
+                  count($auditResults['orphanedEntries']);
+@endphp
 <div class="space-y-6">
     <!-- Top KPI metrics with Share Value calculation -->
     <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -82,6 +91,10 @@
             </button>
             <button onclick="switchTab('tab-exports')" id="btn-tab-exports" class="px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-355 transition">
                 Data Exports
+            </button>
+            <button onclick="switchTab('tab-audit')" id="btn-tab-audit" class="px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-355 transition flex items-center gap-1">
+                <i data-lucide="shield-alert" class="w-3.5 h-3.5 {{ $totalIssues > 0 ? 'text-amber-500 animate-pulse' : 'text-slate-450' }}"></i>
+                <span>Audit & Reconcile</span>
             </button>
         </div>
 
@@ -395,6 +408,227 @@
                 </a>
             </div>
         </div>
+    </div>
+
+    <!-- 6. TAB: Audit & Reconcile -->
+    <div id="tab-audit" class="tab-content hidden space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800/80 pb-4">
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Ledger Audit & Diagnostics</h3>
+                <p class="text-xs text-slate-500 mt-1">Scan and cross-reference double-entry ledger entries against actual operational database records to identify omissions, duplicates, or orphans.</p>
+            </div>
+            
+            <form action="{{ route('finance.reconcile') }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" 
+                        class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm cursor-pointer border-0">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                    <span>Fix & Reconstitute Ledger</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Summary Banner -->
+        <div class="p-4 rounded-xl border {{ $totalIssues > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400' }} flex items-start gap-3">
+            <i data-lucide="{{ $totalIssues > 0 ? 'alert-triangle' : 'check-circle' }}" class="w-5 h-5 shrink-0 mt-0.5"></i>
+            <div>
+                <h4 class="font-bold text-sm">Ledger Check Status</h4>
+                <p class="text-xs leading-normal mt-1 font-medium text-slate-700 dark:text-slate-300">
+                    @if($totalIssues > 0)
+                        Found {{ $totalIssues }} ledger discrepancies. Click the "Fix & Reconstitute Ledger" button to automatically rebuild missing transactions, clear out duplicates, and prune orphaned ledger accounts.
+                    @else
+                        All clear! Operational logs are perfectly aligned with the double-entry bookkeeping ledgers. No discrepancies detected.
+                    @endif
+                </p>
+            </div>
+        </div>
+
+        @if($totalIssues > 0)
+            <div class="space-y-6">
+                <!-- 1. Missing Bills -->
+                @if(count($auditResults['missingBills']) > 0)
+                    <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Missing / Un-posted Invoices ({{ count($auditResults['missingBills']) }})</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/50 dark:bg-slate-950/20 text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                                        <th class="py-3 px-6">Bill Number</th>
+                                        <th class="py-3 px-6">Client</th>
+                                        <th class="py-3 px-6">Date</th>
+                                        <th class="py-3 px-6">Status</th>
+                                        <th class="py-3 px-6">Total</th>
+                                        <th class="py-3 px-6">Identified Missing Records</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50">
+                                    @foreach($auditResults['missingBills'] as $bill)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">{{ $bill['bill_number'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-600 dark:text-slate-450">{{ $bill['client'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-500 font-mono">{{ $bill['date'] }}</td>
+                                            <td class="py-3.5 px-6">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {{ $bill['status'] === 'paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600' }}">
+                                                    {{ $bill['status'] }}
+                                                </span>
+                                            </td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($bill['total'], 2) }}</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">{{ implode(', ', $bill['reasons']) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- 2. Missing Batches -->
+                @if(count($auditResults['missingBatches']) > 0)
+                    <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Missing / Un-posted Stock Purchase Batches ({{ count($auditResults['missingBatches']) }})</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/50 dark:bg-slate-950/20 text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                                        <th class="py-3 px-6">Batch Code</th>
+                                        <th class="py-3 px-6">Part Name</th>
+                                        <th class="py-3 px-6">Date</th>
+                                        <th class="py-3 px-6">Batch Value</th>
+                                        <th class="py-3 px-6">Ledger Reference</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50">
+                                    @foreach($auditResults['missingBatches'] as $batch)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">{{ $batch['batch_code'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-600 dark:text-slate-450">{{ $batch['part'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-500 font-mono">{{ $batch['date'] }}</td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($batch['total'], 2) }}</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">BATCH-{{ $batch['id'] }} missing</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- 3. Missing Slips -->
+                @if(count($auditResults['missingSlips']) > 0)
+                    <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Missing / Un-posted Payroll Salary Slips ({{ count($auditResults['missingSlips']) }})</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/50 dark:bg-slate-950/20 text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                                        <th class="py-3 px-6">Employee</th>
+                                        <th class="py-3 px-6">Payroll Period</th>
+                                        <th class="py-3 px-6">Net Paid Salary</th>
+                                        <th class="py-3 px-6">Ledger Reference</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50">
+                                    @foreach($auditResults['missingSlips'] as $slip)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">{{ $slip['employee'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-650 font-mono">{{ $slip['period'] }}</td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($slip['total'], 2) }}</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">PAYROLL-{{ $slip['id'] }} missing</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- 4. Duplicate / Double Entries -->
+                @if(count($auditResults['duplicateBills']) > 0 || count($auditResults['duplicateBatches']) > 0 || count($auditResults['duplicateSlips']) > 0)
+                    <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-red-650 dark:text-red-500">Duplicate / Double Entry Ledger Transactions</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/50 dark:bg-slate-950/20 text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                                        <th class="py-3 px-6">Reference / Code</th>
+                                        <th class="py-3 px-6">Description / Entity</th>
+                                        <th class="py-3 px-6">Transaction Count</th>
+                                        <th class="py-3 px-6">Risk</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50">
+                                    @foreach($auditResults['duplicateBills'] as $dbill)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">{{ $dbill['bill_number'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-550">Client: {{ $dbill['client'] }}</td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-850 dark:text-slate-200">{{ $dbill['count'] }} entries found</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">Double counted revenue or receipts</td>
+                                        </tr>
+                                    @endforeach
+                                    @foreach($auditResults['duplicateBatches'] as $dbatch)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">BATCH-{{ $dbatch['id'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-550">Batch Code: {{ $dbatch['batch_code'] }}</td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-850 dark:text-slate-200">{{ $dbatch['count'] }} entries found</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">Double counted stock asset or payables</td>
+                                        </tr>
+                                    @endforeach
+                                    @foreach($auditResults['duplicateSlips'] as $dslip)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">PAYROLL-{{ $dslip['id'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-550">Employee: {{ $dslip['employee'] }}</td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-850 dark:text-slate-200">{{ $dslip['count'] }} entries found</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">Double counted wage expenses or payments</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- 5. Orphaned Entries -->
+                @if(count($auditResults['orphanedEntries']) > 0)
+                    <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-red-650 dark:text-red-500">Orphaned Ledger Entries ({{ count($auditResults['orphanedEntries']) }})</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/50 dark:bg-slate-950/20 text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                                        <th class="py-3 px-6">Reference</th>
+                                        <th class="py-3 px-6">Description</th>
+                                        <th class="py-3 px-6">Entry Date</th>
+                                        <th class="py-3 px-6">Type</th>
+                                        <th class="py-3 px-6">Audit Conclusion</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50">
+                                    @foreach($auditResults['orphanedEntries'] as $entry)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200 font-mono">{{ $entry['reference'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-600 dark:text-slate-450">{{ $entry['description'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-500 font-mono">{{ $entry['date'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-650 font-semibold">{{ $entry['type'] }}</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">Orphaned (underlying record was deleted)</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
     </div>
 </div>
 
@@ -911,16 +1145,22 @@
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         
         // Remove active state classes
-        const normalClass = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-350 transition";
-        document.getElementById('btn-tab-ledger').className = normalClass;
-        document.getElementById('btn-tab-accounts').className = normalClass;
-        document.getElementById('btn-tab-customers').className = normalClass;
-        document.getElementById('btn-tab-investors').className = normalClass;
-        document.getElementById('btn-tab-exports').className = normalClass;
+        document.querySelectorAll('[id^="btn-tab-"]').forEach(btn => {
+            btn.classList.remove('border-primary', 'text-primary');
+            btn.classList.add('border-transparent', 'text-slate-500', 'hover:text-slate-800', 'dark:hover:text-slate-350');
+        });
 
         // Show target and activate
-        document.getElementById(tabId).classList.remove('hidden');
-        document.getElementById('btn-' + tabId).className = "px-4 py-2 font-semibold text-sm border-b-2 border-primary text-primary transition";
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) {
+            targetTab.classList.remove('hidden');
+        }
+        
+        const activeBtn = document.getElementById('btn-' + tabId);
+        if (activeBtn) {
+            activeBtn.classList.remove('border-transparent', 'text-slate-500', 'hover:text-slate-800', 'dark:hover:text-slate-350');
+            activeBtn.classList.add('border-primary', 'text-primary');
+        }
 
         // Save active tab
         localStorage.setItem('accounting_active_tab', tabId);

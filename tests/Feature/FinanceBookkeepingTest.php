@@ -363,4 +363,71 @@ class FinanceBookkeepingTest extends TestCase
         $this->assertCount(1, $bankEntries->items());
         $this->assertEquals('TXN-BANK', $bankEntries->first()->reference);
     }
+
+    /**
+     * Test ledger audit diagnostics and single-button reconciliation.
+     */
+    public function test_ledger_audit_and_reconciliation()
+    {
+        // Setup shop, client, vehicle, jobCard
+        $shop = Shop::create(['name' => 'Main Shop', 'address' => 'Colombo', 'contact_number' => '0112345678']);
+        $client = Client::create(['name' => 'Jane Doe', 'phone' => '94771234567', 'email' => 'jane@test.com']);
+        $vehicle = Vehicle::create([
+            'client_id' => $client->id,
+            'make' => 'Toyota',
+            'model' => 'Aqua',
+            'year' => 2018,
+            'plate_number' => 'WP CAD-4321',
+            'mileage' => 12000
+        ]);
+        $jobCard = JobCard::create([
+            'shop_id' => $shop->id,
+            'vehicle_id' => $vehicle->id,
+            'card_number' => 'TDC-123456',
+            'status' => 'received-vehicle',
+            'estimated_cost' => 1000.00
+        ]);
+
+        // Create a bill manually without posting its transaction (to mock a missing bill entry)
+        $bill = \App\Models\Bill::create([
+            'job_card_id' => $jobCard->id,
+            'bill_number' => 'INV-999',
+            'discount_percent' => 0.00,
+            'tax' => 0.00,
+            'total_amount' => 5000.00,
+            'status' => 'paid'
+        ]);
+
+        // Add a bill item so transaction has volume
+        \App\Models\BillItem::create([
+            'bill_id' => $bill->id,
+            'type' => 'labor',
+            'description' => 'Engine Servicing',
+            'quantity' => 1,
+            'cost_price' => 2000.00,
+            'unit_price' => 5000.00,
+            'total_price' => 5000.00
+        ]);
+
+        // 1. Visit bookkeeping dashboard and verify audit shows INV-999 as missing
+        $response = $this->actingAs($this->superManager)->get(route('finance.index'));
+        $response->assertStatus(200);
+        
+        $audit = $response->viewData('auditResults');
+        $this->assertCount(1, $audit['missingBills']);
+        $this->assertEquals('INV-999', $audit['missingBills'][0]['bill_number']);
+
+        // 2. Perform reconciliation
+        $reconcileResponse = $this->actingAs($this->superManager)->post(route('finance.reconcile'));
+        $reconcileResponse->assertRedirect();
+        
+        // 3. Verify ledger transactions for INV-999 have been created
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'INV-999']);
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'INV-999-PAY']);
+
+        // 4. Visit dashboard again, verify audit has cleared the issue
+        $response2 = $this->actingAs($this->superManager)->get(route('finance.index'));
+        $audit2 = $response2->viewData('auditResults');
+        $this->assertCount(0, $audit2['missingBills']);
+    }
 }
