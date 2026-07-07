@@ -245,7 +245,7 @@ class JobCardController extends Controller
             
             $now = now();
             if ($newStatus === 'waiting-to-pickup') {
-                $jobCard->completed_at = $now;
+                $jobCard->completed_at = \Illuminate\Support\Carbon::instance($now);
                 
                 // End all active assignments
                 \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)
@@ -516,7 +516,7 @@ class JobCardController extends Controller
                 'job_card_id' => $jobCard->id,
                 'user_id' => Auth::id(),
                 'action' => 'service_added',
-                'details' => "Added service: '{$service->name}' for " . config('app.currency', '$') . number_format($service->price, 2)
+                'details' => "Added service: '{$service->name}' for " . config('app.currency', '$') . number_format((double)$service->price, 2)
             ]);
         });
 

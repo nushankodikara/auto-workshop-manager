@@ -115,7 +115,7 @@ class JobCard extends Model
         $start = $this->created_at;
         $end = $this->completed_at ?: now();
         return $start->diffForHumans($end, [
-            'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE,
+            'syntax' => \Carbon\Constants\DiffOptions::DIFF_ABSOLUTE,
             'parts' => 2,
         ]);
     }
