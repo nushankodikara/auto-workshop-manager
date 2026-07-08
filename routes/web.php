@@ -175,5 +175,5 @@ Route::middleware('auth')->group(function () {
 });
 
 // Public API Route (Exempt from auth & CSRF)
-Route::match(['get', 'post'], '/api/tickets/status', [App\Http\Controllers\ApiController::class, 'getTicketStatus'])->name('api.tickets.status');
+Route::match(['get', 'post', 'options'], '/api/tickets/status', [App\Http\Controllers\ApiController::class, 'getTicketStatus'])->name('api.tickets.status');
 
