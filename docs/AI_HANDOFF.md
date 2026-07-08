@@ -93,6 +93,17 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - **Database Backup Download, Upload & Restore UI**: Enhanced the database backup console within the Settings module. Admins can now download any sqlite database backup file directly from the list in the UI, and upload any SQLite backup file which immediately triggers restoration and database overwrites.
 - **S3 Cloud Backup Integration**: Added direct cloud uploads using a lightweight standalone S3 client featuring AWS Signature Version 4 signing (requiring no composer dependencies). Settings for bucket, key, secret, region, and custom endpoints (to support compatible S3 like MinIO or R2) can be configured directly inside the main Settings form, enabling automatic mirroring of all local backups onto cloud storage.
 
+## Tracker Integration & Bi-directional Sync
+
+We have established a secure, key-verified bi-directional synchronization mechanism between the **TDC ERP/Management System (Laravel)** and the **TDC Tracker PWA (Netlify Serverless)**:
+- **Shared Secret Key:** The token `TRACKER_API_KEY` in `.env` is used to authenticate inter-application requests.
+- **Client Synchronization (`POST /api/tracker/new-client`):** Invoked by the Tracker when a customer verifies their mobile number and finishes their profile setup. 
+  * Laravel checks if a client with a phone number suffix (last 9 digits) matches the verified phone.
+  * If found, Laravel links the `tracker_user_id` and registers/updates the client's email address.
+  * If not found, Laravel automatically registers a new client profile under that phone number, email, and name.
+  * In both cases, Laravel immediately triggers a POST request back to the Tracker's `/api/sync/ingest-clients` API to propagate the client ID and sync/link all pre-existing vehicles in the ERP database.
+- **Odometer Push (`POST /api/tracker/update-odometer`):** Invoked by the Tracker when a user logs a new fuel refuel, expense, or maintenance log. If the logged odometer reading exceeds the known mileage in the ERP database, Laravel updates the vehicle's mileage to match.
+
 ## Known Issues, Status & Workarounds
 
 ### 1. FitSMS Phone Number Normalization
