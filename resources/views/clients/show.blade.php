@@ -57,9 +57,18 @@
                     </div>
 
                     <div class="md:col-span-2 flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg text-xs transition shadow-sm">
-                            Save Changes
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg text-xs transition shadow-sm">
+                                Save Changes
+                            </button>
+
+                            <button type="button"
+                                    onclick="document.getElementById('sync-client-form').submit();"
+                                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-lg text-xs transition border border-slate-300 dark:border-slate-800 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                <span>Sync with Tracker</span>
+                            </button>
+                        </div>
                         
                         <!-- Delete customer profile link -->
                         <button type="button" 
@@ -68,6 +77,10 @@
                             Delete Profile
                         </button>
                     </div>
+                </form>
+
+                <form id="sync-client-form" action="{{ route('clients.sync', $client->id) }}" method="POST" class="hidden">
+                    @csrf
                 </form>
 
                 <form id="delete-client-form" action="{{ route('clients.destroy', $client->id) }}" method="POST" class="hidden">

@@ -33,9 +33,6 @@ class ClientVehicleController extends Controller
         return view('clients.show', compact('client'));
     }
 
-    /**
-     * Store a new client.
-     */
     public function clientStore(Request $request)
     {
         $data = $request->validate([
@@ -46,6 +43,9 @@ class ClientVehicleController extends Controller
         ]);
 
         $client = Client::create($data);
+
+        // Automatically sync to Tracker
+        \App\Http\Controllers\TrackerSyncController::pushClientToTracker($client);
 
         return redirect()->route('clients.show', $client)->with('success', 'Client profile created successfully.');
     }
@@ -63,6 +63,9 @@ class ClientVehicleController extends Controller
         ]);
 
         $client->update($data);
+
+        // Automatically sync to Tracker
+        \App\Http\Controllers\TrackerSyncController::pushClientToTracker($client);
 
         return back()->with('success', 'Client profile updated successfully.');
     }
@@ -103,7 +106,12 @@ class ClientVehicleController extends Controller
             'mileage' => 'nullable|integer|min:0',
         ]);
 
-        Vehicle::create($data);
+        $veh = Vehicle::create($data);
+
+        // Automatically sync to Tracker
+        if ($veh->client) {
+            \App\Http\Controllers\TrackerSyncController::pushClientToTracker($veh->client);
+        }
 
         return back()->with('success', 'Vehicle registered successfully.');
     }
@@ -123,6 +131,11 @@ class ClientVehicleController extends Controller
         ]);
 
         $vehicle->update($data);
+
+        // Automatically sync to Tracker
+        if ($vehicle->client) {
+            \App\Http\Controllers\TrackerSyncController::pushClientToTracker($vehicle->client);
+        }
 
         return back()->with('success', 'Vehicle details updated successfully.');
     }
@@ -160,5 +173,30 @@ class ClientVehicleController extends Controller
     {
         $vehicle->delete();
         return back()->with('success', 'Vehicle record deleted.');
+    }
+
+    /**
+     * Sync a single client to the Tracker.
+     */
+    public function clientSync(Client $client)
+    {
+        \App\Http\Controllers\TrackerSyncController::pushClientToTracker($client);
+
+        return back()->with('success', 'Client profile and vehicles synced to TDC Tracker successfully.');
+    }
+
+    /**
+     * Sync all clients to the Tracker.
+     */
+    public function clientsSyncAll()
+    {
+        $clients = Client::all();
+        $count = 0;
+        foreach ($clients as $client) {
+            \App\Http\Controllers\TrackerSyncController::pushClientToTracker($client);
+            $count++;
+        }
+
+        return back()->with('success', "Successfully synced {$count} client profiles and vehicles to TDC Tracker.");
     }
 }

@@ -95,7 +95,7 @@ class TrackerSyncController extends Controller
         }
 
         // Push client + vehicle list back to Tracker for immediate synchronization
-        $this->pushClientToTracker($client);
+        self::pushClientToTracker($client);
 
         return response()->json([
             'success' => true,
@@ -154,7 +154,7 @@ class TrackerSyncController extends Controller
     /**
      * Push client and vehicle array to the Tracker API.
      */
-    private function pushClientToTracker(Client $client)
+    public static function pushClientToTracker(Client $client)
     {
         $trackerUrl = config('services.tracker.management_url') ?: 'https://tdc-tracker.netlify.app';
         $apiKey = config('services.tracker.api_key');

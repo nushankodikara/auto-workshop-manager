@@ -84,6 +84,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/clients', [ClientVehicleController::class, 'clientStore'])->name('clients.store');
     Route::put('/clients/{client}', [ClientVehicleController::class, 'clientUpdate'])->name('clients.update');
     Route::delete('/clients/{client}', [ClientVehicleController::class, 'clientDestroy'])->name('clients.destroy');
+    Route::post('/clients/sync-all', [ClientVehicleController::class, 'clientsSyncAll'])->name('clients.sync-all');
+    Route::post('/clients/{client}/sync', [ClientVehicleController::class, 'clientSync'])->name('clients.sync');
     Route::get('/vehicles', [ClientVehicleController::class, 'vehiclesIndex'])->name('vehicles.index');
     Route::get('/vehicles/{vehicle}/history', [ClientVehicleController::class, 'vehicleHistory'])->name('vehicles.history');
     Route::post('/vehicles', [ClientVehicleController::class, 'vehicleStore'])->name('vehicles.store');

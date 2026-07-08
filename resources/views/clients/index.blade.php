@@ -22,11 +22,22 @@
             @endif
         </form>
 
-        <button onclick="document.getElementById('create-client-drawer').classList.remove('hidden')"
-                class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm shadow-primary/20">
-            <i data-lucide="user-plus" class="w-4 h-4"></i>
-            <span>Register Client Profile</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <form action="{{ route('clients.sync-all') }}" method="POST" onsubmit="return confirm('Sync all clients and vehicles to TDC Tracker?')">
+                @csrf
+                <button type="submit"
+                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm border border-slate-300 dark:border-slate-700">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Sync All with Tracker</span>
+                </button>
+            </form>
+
+            <button onclick="document.getElementById('create-client-drawer').classList.remove('hidden')"
+                    class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm shadow-primary/20">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>Register Client Profile</span>
+            </button>
+        </div>
     </div>
 
     <!-- Clients List Table -->
