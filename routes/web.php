@@ -184,3 +184,8 @@ Route::middleware('auth')->group(function () {
 // Public API Route (Exempt from auth & CSRF)
 Route::match(['get', 'post', 'options'], '/api/tickets/status', [App\Http\Controllers\ApiController::class, 'getTicketStatus'])->name('api.tickets.status');
 
+// Tracker Sync API Routes (Exempt from auth & CSRF, verified with shared key)
+Route::match(['post', 'options'], '/api/tracker/new-client', [App\Http\Controllers\TrackerSyncController::class, 'newClient']);
+Route::match(['post', 'options'], '/api/tracker/update-odometer', [App\Http\Controllers\TrackerSyncController::class, 'updateOdometer']);
+
+

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'tracker' => [
+        'api_key' => env('TRACKER_API_KEY'),
+        'management_url' => env('TRACKER_MANAGEMENT_URL', 'https://tdc-tracker.netlify.app'),
+    ],
+
+
 ];
