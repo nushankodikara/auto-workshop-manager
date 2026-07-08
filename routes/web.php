@@ -105,6 +105,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/job-cards/{jobCard}/billing/invoice', [BillingController::class, 'show'])->name('billing.show');
     Route::patch('/billing/{bill}/status', [BillingController::class, 'updateStatus'])->name('billing.update-status');
 
+    // Quotations CRUD
+    Route::get('/quotations', [App\Http\Controllers\QuotationController::class, 'index'])->name('quotations.index');
+    Route::get('/quotations/create', [App\Http\Controllers\QuotationController::class, 'create'])->name('quotations.create');
+    Route::post('/quotations', [App\Http\Controllers\QuotationController::class, 'store'])->name('quotations.store');
+    Route::get('/quotations/{quotation}', [App\Http\Controllers\QuotationController::class, 'show'])->name('quotations.show');
+    Route::delete('/quotations/{quotation}', [App\Http\Controllers\QuotationController::class, 'destroy'])->name('quotations.destroy');
+
     // Payroll Salary Slips
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
     Route::get('/payroll/create/{user}', [PayrollController::class, 'createWorkspace'])->name('payroll.create');

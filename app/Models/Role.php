@@ -33,6 +33,7 @@ class Role extends Model
         'outsourcing' => 'Outsourcing Partners',
         'predefined-services' => 'Predefined Services',
         'broadcast' => 'Outreach Broadcasts',
+        'quotations' => 'Quotation Workspace',
         'settings' => 'System Settings & Backups'
     ];
 }

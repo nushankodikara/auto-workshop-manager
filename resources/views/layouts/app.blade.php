@@ -72,6 +72,13 @@
                     </a>
                 @endif
 
+                @if(auth()->user()->hasModuleAccess('quotations'))
+                    <a href="{{ route('quotations.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('quotations.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span>Quotation Workspace</span>
+                    </a>
+                @endif
+
                 @if(auth()->user()->hasModuleAccess('clients'))
                     <a href="{{ route('clients.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('clients.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="users" class="w-4 h-4"></i>
