@@ -80,6 +80,9 @@ Route::middleware('auth')->group(function () {
 
     // Clients & Vehicles CRUD
     Route::get('/clients', [ClientVehicleController::class, 'clientsIndex'])->name('clients.index');
+    // Duplicate-detection routes MUST come before the {client} wildcard
+    Route::get('/clients/duplicates', [ClientVehicleController::class, 'clientsDuplicates'])->name('clients.duplicates');
+    Route::post('/clients/merge', [ClientVehicleController::class, 'clientsMerge'])->name('clients.merge');
     Route::get('/clients/{client}', [ClientVehicleController::class, 'clientShow'])->name('clients.show');
     Route::post('/clients', [ClientVehicleController::class, 'clientStore'])->name('clients.store');
     Route::put('/clients/{client}', [ClientVehicleController::class, 'clientUpdate'])->name('clients.update');

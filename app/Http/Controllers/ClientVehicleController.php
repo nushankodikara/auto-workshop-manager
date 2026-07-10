@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Client;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ClientVehicleController extends Controller
 {
@@ -198,5 +199,59 @@ class ClientVehicleController extends Controller
         }
 
         return back()->with('success', "Successfully synced {$count} client profiles and vehicles to TDC Tracker.");
+    }
+
+    /**
+     * Show all duplicate client groups (same phone number, multiple records).
+     */
+    public function clientsDuplicates()
+    {
+        // Find phone numbers that appear more than once
+        $duplicatePhones = Client::select('phone')
+            ->groupBy('phone')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('phone');
+
+        // Load all clients in those groups with vehicle and job card counts
+        $groups = $duplicatePhones->map(function ($phone) {
+            return Client::where('phone', $phone)
+                ->withCount(['vehicles', 'jobCards'])
+                ->oldest()
+                ->get();
+        });
+
+        $totalDuplicates = $groups->sum(fn($g) => $g->count() - 1);
+
+        return view('clients.duplicates', compact('groups', 'totalDuplicates'));
+    }
+
+    /**
+     * Merge duplicate client records into one primary record.
+     * Reassigns all vehicles, then hard-deletes the duplicates.
+     */
+    public function clientsMerge(Request $request)
+    {
+        $request->validate([
+            'primary_id'      => 'required|exists:clients,id',
+            'duplicate_ids'   => 'required|array|min:1',
+            'duplicate_ids.*' => 'exists:clients,id|different:primary_id',
+        ]);
+
+        $primaryId    = $request->input('primary_id');
+        $duplicateIds = $request->input('duplicate_ids');
+
+        DB::transaction(function () use ($primaryId, $duplicateIds) {
+            // Re-assign all vehicles from duplicates to the primary client
+            Vehicle::whereIn('client_id', $duplicateIds)
+                ->update(['client_id' => $primaryId]);
+
+            // Hard-delete the duplicate shells
+            Client::whereIn('id', $duplicateIds)->delete();
+        });
+
+        $mergedCount = count($duplicateIds);
+
+        return redirect()->route('clients.duplicates')
+            ->with('success', "Merged {$mergedCount} duplicate record(s) successfully. All vehicles have been reassigned to the primary client.");
     }
 }
