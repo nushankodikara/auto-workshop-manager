@@ -188,16 +188,17 @@ class JobCardController extends Controller
         }
 
         $data = $request->validate([
-            'notes' => 'nullable|string',
+            'notes'        => 'nullable|string',
             'estimated_cost' => 'nullable|numeric|min:0',
-            'mileage' => 'nullable|integer|min:0',
+            'mileage'      => 'nullable|integer|min:0',
+            'created_at'   => 'nullable|date_format:Y-m-d\TH:i',
         ]);
 
-        DB::transaction(function () use ($jobCard, $data) {
+        DB::transaction(function () use ($jobCard, $data, $request) {
             $jobCard->update([
-                'notes' => $data['notes'] ?? null,
+                'notes'          => $data['notes'] ?? null,
                 'estimated_cost' => $data['estimated_cost'] ?? $jobCard->estimated_cost ?? 0.00,
-                'mileage' => $data['mileage'] ?? null
+                'mileage'        => $data['mileage'] ?? null,
             ]);
 
             // Check and update vehicle mileage if higher
@@ -208,13 +209,31 @@ class JobCardController extends Controller
                 }
             }
 
-            // Log activity
-            Activity::create([
-                'job_card_id' => $jobCard->id,
-                'user_id' => Auth::id(),
-                'action' => 'job_card_updated',
-                'details' => 'Job Card details updated: mileage, notes, or cost'
-            ]);
+            // Super-admin: correct the ticket created_at timestamp
+            if (!empty($data['created_at']) && Auth::user()->isSuperManager()) {
+                $oldTime = $jobCard->created_at->format('Y-m-d H:i');
+                $newTime = \Carbon\Carbon::parse($data['created_at'])->format('Y-m-d H:i:s');
+
+                // Use raw query to bypass Eloquent's automatic timestamp touch
+                DB::table('job_cards')
+                    ->where('id', $jobCard->id)
+                    ->update(['created_at' => $newTime]);
+
+                Activity::create([
+                    'job_card_id' => $jobCard->id,
+                    'user_id'     => Auth::id(),
+                    'action'      => 'ticket_time_corrected',
+                    'details'     => "Ticket start time corrected from {$oldTime} to " . \Carbon\Carbon::parse($newTime)->format('Y-m-d H:i') . " by super admin.",
+                ]);
+            } else {
+                // Log regular update activity
+                Activity::create([
+                    'job_card_id' => $jobCard->id,
+                    'user_id'     => Auth::id(),
+                    'action'      => 'job_card_updated',
+                    'details'     => 'Job Card details updated: mileage, notes, or cost',
+                ]);
+            }
         });
 
         return back()->with('success', 'Job Card updated successfully.');

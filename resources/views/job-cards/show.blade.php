@@ -472,6 +472,24 @@
                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">{{ $jobCard->notes }}</textarea>
                         </div>
 
+                        {{-- Ticket Created At (Super Admin correction only) --}}
+                        @if(auth()->user()->isSuperManager())
+                        <div class="pt-4 border-t border-amber-500/20">
+                            <label for="edit_created_at" class="block text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                                <i data-lucide="clock" class="w-3 h-3 inline-block mr-1"></i>
+                                Ticket Created At <span class="text-[9px] font-normal normal-case text-slate-400">(Super Admin correction only)</span>
+                            </label>
+                            <input type="datetime-local"
+                                   name="created_at"
+                                   id="edit_created_at"
+                                   value="{{ $jobCard->created_at->format('Y-m-d\TH:i') }}"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-amber-400 text-sm border-amber-400/40">
+                            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                                Corrects the ticket start time for billing and duration calculations. This change is logged.
+                            </p>
+                        </div>
+                        @endif
+
                         <!-- Buttons -->
                         <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
                             <button type="submit"
