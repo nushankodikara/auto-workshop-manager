@@ -10,6 +10,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\AppointmentController;
 use Illuminate\Http\Request;
 
 // Guest Routes
@@ -77,6 +78,15 @@ Route::middleware('auth')->group(function () {
     Route::delete('/job-cards/services/{service}', [JobCardController::class, 'deleteService'])->name('job-cards.delete-service');
     Route::patch('/job-cards/allocated-parts/{stockMovement}', [JobCardController::class, 'updateAllocatedPart'])->name('job-cards.update-allocated-part');
     Route::delete('/job-cards/allocated-parts/{stockMovement}', [JobCardController::class, 'deallocateParts'])->name('job-cards.deallocate-parts');
+
+    // Appointments
+    // Static sub-routes MUST precede the {appointment} wildcard
+    Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
+    Route::post('/appointments/notify-morning', [AppointmentController::class, 'sendMorningNotifications'])->name('appointments.notify-morning');
+    Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+    Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
+    Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
+    Route::post('/appointments/{appointment}/convert', [AppointmentController::class, 'convertToJobCard'])->name('appointments.convert');
 
     // Clients & Vehicles CRUD
     Route::get('/clients', [ClientVehicleController::class, 'clientsIndex'])->name('clients.index');

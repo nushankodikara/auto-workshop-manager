@@ -26,7 +26,7 @@ return new class extends Migration
             [
                 'name' => 'super-manager',
                 'label' => 'Super Administrator',
-                'allowed_modules' => json_encode(['dashboard', 'job-cards', 'clients', 'inventory', 'payroll', 'statistics', 'finance', 'insights', 'outsourcing', 'predefined-services', 'broadcast', 'settings']),
+                'allowed_modules' => json_encode(['dashboard', 'job-cards', 'appointments', 'clients', 'inventory', 'payroll', 'statistics', 'finance', 'insights', 'outsourcing', 'predefined-services', 'broadcast', 'quotations', 'settings']),
                 'is_custom' => false,
                 'created_at' => now(),
                 'updated_at' => now()
@@ -34,7 +34,7 @@ return new class extends Migration
             [
                 'name' => 'manager',
                 'label' => 'Workshop Manager',
-                'allowed_modules' => json_encode(['dashboard', 'job-cards', 'clients', 'inventory', 'billing']),
+                'allowed_modules' => json_encode(['dashboard', 'job-cards', 'appointments', 'clients', 'inventory', 'billing']),
                 'is_custom' => false,
                 'created_at' => now(),
                 'updated_at' => now()
