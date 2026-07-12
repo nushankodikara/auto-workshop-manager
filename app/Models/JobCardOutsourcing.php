@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable(['job_card_id', 'outsourcing_company_id', 'description', 'cost_price', 'selling_price'])]
 class JobCardOutsourcing extends Model
 {
+    protected $table = 'job_card_outsourcing';
+
     protected function casts(): array
     {
         return [
