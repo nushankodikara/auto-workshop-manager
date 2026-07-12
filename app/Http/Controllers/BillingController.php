@@ -23,7 +23,8 @@ class BillingController extends Controller
      */
     public function showWorkspace(JobCard $jobCard)
     {
-        $jobCard->load(['vehicle.client', 'bill.items', 'stockMovements.inventory', 'services']);
+        $jobCard->load(['vehicle.client', 'bill.items', 'stockMovements.inventory', 'services',
+                        'outsourcingItems.outsourcingCompany', 'miscParts']);
 
         if ($jobCard->bill && !auth()->user()->isSuperManager()) {
             return redirect()->route('billing.show', $jobCard->id);
@@ -149,7 +150,27 @@ class BillingController extends Controller
                 }
             }
 
-            // 3. Add Outsourcing Items
+            // 3. Add Outsourcing Items from job card records
+            // Job card outsourcing lines are the source of truth; billing workspace shows them pre-filled.
+            // We pull directly from job_card_outsourcing so costs are always reflected correctly.
+            $jobCardOutsourcingItems = \App\Models\JobCardOutsourcing::where('job_card_id', $jobCard->id)->get();
+            foreach ($jobCardOutsourcingItems as $osi) {
+                $price = floatval($osi->selling_price);
+                BillItem::create([
+                    'bill_id'                => $bill->id,
+                    'inventory_id'           => null,
+                    'outsourcing_company_id' => $osi->outsourcing_company_id,
+                    'type'                   => 'outsourcing',
+                    'description'            => $osi->description,
+                    'quantity'               => 1.00,
+                    'cost_price'             => floatval($osi->cost_price),
+                    'unit_price'             => $price,
+                    'total_price'            => $price,
+                ]);
+                $totalAmount += $price;
+            }
+
+            // Also include any additional outsourcing lines entered manually at billing time
             if (!empty($data['outsourcing_desc'])) {
                 foreach ($data['outsourcing_desc'] as $key => $desc) {
                     if (empty($desc)) continue;
@@ -159,19 +180,38 @@ class BillingController extends Controller
                     $price = $data['outsourcing_price'][$key] ?? 0.00;
 
                     BillItem::create([
-                        'bill_id' => $bill->id,
-                        'inventory_id' => null,
+                        'bill_id'                => $bill->id,
+                        'inventory_id'           => null,
                         'outsourcing_company_id' => $companyId,
-                        'type' => 'outsourcing',
-                        'description' => $desc,
-                        'quantity' => 1.00,
-                        'cost_price' => $cost,
-                        'unit_price' => $price,
-                        'total_price' => $price
+                        'type'                   => 'outsourcing',
+                        'description'            => $desc,
+                        'quantity'               => 1.00,
+                        'cost_price'             => $cost,
+                        'unit_price'             => $price,
+                        'total_price'            => $price,
                     ]);
-
                     $totalAmount += $price;
                 }
+            }
+
+            // 4. Add Misc Parts from job card records
+            // Misc parts are billed as 'part' type so their cost_price flows into COGS (5000)
+            // and selling_price flows into Parts Revenue (4105) in the double-entry books.
+            $miscParts = \App\Models\JobCardMiscPart::where('job_card_id', $jobCard->id)->get();
+            foreach ($miscParts as $mp) {
+                $price = floatval($mp->selling_price);
+                BillItem::create([
+                    'bill_id'                => $bill->id,
+                    'inventory_id'           => null,
+                    'outsourcing_company_id' => null,
+                    'type'                   => 'part',  // 'part' ensures COGS is posted in DoubleEntryService
+                    'description'            => $mp->name . ' (Misc / Dealer Direct)',
+                    'quantity'               => 1.00,
+                    'cost_price'             => floatval($mp->cost_price),
+                    'unit_price'             => $price,
+                    'total_price'            => $price,
+                ]);
+                $totalAmount += $price;
             }
 
             // 4. Apply Discount Percentage

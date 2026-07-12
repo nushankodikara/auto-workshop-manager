@@ -85,6 +85,16 @@ class JobCard extends Model
         return $this->hasMany(JobCardService::class);
     }
 
+    public function outsourcingItems()
+    {
+        return $this->hasMany(JobCardOutsourcing::class);
+    }
+
+    public function miscParts()
+    {
+        return $this->hasMany(JobCardMiscPart::class);
+    }
+
     public function assignments()
     {
         return $this->hasMany(JobCardAssignment::class);
@@ -148,6 +158,14 @@ class JobCard extends Model
         }
 
         $sum = $servicesSum + $partsSum;
+
+        // Outsourcing (specialist services recorded on job card)
+        $outsourcingSum = (double)$this->outsourcingItems()->sum('selling_price');
+
+        // Misc parts (dealer-direct parts recorded on job card)
+        $miscPartsSum = (double)$this->miscParts()->sum('selling_price');
+
+        $sum = $servicesSum + $partsSum + $outsourcingSum + $miscPartsSum;
 
         if ($sum == 0 && $this->estimated_cost > 0) {
             return (double)$this->estimated_cost;

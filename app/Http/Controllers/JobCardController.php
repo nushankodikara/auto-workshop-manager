@@ -100,7 +100,9 @@ class JobCardController extends Controller
             'activities.user',
             'stockMovements.inventory',
             'bill.items',
-            'services'
+            'services',
+            'outsourcingItems.outsourcingCompany',
+            'miscParts',
         ]);
 
         $allWorkers = User::where('role', 'worker')->where('is_archived', false)->get();
@@ -110,7 +112,9 @@ class JobCardController extends Controller
             }])
             ->get();
 
-        return view('job-cards.show', compact('jobCard', 'allWorkers', 'inventoryItems'));
+        $outsourcingCompanies = \App\Models\OutsourcingCompany::orderBy('name')->get();
+
+        return view('job-cards.show', compact('jobCard', 'allWorkers', 'inventoryItems', 'outsourcingCompanies'));
     }
 
     /**
@@ -662,5 +666,122 @@ class JobCardController extends Controller
         });
 
         return back()->with('success', 'Allocated parts successfully removed and returned to stock.');
+    }
+
+    // ── Outsourcing (Specialist Services) on Job Card ─────────────
+
+    /**
+     * Add an outsourced/specialist service line to a Job Card.
+     */
+    public function addOutsourcing(Request $request, JobCard $jobCard)
+    {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can add outsourcing lines.']);
+        }
+
+        $data = $request->validate([
+            'outsourcing_company_id' => 'nullable|exists:outsourcing_companies,id',
+            'description'            => 'required|string|max:255',
+            'cost_price'             => 'required|numeric|min:0',
+            'selling_price'          => 'required|numeric|min:0',
+        ]);
+
+        $item = \App\Models\JobCardOutsourcing::create([
+            'job_card_id'            => $jobCard->id,
+            'outsourcing_company_id' => $data['outsourcing_company_id'] ?? null,
+            'description'            => $data['description'],
+            'cost_price'             => $data['cost_price'],
+            'selling_price'          => $data['selling_price'],
+        ]);
+
+        Activity::create([
+            'job_card_id' => $jobCard->id,
+            'user_id'     => Auth::id(),
+            'action'      => 'outsourcing_added',
+            'details'     => "Outsourcing added: {$item->description} — Selling: " . config('app.currency', 'Rs.') . number_format($item->selling_price, 2),
+        ]);
+
+        return back()->with('success', "Outsourcing line '{$item->description}' added.");
+    }
+
+    /**
+     * Delete an outsourcing line from a Job Card.
+     */
+    public function deleteOutsourcing(\App\Models\JobCardOutsourcing $outsourcingItem)
+    {
+        $jobCard = $outsourcingItem->jobCard;
+
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can remove outsourcing lines.']);
+        }
+
+        Activity::create([
+            'job_card_id' => $jobCard->id,
+            'user_id'     => Auth::id(),
+            'action'      => 'outsourcing_removed',
+            'details'     => "Outsourcing removed: {$outsourcingItem->description}",
+        ]);
+
+        $outsourcingItem->delete();
+
+        return back()->with('success', 'Outsourcing line removed.');
+    }
+
+    // ── Misc Parts (Dealer-Direct) on Job Card ────────────────────
+
+    /**
+     * Add a misc (dealer-direct) part line to a Job Card.
+     * Cost and selling prices are recorded for bookkeeping via billing.
+     */
+    public function addMiscPart(Request $request, JobCard $jobCard)
+    {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can add misc parts.']);
+        }
+
+        $data = $request->validate([
+            'name'          => 'required|string|max:255',
+            'cost_price'    => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+        ]);
+
+        $part = \App\Models\JobCardMiscPart::create([
+            'job_card_id'   => $jobCard->id,
+            'name'          => $data['name'],
+            'cost_price'    => $data['cost_price'],
+            'selling_price' => $data['selling_price'],
+        ]);
+
+        Activity::create([
+            'job_card_id' => $jobCard->id,
+            'user_id'     => Auth::id(),
+            'action'      => 'misc_part_added',
+            'details'     => "Misc part added: {$part->name} — Cost: " . config('app.currency', 'Rs.') . number_format($part->cost_price, 2) . ", Selling: " . config('app.currency', 'Rs.') . number_format($part->selling_price, 2),
+        ]);
+
+        return back()->with('success', "Misc part '{$part->name}' added.");
+    }
+
+    /**
+     * Delete a misc part from a Job Card.
+     */
+    public function deleteMiscPart(\App\Models\JobCardMiscPart $miscPart)
+    {
+        $jobCard = $miscPart->jobCard;
+
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can remove misc parts.']);
+        }
+
+        Activity::create([
+            'job_card_id' => $jobCard->id,
+            'user_id'     => Auth::id(),
+            'action'      => 'misc_part_removed',
+            'details'     => "Misc part removed: {$miscPart->name}",
+        ]);
+
+        $miscPart->delete();
+
+        return back()->with('success', 'Misc part removed.');
     }
 }

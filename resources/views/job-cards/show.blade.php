@@ -278,6 +278,178 @@
                 @endif
             </div>
 
+            {{-- ── 3. Outsourced / Specialist Services ──────────────── --}}
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
+                    <i data-lucide="handshake" class="w-4 h-4 text-primary"></i>
+                    <span>Outsourced / Specialist Services</span>
+                </h3>
+
+                <div class="space-y-3">
+                    @forelse($jobCard->outsourcingItems as $osi)
+                        <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
+                            <div>
+                                <span class="font-semibold text-slate-850 dark:text-slate-200">{{ $osi->description }}</span>
+                                @if($osi->outsourcingCompany)
+                                    <span class="text-xs text-slate-500 block mt-0.5">
+                                        <i data-lucide="building-2" class="w-3 h-3 inline-block"></i>
+                                        {{ $osi->outsourcingCompany->name }}
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($osi->selling_price, 2) }}</span>
+                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">Cost: {{ config('app.currency', 'Rs.') }}{{ number_format($osi->cost_price, 2) }}</span>
+                                </div>
+                                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                                    <form action="{{ route('job-cards.delete-outsourcing', $osi->id) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('Remove this outsourcing line?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Remove">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                            No outsourced services recorded yet.
+                        </div>
+                    @endforelse
+                </div>
+
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    @if($jobCard->bill && auth()->user()->isSuperManager())
+                        <div class="text-xs text-amber-600 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 flex items-center gap-1.5 font-semibold">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span>This ticket is billed. Adding outsourcing will require updating the invoice.</span>
+                        </div>
+                    @endif
+                    <form action="{{ route('job-cards.add-outsourcing', $jobCard->id) }}" method="POST"
+                          class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        @csrf
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Partner (Optional)</label>
+                            <select name="outsourcing_company_id"
+                                    class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
+                                <option value="">— None —</option>
+                                @foreach($outsourcingCompanies as $co)
+                                    <option value="{{ $co->id }}">{{ $co->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Description</label>
+                            <input type="text" name="description" required placeholder="e.g., Lathe Engine Block Sleeving"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Cost ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="cost_price" required placeholder="0.00" min="0"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-mono">
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Selling ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="selling_price" required placeholder="0.00" min="0"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-mono">
+                        </div>
+                        <div class="md:col-span-5 flex justify-end">
+                            <button type="submit"
+                                    class="py-2 px-4 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-primary dark:text-slate-200 font-bold rounded-lg text-xs transition flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Add Outsourcing</span>
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <div class="text-xs text-slate-500 bg-slate-50 dark:bg-slate-955/35 p-3 rounded-lg border border-slate-200 dark:border-slate-800 mt-2 flex items-center gap-1.5">
+                        <i data-lucide="lock" class="w-3.5 h-3.5 text-primary shrink-0"></i>
+                        <span>Outsourcing is locked because an invoice has already been generated.</span>
+                    </div>
+                @endif
+            </div>
+
+            {{-- ── 4. Misc Parts (Dealer Direct) ─────────────────────── --}}
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
+                    <i data-lucide="shopping-bag" class="w-4 h-4 text-primary"></i>
+                    <span>Misc Parts <span class="text-[9px] font-normal normal-case text-slate-400 ml-1">Dealer-direct, not in inventory</span></span>
+                </h3>
+
+                <div class="space-y-3">
+                    @forelse($jobCard->miscParts as $mp)
+                        <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
+                            <div>
+                                <span class="font-semibold text-slate-850 dark:text-slate-200">{{ $mp->name }}</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($mp->selling_price, 2) }}</span>
+                                    <span class="text-xs text-slate-500 font-mono block mt-0.5">Cost: {{ config('app.currency', 'Rs.') }}{{ number_format($mp->cost_price, 2) }}</span>
+                                </div>
+                                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                                    <form action="{{ route('job-cards.delete-misc-part', $mp->id) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('Remove this misc part?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Remove">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                            No misc parts recorded yet.
+                        </div>
+                    @endforelse
+                </div>
+
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    @if($jobCard->bill && auth()->user()->isSuperManager())
+                        <div class="text-xs text-amber-600 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 flex items-center gap-1.5 font-semibold">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span>This ticket is billed. Adding misc parts will require updating the invoice.</span>
+                        </div>
+                    @endif
+                    <form action="{{ route('job-cards.add-misc-part', $jobCard->id) }}" method="POST"
+                          class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-4 gap-4">
+                        @csrf
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Part Name</label>
+                            <input type="text" name="name" required placeholder="e.g., Timing Belt (Honda Dealer)"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Cost ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="cost_price" required placeholder="0.00" min="0"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-mono">
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Selling ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="selling_price" required placeholder="0.00" min="0"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-mono">
+                        </div>
+                        <div class="md:col-span-4 flex justify-end">
+                            <button type="submit"
+                                    class="py-2 px-4 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-primary dark:text-slate-200 font-bold rounded-lg text-xs transition flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Add Misc Part</span>
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <div class="text-xs text-slate-500 bg-slate-50 dark:bg-slate-955/35 p-3 rounded-lg border border-slate-200 dark:border-slate-800 mt-2 flex items-center gap-1.5">
+                        <i data-lucide="lock" class="w-3.5 h-3.5 text-primary shrink-0"></i>
+                        <span>Misc parts are locked because an invoice has already been generated.</span>
+                    </div>
+                @endif
+            </div>
+
             <!-- 3. Discussion Feed (Comments) -->
             <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">

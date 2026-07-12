@@ -78,6 +78,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/job-cards/services/{service}', [JobCardController::class, 'deleteService'])->name('job-cards.delete-service');
     Route::patch('/job-cards/allocated-parts/{stockMovement}', [JobCardController::class, 'updateAllocatedPart'])->name('job-cards.update-allocated-part');
     Route::delete('/job-cards/allocated-parts/{stockMovement}', [JobCardController::class, 'deallocateParts'])->name('job-cards.deallocate-parts');
+    // Outsourcing (specialist services) on job card
+    Route::delete('/job-cards/outsourcing/{outsourcingItem}', [JobCardController::class, 'deleteOutsourcing'])->name('job-cards.delete-outsourcing');
+    // Misc parts (dealer-direct) on job card
+    Route::delete('/job-cards/misc-parts/{miscPart}', [JobCardController::class, 'deleteMiscPart'])->name('job-cards.delete-misc-part');
+    // These POST routes use {jobCard} so must come AFTER the static delete routes above
+    Route::post('/job-cards/{jobCard}/outsourcing', [JobCardController::class, 'addOutsourcing'])->name('job-cards.add-outsourcing');
+    Route::post('/job-cards/{jobCard}/misc-parts', [JobCardController::class, 'addMiscPart'])->name('job-cards.add-misc-part');
 
     // Appointments
     // Static sub-routes MUST precede the {appointment} wildcard
