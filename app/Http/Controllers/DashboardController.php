@@ -404,6 +404,30 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('date');
 
+        // 7. Daily Jobs (Job Cards)
+        $dailyJobs = \App\Models\JobCard::select(
+            DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+            DB::raw("COUNT(*) as count")
+        )
+        ->groupBy('date')
+        ->get()
+        ->pluck('count', 'date');
+
+        // Grouped General Expenditures Details
+        $expendituresByAccount = \App\Models\JournalItem::join('accounts', 'journal_items.account_id', '=', 'accounts.id')
+            ->join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+            ->where('accounts.type', 'expense')
+            ->where('accounts.code', '!=', '5000') // Exclude COGS
+            ->when($startDate, function($q) use ($startDate) {
+                return $q->whereDate('journal_entries.entry_date', '>=', $startDate);
+            })
+            ->when($endDate, function($q) use ($endDate) {
+                return $q->whereDate('journal_entries.entry_date', '<=', $endDate);
+            })
+            ->select('accounts.name', 'accounts.code', DB::raw('SUM(journal_items.debit) as total'))
+            ->groupBy('accounts.id', 'accounts.name', 'accounts.code')
+            ->get();
+
         // Collect all unique dates from all daily logs
         $allDates = collect()
             ->merge($dailyIncome->keys())
@@ -412,6 +436,7 @@ class DashboardController extends Controller
             ->merge($dailyLaborRev->keys())
             ->merge(array_keys($dailyLaborCOGS))
             ->merge($dailyOutsourcing->keys())
+            ->merge($dailyJobs->keys())
             ->unique()
             ->sort()
             ->values();
@@ -427,10 +452,11 @@ class DashboardController extends Controller
 
         // Build unified daily timeline
         $dailyTimeline = $allDates->map(function ($date) use (
-            $dailyIncome, $dailyExpenditure, $dailyParts, $dailyLaborRev, $dailyLaborCOGS, $dailyOutsourcing
+            $dailyIncome, $dailyExpenditure, $dailyParts, $dailyLaborRev, $dailyLaborCOGS, $dailyOutsourcing, $dailyJobs
         ) {
             $inc = (double)($dailyIncome->get($date) ?? 0.00);
             $exp = (double)($dailyExpenditure->get($date) ?? 0.00);
+            $jobsCount = (int)($dailyJobs->get($date) ?? 0);
             
             $partRev = 0.00;
             $partCogs = 0.00;
@@ -453,6 +479,7 @@ class DashboardController extends Controller
                 'date' => $date,
                 'income' => $inc,
                 'expenditure' => $exp,
+                'jobs' => $jobsCount,
                 'parts_revenue' => $partRev,
                 'parts_cogs' => $partCogs,
                 'labor_revenue' => $labRev,
@@ -470,7 +497,7 @@ class DashboardController extends Controller
             'laborRevenue', 'laborCOGS', 'laborProfit', 'laborMargin',
             'outsourcingRevenue', 'outsourcingCOGS', 'outsourcingProfit', 'outsourcingMargin',
             'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin',
-            'dailyTimeline'
+            'dailyTimeline', 'expendituresByAccount'
         ));
     }
 }
