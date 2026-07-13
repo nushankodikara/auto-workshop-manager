@@ -340,8 +340,10 @@
                                     {{ $emp->role }}
                                 </span>
                             </td>
-                                <span class="text-xs">Basic:</span> {{ config('app.currency', 'Rs.') }}{{ number_format($emp->basic_salary, 2) }}
-                                <span class="block text-[10px] text-slate-450 font-normal mt-0.5">Total: {{ config('app.currency', 'Rs.') }}{{ number_format($emp->total_salary, 2) }}</span>
+                            <td class="py-4 px-6 font-mono font-bold text-slate-700 dark:text-slate-300">
+                                <span class="text-xs font-sans font-normal">Basic:</span> {{ config('app.currency', 'Rs.') }}{{ number_format($emp->basic_salary, 2) }}
+                                <span class="block text-[10px] text-slate-450 font-sans font-normal mt-0.5">Total: {{ config('app.currency', 'Rs.') }}{{ number_format($emp->total_salary, 2) }}</span>
+                            </td>
                             <td class="py-4 px-6 font-mono text-slate-550 dark:text-slate-450">{{ $emp->required_days }} days</td>
                             <td class="py-4 px-6 font-mono text-slate-550 dark:text-slate-450">
                                 {{ config('app.currency', '$') }}{{ number_format($emp->overtime_rate, 2) }}/hr
