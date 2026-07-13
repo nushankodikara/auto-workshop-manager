@@ -70,3 +70,36 @@
     background-color: var(--color-slate-950);
     border: 1px solid var(--color-slate-800);
 }
+
+/* Printable views print styling adjustments */
+@media print {
+    /* Remove card borders, shadows, backgrounds, and padding issues */
+    .app-card {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
+    /* Remove helper block borders (e.g. summaries, attendance logs, dividers, outer wrappers) */
+    div,
+    span,
+    section,
+    tr,
+    td,
+    th {
+        border: none !important;
+        box-shadow: none !important;
+        background-color: transparent !important;
+    }
+    
+    /* Keep a clean, elegant single line under the table header */
+    thead th {
+        border-bottom: 1.5px solid #000000 !important;
+    }
+    
+    /* Ensure text stands out in black */
+    body, h2, h3, h4, span, div, p, td, th {
+        color: #000000 !important;
+    }
+}
