@@ -23,16 +23,35 @@
                     @method('PATCH')
                     <input type="hidden" name="status" value="paid">
                     <button type="submit" 
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer">
                         <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
                         <span>Mark as Paid</span>
                     </button>
                 </form>
             @endif
 
+            <!-- Edit Button -->
+            <a href="{{ route('payroll.edit', $payrollSlip->id) }}"
+               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                <span>Edit Payslip</span>
+            </a>
+
+            <!-- Discard Button -->
+            <form action="{{ route('payroll.destroy', $payrollSlip->id) }}" method="POST" class="inline"
+                  onsubmit="return confirm('Are you sure you want to discard this payslip? This will permanently delete the slip and reverse its ledger entry.')">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span>Discard</span>
+                </button>
+            </form>
+
             <!-- Print Button -->
             <button onclick="window.print()" 
-                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                 <i data-lucide="printer" class="w-3.5 h-3.5"></i>
                 <span>Print Payslip</span>
             </button>
@@ -62,7 +81,7 @@
         </div>
 
         <!-- Employee Info -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs border-b border-slate-200 dark:border-slate-800 pb-5 print:border-black/10">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs border-b border-slate-200 dark:border-slate-800 pb-5 print:border-black/10">
             <div>
                 <span class="text-slate-500 print:text-black/40 font-semibold uppercase tracking-wider block mb-1">Employee</span>
                 <span class="font-bold text-slate-800 dark:text-slate-200 block capitalize print:text-black text-sm">{{ $payrollSlip->user->name }}</span>
@@ -76,8 +95,12 @@
                 <span class="font-semibold text-slate-650 dark:text-slate-350 block capitalize print:text-black">{{ $payrollSlip->user->role }}</span>
             </div>
             <div>
-                <span class="text-slate-500 print:text-black/40 font-semibold uppercase tracking-wider block mb-1">Base Salary</span>
-                <span class="font-bold text-slate-850 dark:text-slate-200 font-mono block print:text-black text-sm">{{ config('app.currency', '$') }}{{ number_format($payrollSlip->basic_salary, 2) }}</span>
+                <span class="text-slate-500 print:text-black/40 font-semibold uppercase tracking-wider block mb-1">Contract Basic</span>
+                <span class="font-bold text-slate-850 dark:text-slate-200 font-mono block print:text-black text-sm">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->basic_salary, 2) }}</span>
+            </div>
+            <div>
+                <span class="text-slate-500 print:text-black/40 font-semibold uppercase tracking-wider block mb-1">Contract Total</span>
+                <span class="font-bold text-slate-850 dark:text-slate-200 font-mono block print:text-black text-sm">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->total_salary, 2) }}</span>
             </div>
         </div>
 
@@ -170,29 +193,33 @@
         <div class="flex justify-end pt-6 border-t border-slate-200 dark:border-slate-800 print:border-black/10">
             <div class="w-full md:w-80 space-y-2 text-xs">
                 <div class="flex justify-between text-slate-550 dark:text-slate-450">
-                    <span>Base Basic (Contractual):</span>
-                    <span class="font-mono">{{ config('app.currency', '$') }}{{ number_format($payrollSlip->basic_salary, 2) }}</span>
+                    <span>Basic (Contractual):</span>
+                    <span class="font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->basic_salary, 2) }}</span>
                 </div>
                 <div class="flex justify-between text-slate-550 dark:text-slate-450">
-                    <span>Prorated Salary:</span>
-                    <span class="font-mono">{{ config('app.currency', '$') }}{{ number_format($payrollSlip->prorated_salary, 2) }}</span>
+                    <span>Total (Contractual):</span>
+                    <span class="font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->total_salary, 2) }}</span>
+                </div>
+                <div class="flex justify-between text-slate-550 dark:text-slate-450">
+                    <span>Prorated Basic Salary:</span>
+                    <span class="font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->prorated_salary, 2) }}</span>
                 </div>
                 <div class="flex justify-between text-slate-550 dark:text-slate-450">
                     <span>Overtime Amount:</span>
-                    <span class="font-mono text-green-600 dark:text-green-400">+{{ config('app.currency', '$') }}{{ number_format($payrollSlip->overtime_amount, 2) }}</span>
+                    <span class="font-mono text-green-600 dark:text-green-400">+{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->overtime_amount, 2) }}</span>
                 </div>
                 <div class="flex justify-between text-slate-550 dark:text-slate-450">
                     <span>Total Allowances:</span>
-                    <span class="font-mono text-green-600 dark:text-green-400">+{{ config('app.currency', '$') }}{{ number_format($payrollSlip->allowance, 2) }}</span>
+                    <span class="font-mono text-green-600 dark:text-green-400">+{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->allowance, 2) }}</span>
                 </div>
                 <div class="flex justify-between text-slate-550 dark:text-slate-450">
                     <span>Total Deductions:</span>
-                    <span class="font-mono text-red-655 dark:text-red-400">-{{ config('app.currency', '$') }}{{ number_format($payrollSlip->deductions, 2) }}</span>
+                    <span class="font-mono text-red-655 dark:text-red-400">-{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->deductions, 2) }}</span>
                 </div>
                 <div class="flex justify-between text-sm font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-slate-800 dark:text-slate-100 print:text-black print:border-black/10">
                     <span>Net Disbursed Amount:</span>
                     <div class="font-mono text-base text-primary inline-flex items-center gap-0.5">
-                        <span>{{ config('app.currency', '$') }}</span>
+                        <span>{{ config('app.currency', 'Rs.') }}</span>
                         <span>{{ number_format($payrollSlip->net_salary, 2) }}</span>
                     </div>
                 </div>

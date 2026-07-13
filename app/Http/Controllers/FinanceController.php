@@ -462,10 +462,10 @@ class FinanceController extends Controller
         $duplicateSlips = [];
         $slips = \App\Models\PayrollSlip::with('user')->get();
         foreach ($slips as $slip) {
-            $ref = "PAYROLL-{$slip->id}";
+            $ref = "SLIP-{$slip->id}";
             $entries = JournalEntry::where('reference', $ref)->get();
 
-            if ($slip->status === 'paid' && $entries->count() === 0) {
+            if ($entries->count() === 0) {
                 $missingSlips[] = [
                     'id' => $slip->id,
                     'employee' => $slip->user->name ?? 'Unknown',
@@ -507,7 +507,7 @@ class FinanceController extends Controller
                 $type = 'Purchase Batch';
                 $exists = \App\Models\PurchaseBatch::where('id', $matches[1])->exists();
                 if (!$exists) $isOrphan = true;
-            } elseif (preg_match('/^PAYROLL-(\d+)$/', $ref, $matches)) {
+            } elseif (preg_match('/^SLIP-(\d+)$/', $ref, $matches)) {
                 $type = 'Payroll Slip';
                 $exists = \App\Models\PayrollSlip::where('id', $matches[1])->exists();
                 if (!$exists) $isOrphan = true;
@@ -576,7 +576,7 @@ class FinanceController extends Controller
                 array_column($audit['duplicateSlips'], 'id')
             ));
             foreach ($affectedSlipIds as $slipId) {
-                JournalEntry::where('reference', "PAYROLL-{$slipId}")->delete();
+                JournalEntry::where('reference', "SLIP-{$slipId}")->delete();
                 $slip = \App\Models\PayrollSlip::find($slipId);
                 if ($slip) {
                     \App\Services\DoubleEntryService::postPayrollSlipTransaction($slip);

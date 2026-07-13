@@ -139,6 +139,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/payroll/create/{user}', [PayrollController::class, 'createWorkspace'])->name('payroll.create');
     Route::post('/payroll', [PayrollController::class, 'store'])->name('payroll.store');
     Route::get('/payroll/{payrollSlip}', [PayrollController::class, 'show'])->name('payroll.show');
+    Route::get('/payroll/{payrollSlip}/edit', [PayrollController::class, 'edit'])->name('payroll.edit');
+    Route::put('/payroll/{payrollSlip}', [PayrollController::class, 'update'])->name('payroll.update');
+    Route::delete('/payroll/{payrollSlip}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
     Route::patch('/payroll/{payrollSlip}/status', [PayrollController::class, 'updateStatus'])->name('payroll.update-status');
 
     // Attendance Tracker

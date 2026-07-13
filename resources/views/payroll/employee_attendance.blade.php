@@ -31,13 +31,14 @@
             <input type="hidden" name="year" value="{{ $year }}">
             <input type="hidden" name="month" value="{{ $month }}">
 
-            <div class="max-h-[500px] overflow-y-auto pr-2 border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-200 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
+            <div class="max-h-[500px] overflow-y-auto pr-2 border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-200 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-955/20">
                 @for($d = 1; $d <= $daysInMonth; $d++)
                     @php
                         $dayOfWeek = date('l', mktime(0, 0, 0, $month, $d, $year));
                         $record = $records->get($d);
                         $currentStatus = $record ? $record->status : 'n/a';
-                        $currentOt = $record ? $record->overtime_hours : 0.00;
+                        $currentIn = $record ? $record->in_time : '08:30';
+                        $currentOut = $record ? $record->out_time : '18:00';
                     @endphp
                     <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-100/40 dark:hover:bg-slate-900/30 transition">
                         <div class="flex items-center gap-3">
@@ -47,27 +48,40 @@
                             <div>
                                 <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">{{ $dayOfWeek }}</span>
                                 <span class="block text-[9px] text-slate-450">{{ sprintf('%04d-%02d-%02d', $year, $month, $d) }}</span>
+                                @if($record && $record->overtime_hours > 0)
+                                    <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 font-semibold font-mono text-[9px]">
+                                        OT: {{ $record->overtime_hours }} hrs
+                                    </span>
+                                @endif
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
                             <!-- Status Dropdown -->
                             <div>
-                                <select name="status[{{ $d }}]"
+                                <select name="status[{{ $d }}]" onchange="toggleTimeInputs(this, '{{ $d }}')"
                                         class="px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
-                                    <option value="present" {{ $currentStatus === 'present' ? 'selected' : '' }}>Present</option>
-                                    <option value="half_day" {{ $currentStatus === 'half_day' ? 'selected' : '' }}>Half Day</option>
+                                    <option value="present" {{ ($currentStatus === 'present' || $currentStatus === 'half_day') ? 'selected' : '' }}>Clock In/Out</option>
                                     <option value="absent" {{ $currentStatus === 'absent' ? 'selected' : '' }}>Absent</option>
                                     <option value="leave" {{ $currentStatus === 'leave' ? 'selected' : '' }}>Leave</option>
-                                    <option value="n/a" {{ $currentStatus === 'n/a' ? 'selected' : '' }}>N/A (Remove/Not Logged)</option>
+                                    <option value="n/a" {{ $currentStatus === 'n/a' ? 'selected' : '' }}>N/A</option>
                                 </select>
                             </div>
 
-                            <!-- Overtime Input -->
-                            <div class="flex items-center gap-1">
-                                <label class="text-[10px] text-slate-450">OT Hours:</label>
-                                <input type="number" step="0.5" name="overtime[{{ $d }}]" value="{{ $currentOt > 0 ? $currentOt : '' }}" placeholder="0" min="0" max="24"
-                                       class="w-16 px-2 py-1.5 text-center app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary text-xs">
+                            <!-- Time inputs -->
+                            <div id="time-inputs-{{ $d }}" class="flex items-center gap-2 {{ ($currentStatus !== 'present' && $currentStatus !== 'half_day') ? 'opacity-40 pointer-events-none' : '' }}">
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[10px] text-slate-500">In:</span>
+                                    <input type="time" name="in_time[{{ $d }}]" value="{{ $currentIn ?? '08:30' }}" 
+                                           {{ ($currentStatus !== 'present' && $currentStatus !== 'half_day') ? 'disabled' : '' }}
+                                           class="px-2 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs font-mono focus:outline-none focus:border-primary">
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-[10px] text-slate-500">Out:</span>
+                                    <input type="time" name="out_time[{{ $d }}]" value="{{ $currentOut ?? '18:00' }}" 
+                                           {{ ($currentStatus !== 'present' && $currentStatus !== 'half_day') ? 'disabled' : '' }}
+                                           class="px-2 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs font-mono focus:outline-none focus:border-primary">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -90,4 +104,17 @@
     </div>
 
 </div>
+
+<script>
+    function toggleTimeInputs(selectElement, day) {
+        const container = document.getElementById(`time-inputs-${day}`);
+        if (selectElement.value === 'present') {
+            container.classList.remove('opacity-40', 'pointer-events-none');
+            container.querySelectorAll('input').forEach(i => i.removeAttribute('disabled'));
+        } else {
+            container.classList.add('opacity-40', 'pointer-events-none');
+            container.querySelectorAll('input').forEach(i => i.setAttribute('disabled', 'true'));
+        }
+    }
+</script>
 @endsection

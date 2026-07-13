@@ -226,23 +226,29 @@ class DoubleEntryService
                 $oldEntry->delete();
             }
 
-            if ($payrollSlip->status !== 'paid') {
-                return;
-            }
-
             $salariesExpenseAcc = Account::where('code', '5100')->first();
-            $cashAccount = Account::where('code', '1000')->first();
-
-            if (!$salariesExpenseAcc || !$cashAccount) {
+            if (!$salariesExpenseAcc) {
                 return;
             }
 
-            $basic = floatval($payrollSlip->basic_salary);
+            // If paid: Credit Cash Drawer (1000). If draft: Credit Accounts Payable (2000).
+            if ($payrollSlip->status === 'paid') {
+                $creditAccount = Account::where('code', '1000')->first();
+            } else {
+                $creditAccount = Account::where('code', '2000')->first();
+            }
+
+            if (!$creditAccount) {
+                return;
+            }
+
+            $proratedSalary = floatval($payrollSlip->prorated_salary);
+            $overtimeAmount = floatval($payrollSlip->overtime_amount);
             $allowance = floatval($payrollSlip->allowance);
             $deductions = floatval($payrollSlip->deductions);
             $netSalary = floatval($payrollSlip->net_salary);
             
-            $grossSalary = $basic + $allowance;
+            $grossSalary = $proratedSalary + $overtimeAmount + $allowance;
             if ($grossSalary <= 0) {
                 return;
             }
@@ -250,7 +256,7 @@ class DoubleEntryService
             $entry = JournalEntry::create([
                 'entry_date' => date('Y-m-d'),
                 'reference' => 'SLIP-' . $payrollSlip->id,
-                'description' => "Salary payout for " . ($payrollSlip->user->name ?? 'Employee') . " (Month: {$payrollSlip->month}/{$payrollSlip->year})"
+                'description' => "Salary slip generated for " . ($payrollSlip->user->name ?? 'Employee') . " (Month: {$payrollSlip->month}/{$payrollSlip->year}, Status: " . strtoupper($payrollSlip->status) . ")"
             ]);
 
             // Debit Salaries Expense (5100)
@@ -260,9 +266,9 @@ class DoubleEntryService
                 'credit' => 0.00
             ]);
 
-            // Credit Cash Drawer (1000)
+            // Credit Cash Drawer (1000) or Accounts Payable (2000)
             $entry->items()->create([
-                'account_id' => $cashAccount->id,
+                'account_id' => $creditAccount->id,
                 'debit' => 0.00,
                 'credit' => $netSalary
             ]);
@@ -270,7 +276,15 @@ class DoubleEntryService
             // Credit Accounts Payable (2000) for deductions
             if ($deductions > 0) {
                 $apAccount = Account::where('code', '2000')->first();
-                if ($apAccount) {
+                if ($apAccount && $apAccount->id !== $creditAccount->id) {
+                    $entry->items()->create([
+                        'account_id' => $apAccount->id,
+                        'debit' => 0.00,
+                        'credit' => $deductions
+                    ]);
+                } elseif ($apAccount && $apAccount->id === $creditAccount->id) {
+                    // If both net salary and deductions credit to Accounts Payable (2000), merge them or add separate line.
+                    // Separate line is cleaner for audit trail
                     $entry->items()->create([
                         'account_id' => $apAccount->id,
                         'debit' => 0.00,

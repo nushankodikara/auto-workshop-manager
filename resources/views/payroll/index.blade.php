@@ -48,8 +48,8 @@
         <!-- Left: Salary Slips Table -->
         <div class="lg:col-span-2 space-y-4">
             <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Generated Payslips</h3>
-            <div class="app-card rounded-2xl overflow-hidden shadow-xs">
-                <table class="w-full text-left border-collapse text-sm">
+            <div class="app-card rounded-2xl overflow-x-auto shadow-xs">
+                <table class="w-full text-left border-collapse text-sm min-w-[700px]">
                     <thead>
                         <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                             <th class="py-4 px-6">Employee</th>
@@ -119,7 +119,7 @@
                         <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs capitalize">
                             <div>
                                 <span class="font-bold text-slate-800 dark:text-slate-200 block">{{ $user->name }}</span>
-                                <span class="text-[10px] text-slate-500 mt-0.5">Role: {{ $user->role }} • Base: {{ config('app.currency', '$') }}{{ number_format($user->basic_salary, 2) }}</span>
+                                <span class="text-[10px] text-slate-500 mt-0.5">Role: {{ $user->role }} • Basic: {{ config('app.currency', 'Rs.') }}{{ number_format($user->basic_salary, 2) }} • Total: {{ config('app.currency', 'Rs.') }}{{ number_format($user->total_salary, 2) }}</span>
                             </div>
                             <div>
                                 <a href="{{ route('payroll.create', ['user' => $user->id, 'year' => $year, 'month' => $month]) }}"
@@ -169,40 +169,29 @@
                                         {{ $user->name }}
                                         <span class="block text-[10px] text-slate-500 font-normal">Role: {{ $user->role }}</span>
                                     </div>
-                                    <div class="flex items-center gap-4">
-                                        <!-- Radio options -->
-                                        <div class="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-955 p-1.5 rounded-lg border border-slate-200 dark:border-slate-850">
-                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
-                                                <input type="radio" name="attendance[{{ $user->id }}]" value="present" checked
-                                                       class="text-primary focus:ring-primary h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
-                                                <span class="text-slate-700 dark:text-slate-350">Present</span>
-                                            </label>
-                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
-                                                <input type="radio" name="attendance[{{ $user->id }}]" value="half_day"
-                                                       class="text-amber-500 focus:ring-amber-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
-                                                <span class="text-slate-700 dark:text-slate-350">Half Day</span>
-                                            </label>
-                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
-                                                <input type="radio" name="attendance[{{ $user->id }}]" value="absent"
-                                                       class="text-red-500 focus:ring-red-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
-                                                <span class="text-slate-700 dark:text-slate-350">Absent</span>
-                                            </label>
-                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
-                                                <input type="radio" name="attendance[{{ $user->id }}]" value="leave"
-                                                       class="text-blue-500 focus:ring-blue-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
-                                                <span class="text-slate-700 dark:text-slate-350">Leave</span>
-                                            </label>
-                                            <label class="flex items-center gap-1 cursor-pointer text-xs">
-                                                <input type="radio" name="attendance[{{ $user->id }}]" value="n/a"
-                                                       class="text-slate-500 focus:ring-slate-550 h-3.5 w-3.5 border-slate-300 dark:border-slate-800">
-                                                <span class="text-slate-700 dark:text-slate-350">N/A</span>
-                                            </label>
+                                    <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                                        <!-- Status select -->
+                                        <div>
+                                            <select name="attendance[{{ $user->id }}]" onchange="toggleTimeInputs(this, '{{ $user->id }}')"
+                                                    class="px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
+                                                <option value="present" selected>Clock In/Out</option>
+                                                <option value="absent">Absent</option>
+                                                <option value="leave">Leave</option>
+                                                <option value="n/a">N/A</option>
+                                            </select>
                                         </div>
-                                        <!-- Overtime -->
-                                        <div class="flex items-center gap-1.5">
-                                            <input type="number" step="0.5" name="overtime[{{ $user->id }}]" placeholder="OT Hrs" min="0" max="24"
-                                                   class="w-16 px-2 py-1.5 text-center app-input rounded-lg text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary text-xs">
-                                            <span class="text-[10px] text-slate-500 font-mono">hrs</span>
+                                        <!-- Time inputs -->
+                                        <div id="time-inputs-{{ $user->id }}" class="flex items-center gap-2">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[10px] text-slate-500">In:</span>
+                                                <input type="time" name="in_time[{{ $user->id }}]" value="08:30"
+                                                       class="px-2 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs font-mono focus:outline-none focus:border-primary">
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-[10px] text-slate-500">Out:</span>
+                                                <input type="time" name="out_time[{{ $user->id }}]" value="18:00"
+                                                       class="px-2 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs font-mono focus:outline-none focus:border-primary">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -351,9 +340,8 @@
                                     {{ $emp->role }}
                                 </span>
                             </td>
-                            <td class="py-4 px-6 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                {{ config('app.currency', '$') }}{{ number_format($emp->basic_salary, 2) }}
-                            </td>
+                                <span class="text-xs">Basic:</span> {{ config('app.currency', 'Rs.') }}{{ number_format($emp->basic_salary, 2) }}
+                                <span class="block text-[10px] text-slate-450 font-normal mt-0.5">Total: {{ config('app.currency', 'Rs.') }}{{ number_format($emp->total_salary, 2) }}</span>
                             <td class="py-4 px-6 font-mono text-slate-550 dark:text-slate-450">{{ $emp->required_days }} days</td>
                             <td class="py-4 px-6 font-mono text-slate-550 dark:text-slate-450">
                                 {{ config('app.currency', '$') }}{{ number_format($emp->overtime_rate, 2) }}/hr
@@ -504,10 +492,17 @@
 
                         </div>
 
-                        <div>
-                            <label for="emp_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Basic Contract Salary (Monthly)</label>
-                            <input type="number" step="0.01" name="basic_salary" id="emp_salary" required value="2000"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="emp_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Basic Salary (Monthly)</label>
+                                <input type="number" step="0.01" name="basic_salary" id="emp_salary" required value="20000"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="emp_total_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Total Salary (Monthly)</label>
+                                <input type="number" step="0.01" name="total_salary" id="emp_total_salary" required value="25000"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -600,10 +595,17 @@
 
                         </div>
 
-                        <div>
-                            <label for="edit_emp_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Basic Contract Salary (Monthly)</label>
-                            <input type="number" step="0.01" name="basic_salary" id="edit_emp_salary" required
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit_emp_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Basic Salary</label>
+                                <input type="number" step="0.01" name="basic_salary" id="edit_emp_salary" required
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="edit_emp_total_salary" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Total Salary</label>
+                                <input type="number" step="0.01" name="total_salary" id="edit_emp_total_salary" required
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -661,6 +663,18 @@
         switchTab(activeTab);
     });
 
+    // Helper to toggle Time inputs based on attendance status in bulk form
+    function toggleTimeInputs(selectElement, userId) {
+        const container = document.getElementById(`time-inputs-${userId}`);
+        if (selectElement.value === 'present') {
+            container.classList.remove('opacity-40', 'pointer-events-none');
+            container.querySelectorAll('input').forEach(i => i.removeAttribute('disabled'));
+        } else {
+            container.classList.add('opacity-40', 'pointer-events-none');
+            container.querySelectorAll('input').forEach(i => i.setAttribute('disabled', 'true'));
+        }
+    }
+
     // Populate and open Edit Employee drawer
     function openEditEmployeeDrawer(emp) {
         document.getElementById('edit-employee-form').action = `/employees/${emp.id}`;
@@ -669,6 +683,7 @@
         document.getElementById('edit_emp_contact_number').value = emp.contact_number || '';
         document.getElementById('edit_emp_role').value = emp.role;
         document.getElementById('edit_emp_salary').value = emp.basic_salary;
+        document.getElementById('edit_emp_total_salary').value = emp.total_salary;
         document.getElementById('edit_emp_req_days').value = emp.required_days;
         document.getElementById('edit_emp_ot').value = emp.overtime_rate;
         document.getElementById('edit-employee-drawer').classList.remove('hidden');

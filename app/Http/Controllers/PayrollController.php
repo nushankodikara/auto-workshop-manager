@@ -81,13 +81,16 @@ class PayrollController extends Controller
         $requiredDays = $user->required_days ?: 26;
         $overtimeRate = $user->overtime_rate ?: 0.00;
 
-        // Base salary prorated calculation
+        // Base salary prorated calculation (uses basic_salary)
         $proratedSalary = $requiredDays > 0 ? round(($attendedDays / $requiredDays) * $user->basic_salary, 2) : $user->basic_salary;
         $overtimeAmount = round($overtimeHours * $overtimeRate, 2);
 
+        // Allowances difference calculation
+        $baseAllowance = max(0.00, floatval($user->total_salary) - floatval($user->basic_salary));
+
         $categories = PayrollCategory::all();
 
-        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount'));
+        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 'baseAllowance'));
     }
 
     /**
@@ -105,6 +108,7 @@ class PayrollController extends Controller
             'overtime_rate' => 'required|numeric|min:0',
             'overtime_amount' => 'required|numeric|min:0',
             'prorated_salary' => 'required|numeric|min:0',
+            'total_salary' => 'required|numeric|min:0',
             // Allowances/Deductions arrays
             'item_name' => 'nullable|array',
             'item_type' => 'nullable|array',
@@ -132,6 +136,7 @@ class PayrollController extends Controller
                 'month' => $data['month'],
                 'year' => $data['year'],
                 'basic_salary' => $user->basic_salary,
+                'total_salary' => $data['total_salary'],
                 'required_days' => $data['required_days'],
                 'attended_days' => $data['attended_days'],
                 'overtime_hours' => $data['overtime_hours'],
@@ -192,6 +197,126 @@ class PayrollController extends Controller
     }
 
     /**
+     * Show salary slip edit form/workspace.
+     */
+    public function edit(PayrollSlip $payrollSlip)
+    {
+        if (!auth()->user()->isSuperManager() && !auth()->user()->hasModuleAccess('payroll')) {
+            abort(403, 'Unauthorized');
+        }
+
+        $payrollSlip->load(['user', 'items']);
+        $user = $payrollSlip->user;
+        $categories = PayrollCategory::all();
+
+        return view('payroll.edit', compact('payrollSlip', 'user', 'categories'));
+    }
+
+    /**
+     * Update salary slip.
+     */
+    public function update(Request $request, PayrollSlip $payrollSlip)
+    {
+        if (!auth()->user()->isSuperManager() && !auth()->user()->hasModuleAccess('payroll')) {
+            abort(403, 'Unauthorized');
+        }
+
+        $data = $request->validate([
+            'required_days' => 'required|integer|min:0',
+            'attended_days' => 'required|numeric|min:0',
+            'overtime_hours' => 'required|numeric|min:0',
+            'overtime_rate' => 'required|numeric|min:0',
+            'overtime_amount' => 'required|numeric|min:0',
+            'prorated_salary' => 'required|numeric|min:0',
+            'total_salary' => 'required|numeric|min:0',
+            // Allowances/Deductions arrays
+            'item_name' => 'nullable|array',
+            'item_type' => 'nullable|array',
+            'item_amount' => 'nullable|array',
+        ]);
+
+        DB::transaction(function () use ($payrollSlip, $data) {
+            $allowanceTotal = 0.00;
+            $deductionTotal = 0.00;
+
+            // Delete old items
+            $payrollSlip->items()->delete();
+
+            if (!empty($data['item_name'])) {
+                foreach ($data['item_name'] as $key => $name) {
+                    if (empty($name)) continue;
+
+                    $type = $data['item_type'][$key] ?? 'addition';
+                    $amount = floatval($data['item_amount'][$key] ?? 0.00);
+
+                    PayrollSlipItem::create([
+                        'payroll_slip_id' => $payrollSlip->id,
+                        'category_name' => $name,
+                        'type' => $type,
+                        'amount' => $amount
+                    ]);
+
+                    if ($type === 'addition') {
+                        $allowanceTotal += $amount;
+                    } else {
+                        $deductionTotal += $amount;
+                    }
+                }
+            }
+
+            // Compute net salary
+            $netSalary = $data['prorated_salary'] + $data['overtime_amount'] + $allowanceTotal - $deductionTotal;
+
+            $payrollSlip->update([
+                'total_salary' => $data['total_salary'],
+                'required_days' => $data['required_days'],
+                'attended_days' => $data['attended_days'],
+                'overtime_hours' => $data['overtime_hours'],
+                'overtime_rate' => $data['overtime_rate'],
+                'overtime_amount' => $data['overtime_amount'],
+                'prorated_salary' => $data['prorated_salary'],
+                'allowance' => $allowanceTotal,
+                'deductions' => $deductionTotal,
+                'net_salary' => $netSalary
+            ]);
+
+            // Re-post if already marked as paid
+            if ($payrollSlip->status === 'paid') {
+                \App\Services\DoubleEntryService::postPayrollSlipTransaction($payrollSlip);
+            }
+        });
+
+        return redirect()->route('payroll.show', $payrollSlip->id)->with('success', 'Salary slip updated successfully.');
+    }
+
+    /**
+     * Discard / Delete salary slip.
+     */
+    public function destroy(PayrollSlip $payrollSlip)
+    {
+        if (!auth()->user()->isSuperManager() && !auth()->user()->hasModuleAccess('payroll')) {
+            abort(403, 'Unauthorized');
+        }
+
+        DB::transaction(function () use ($payrollSlip) {
+            // Delete dynamic DoubleEntry ledger items if it was marked as paid
+            if ($payrollSlip->status === 'paid') {
+                $oldEntry = \App\Models\JournalEntry::where('reference', 'SLIP-' . $payrollSlip->id)->first();
+                if ($oldEntry) {
+                    $oldEntry->delete();
+                }
+            }
+
+            $payrollSlip->delete();
+        });
+
+        return redirect()->route('payroll.index', [
+            'year' => $payrollSlip->year,
+            'month' => $payrollSlip->month
+        ])->with('success', 'Salary slip discarded successfully.');
+    }
+
+    /**
      * Update status (e.g. from draft to paid).
      */
     public function updateStatus(Request $request, PayrollSlip $payrollSlip)
@@ -216,8 +341,10 @@ class PayrollController extends Controller
             'date' => 'required|date',
             'attendance' => 'required|array', // user_id => status
             'attendance.*' => 'required|in:present,half_day,absent,leave,n/a',
-            'overtime' => 'nullable|array', // user_id => overtime_hours
-            'overtime.*' => 'nullable|numeric|min:0',
+            'in_time' => 'nullable|array', // user_id => in_time
+            'in_time.*' => 'nullable|string',
+            'out_time' => 'nullable|array', // user_id => out_time
+            'out_time.*' => 'nullable|string',
         ]);
 
         $date = $data['date'];
@@ -227,11 +354,38 @@ class PayrollController extends Controller
             if ($status === 'n/a') {
                 Attendance::where('user_id', $userId)->where('date', $dateObj)->delete();
             } else {
-                $otHours = isset($data['overtime'][$userId]) ? floatval($data['overtime'][$userId]) : 0.00;
+                $inTime = $data['in_time'][$userId] ?? null;
+                $outTime = $data['out_time'][$userId] ?? null;
+                $otHours = 0.00;
+                $realStatus = $status;
+
+                if ($status === 'present') {
+                    if ($inTime && $outTime) {
+                        $hours = (strtotime($outTime) - strtotime($inTime)) / 3600;
+                        if ($hours >= 8.0) {
+                            $realStatus = 'present';
+                        } elseif ($hours >= 4.0) {
+                            $realStatus = 'half_day';
+                        } else {
+                            $realStatus = 'absent';
+                        }
+                        $otHours = max(0, round($hours - 9.5, 2));
+                    } else {
+                        $realStatus = 'absent';
+                    }
+                } else {
+                    $inTime = null;
+                    $outTime = null;
+                }
 
                 Attendance::updateOrCreate(
                     ['user_id' => $userId, 'date' => $dateObj],
-                    ['status' => $status, 'overtime_hours' => $otHours]
+                    [
+                        'status' => $realStatus,
+                        'overtime_hours' => $otHours,
+                        'in_time' => $inTime,
+                        'out_time' => $outTime
+                    ]
                 );
             }
         }
@@ -270,8 +424,10 @@ class PayrollController extends Controller
             'month' => 'required|integer',
             'status' => 'required|array', // day => status
             'status.*' => 'required|in:present,half_day,absent,leave,n/a',
-            'overtime' => 'nullable|array', // day => overtime
-            'overtime.*' => 'nullable|numeric|min:0',
+            'in_time' => 'nullable|array', // day => in_time
+            'in_time.*' => 'nullable|string',
+            'out_time' => 'nullable|array', // day => out_time
+            'out_time.*' => 'nullable|string',
         ]);
 
         $year = $data['year'];
@@ -284,11 +440,38 @@ class PayrollController extends Controller
             if ($status === 'n/a') {
                 Attendance::where('user_id', $user->id)->where('date', $dateObj)->delete();
             } else {
-                $ot = isset($data['overtime'][$day]) ? floatval($data['overtime'][$day]) : 0.00;
+                $inTime = $data['in_time'][$day] ?? null;
+                $outTime = $data['out_time'][$day] ?? null;
+                $otHours = 0.00;
+                $realStatus = $status;
+
+                if ($status === 'present') {
+                    if ($inTime && $outTime) {
+                        $hours = (strtotime($outTime) - strtotime($inTime)) / 3600;
+                        if ($hours >= 8.0) {
+                            $realStatus = 'present';
+                        } elseif ($hours >= 4.0) {
+                            $realStatus = 'half_day';
+                        } else {
+                            $realStatus = 'absent';
+                        }
+                        $otHours = max(0, round($hours - 9.5, 2));
+                    } else {
+                        $realStatus = 'absent';
+                    }
+                } else {
+                    $inTime = null;
+                    $outTime = null;
+                }
 
                 Attendance::updateOrCreate(
                     ['user_id' => $user->id, 'date' => $dateObj],
-                    ['status' => $status, 'overtime_hours' => $ot]
+                    [
+                        'status' => $realStatus,
+                        'overtime_hours' => $otHours,
+                        'in_time' => $inTime,
+                        'out_time' => $outTime
+                    ]
                 );
             }
         }
@@ -312,6 +495,7 @@ class PayrollController extends Controller
             'password' => 'required|string|min:6',
             'role' => 'required|exists:roles,name',
             'basic_salary' => 'required|numeric|min:0',
+            'total_salary' => 'required|numeric|min:0',
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
             'contact_number' => 'nullable|string|max:30',
@@ -346,6 +530,7 @@ class PayrollController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|exists:roles,name',
             'basic_salary' => 'required|numeric|min:0',
+            'total_salary' => 'required|numeric|min:0',
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
             'password' => 'nullable|string|min:6',
