@@ -126,7 +126,7 @@
                                     <div class="font-semibold text-slate-800 dark:text-slate-200">
                                         {{ \Carbon\Carbon::parse($appt->appointment_date)->format('D, d M Y') }}
                                     </div>
-                                    <div class="text-xs text-slate-500 font-mono mt-0.5">{{ \Carbon\Carbon::createFromFormat('H:i:s', $appt->appointment_time)->format('g:i A') }}</div>
+                                    <div class="text-xs text-slate-500 font-mono mt-0.5">{{ \Carbon\Carbon::parse($appt->appointment_time)->format('g:i A') }}</div>
                                 </div>
                             </div>
                         </td>
