@@ -96,7 +96,7 @@
 
     {{-- ── Appointments Table ───────────────────────────────────── --}}
     <div class="app-card rounded-2xl overflow-hidden shadow-xs">
-        <table class="w-full text-sm text-left border-collapse">
+        <table class="datatable w-full text-sm text-left border-collapse">
             <thead>
                 <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     <th class="py-4 px-5">Date &amp; Time</th>
@@ -249,11 +249,6 @@
                 @endforelse
             </tbody>
         </table>
-    </div>
-
-    {{-- Pagination --}}
-    <div class="mt-2">
-        {{ $appointments->links() }}
     </div>
 
 </div>

@@ -14,12 +14,7 @@ class InventoryController extends Controller
      */
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        
-        $items = Inventory::when($search, function ($query) use ($search) {
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%");
-        })->latest()->paginate(15);
+        $items = Inventory::latest()->get();
 
         // Fetch recent stock movements
         $recentMovements = StockMovement::with(['inventory', 'jobCard.vehicle'])
@@ -27,7 +22,7 @@ class InventoryController extends Controller
             ->limit(10)
             ->get();
 
-        return view('inventory.index', compact('items', 'recentMovements', 'search'));
+        return view('inventory.index', compact('items', 'recentMovements'));
     }
 
     /**

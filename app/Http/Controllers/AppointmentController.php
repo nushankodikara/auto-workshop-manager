@@ -41,8 +41,7 @@ class AppointmentController extends Controller
             ->whereBetween('appointment_date', [$dateFrom, $dateTo])
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
-            ->paginate(25)
-            ->appends($request->query());
+            ->get();
 
         $clients = Client::with('vehicles')->orderBy('name')->get();
 

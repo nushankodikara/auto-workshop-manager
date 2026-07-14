@@ -18,28 +18,11 @@
         </a>
     </div>
 
-    <!-- Search panel -->
-    <div class="app-card rounded-2xl p-4 shadow-xs">
-        <form action="{{ route('quotations.index') }}" method="GET" class="flex gap-3">
-            <div class="relative flex-1">
-                <i data-lucide="search" class="absolute left-3.5 top-3 w-4 h-4 text-slate-400"></i>
-                <input type="text" name="search" value="{{ $search }}" placeholder="Search by customer name or quotation number (e.g. QT-20260708-0001)..."
-                       class="w-full pl-10 pr-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-            </div>
-            <button type="submit" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold rounded-lg text-sm transition cursor-pointer">
-                Search
-            </button>
-            @if($search)
-                <a href="{{ route('quotations.index') }}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/40 dark:hover:bg-slate-800/80 text-slate-500 rounded-lg text-sm font-semibold transition flex items-center justify-center">
-                    Reset
-                </a>
-            @endif
-        </form>
-    </div>
+
 
     <!-- Quotations Table -->
     <div class="app-card rounded-2xl overflow-hidden shadow-xs">
-        <table class="w-full text-left border-collapse text-sm">
+        <table class="datatable w-full text-left border-collapse text-sm">
             <thead>
                 <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                     <th class="py-4 px-6">Quotation Number</th>
@@ -104,11 +87,5 @@
             </tbody>
         </table>
     </div>
-
-    <!-- Pagination -->
-    <div class="mt-4">
-        {{ $quotations->links() }}
-    </div>
-
 </div>
 @endsection

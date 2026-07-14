@@ -49,7 +49,7 @@
         <div class="lg:col-span-2 space-y-4">
             <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Generated Payslips</h3>
             <div class="app-card rounded-2xl overflow-x-auto shadow-xs">
-                <table class="w-full text-left border-collapse text-sm min-w-[700px]">
+                <table class="datatable w-full text-left border-collapse text-sm min-w-[700px]">
                     <thead>
                         <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                             <th class="py-4 px-6">Employee</th>
@@ -312,7 +312,7 @@
         </div>
 
         <div class="app-card rounded-2xl overflow-hidden shadow-xs">
-            <table class="w-full text-left border-collapse text-sm">
+            <table class="datatable w-full text-left border-collapse text-sm">
                 <thead>
                     <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                         <th class="py-4 px-6">Name</th>
@@ -383,7 +383,7 @@
             <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
                 <h4 class="text-xs font-bold uppercase tracking-wider text-slate-550">Archived Employees (Left Company)</h4>
                 <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-800">
-                    <table class="w-full text-left border-collapse text-sm">
+                    <table class="datatable w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-100/40 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                                 <th class="py-4 px-6">Name</th>

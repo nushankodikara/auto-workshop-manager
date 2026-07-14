@@ -226,7 +226,7 @@
         </div>
 
         <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-800">
-            <table class="w-full text-left border-collapse text-sm">
+            <table class="datatable w-full text-left border-collapse text-sm">
                 <thead>
                     <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                         <th class="py-4 px-6">Account Code</th>
@@ -276,7 +276,7 @@
         <p class="text-xs text-slate-500 -mt-4">Aggregated balances on AR Account (1200) filtered by customer mobile numbers.</p>
 
         <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-800">
-            <table class="w-full text-left border-collapse text-sm">
+            <table class="datatable w-full text-left border-collapse text-sm">
                 <thead>
                     <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                         <th class="py-4 px-6">Customer Mobile</th>
@@ -319,7 +319,7 @@
         <p class="text-xs text-slate-500 -mt-4">Capital logs tracked under Equity Account (3200: Investor Capital).</p>
 
         <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-800">
-            <table class="w-full text-left border-collapse text-sm">
+            <table class="datatable w-full text-left border-collapse text-sm">
                 <thead>
                     <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                         <th class="py-4 px-6">Date</th>

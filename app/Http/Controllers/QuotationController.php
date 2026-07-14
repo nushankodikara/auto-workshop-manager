@@ -24,16 +24,9 @@ class QuotationController extends Controller
     {
         $this->checkAccess();
 
-        $search = $request->input('search');
+        $quotations = Quotation::orderBy('created_at', 'desc')->get();
 
-        $quotations = Quotation::when($search, function ($query, $search) {
-            return $query->where('quotation_number', 'like', "%{$search}%")
-                         ->orWhere('customer_name', 'like', "%{$search}%");
-        })
-        ->orderBy('created_at', 'desc')
-        ->paginate(15);
-
-        return view('quotations.index', compact('quotations', 'search'));
+        return view('quotations.index', compact('quotations'));
     }
 
     /**

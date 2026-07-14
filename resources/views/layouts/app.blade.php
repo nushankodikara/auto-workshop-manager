@@ -31,6 +31,113 @@
     <!-- PWA Capabilities -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#3b82f6">
+
+    <!-- Simple-DataTables CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
+    <style>
+        /* Custom Simple-DataTables styles matching dark glassmorphism theme */
+        .datatable-wrapper {
+            width: 100%;
+        }
+        .datatable-top, .datatable-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+        }
+        .dark .datatable-top, .dark .datatable-bottom {
+            color: #94a3b8;
+        }
+        .datatable-top {
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .datatable-bottom {
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .datatable-search input, .datatable-dropdown select {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.5rem !important;
+            color: #0f172a !important;
+            padding: 0.5rem 0.75rem !important;
+            font-size: 0.875rem !important;
+            outline: none !important;
+            text-transform: none !important;
+            font-weight: normal !important;
+            letter-spacing: normal !important;
+            transition: border-color 0.2s !important;
+        }
+        .dark .datatable-search input, .dark .datatable-dropdown select {
+            background-color: rgba(15, 23, 42, 0.3) !important;
+            border: 1px solid rgba(148, 163, 184, 0.2) !important;
+            color: #f1f5f9 !important;
+        }
+        .datatable-search input:focus, .datatable-dropdown select:focus {
+            border-color: var(--color-primary, #3b82f6) !important;
+        }
+        .datatable-pagination ul {
+            display: flex;
+            list-style: none;
+            padding-left: 0;
+            gap: 0.25rem;
+            margin: 0;
+        }
+        .datatable-pagination li {
+            margin: 0;
+        }
+        .datatable-pagination a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 2rem;
+            height: 2rem;
+            padding: 0 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid #e2e8f0;
+            color: #475569;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-transform: none !important;
+        }
+        .dark .datatable-pagination a {
+            border-color: rgba(148, 163, 184, 0.1);
+            color: #cbd5e1;
+        }
+        .datatable-pagination a:hover {
+            background-color: #f1f5f9;
+        }
+        .dark .datatable-pagination a:hover {
+            background-color: rgba(148, 163, 184, 0.1);
+        }
+        .datatable-pagination .active a {
+            background-color: var(--primary-color, #3b82f6) !important;
+            border-color: var(--primary-color, #3b82f6) !important;
+            color: #ffffff !important;
+        }
+        .datatable-pagination .disabled a {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .datatable-pagination .disabled a:hover {
+            background-color: transparent;
+        }
+        .datatable-sorter {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: inherit;
+            text-decoration: none;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
 </head>
 <body class="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
 
@@ -327,6 +434,28 @@
                     .catch(err => console.log('Service Worker registration failed.', err));
             });
         }
+    </script>
+
+    <!-- Simple-DataTables JS -->
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" type="text/javascript"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Find all tables that have the 'datatable' class
+            const tables = document.querySelectorAll('table.datatable');
+            tables.forEach(table => {
+                new simpleDatatables.DataTable(table, {
+                    searchable: true,
+                    perPage: 10,
+                    perPageSelect: [10, 25, 50, 100],
+                    labels: {
+                        placeholder: "Search list...",
+                        perPage: "entries per page",
+                        noRows: "No entries found matching search query",
+                        info: "Showing {start} to {end} of {rows} entries",
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html>

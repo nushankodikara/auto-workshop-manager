@@ -14,15 +14,8 @@ class ClientVehicleController extends Controller
      */
     public function clientsIndex(Request $request)
     {
-        $search = $request->input('search');
-        
-        $clients = Client::when($search, function ($query) use ($search) {
-            $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-        })->withCount('vehicles')->latest()->paginate(15);
-
-        return view('clients.index', compact('clients', 'search'));
+        $clients = Client::withCount('vehicles')->latest()->get();
+        return view('clients.index', compact('clients'));
     }
 
     /**
@@ -76,20 +69,9 @@ class ClientVehicleController extends Controller
      */
     public function vehiclesIndex(Request $request)
     {
-        $search = $request->input('search');
-        
-        $vehicles = Vehicle::when($search, function ($query) use ($search) {
-            $query->where('plate_number', 'like', "%{$search}%")
-                  ->orWhere('make', 'like', "%{$search}%")
-                  ->orWhere('model', 'like', "%{$search}%")
-                  ->orWhereHas('client', function ($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  });
-        })->with(['client', 'jobCards'])->latest()->paginate(15);
-
+        $vehicles = Vehicle::with(['client', 'jobCards'])->latest()->get();
         $clients = Client::orderBy('name')->get();
-
-        return view('clients.vehicles', compact('vehicles', 'search', 'clients'));
+        return view('clients.vehicles', compact('vehicles', 'clients'));
     }
 
     /**

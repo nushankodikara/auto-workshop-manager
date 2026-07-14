@@ -86,7 +86,7 @@
         </div>
 
         <div class="overflow-x-auto w-full">
-            <table class="w-full text-left text-sm border-collapse min-w-[800px]">
+            <table class="datatable w-full text-left text-sm border-collapse min-w-[800px]">
                 <thead>
                     <tr class="bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                         <th class="p-4 font-semibold whitespace-nowrap">Make & Model</th>
@@ -155,7 +155,7 @@
         </div>
 
         <div class="overflow-x-auto w-full">
-            <table class="w-full text-left text-sm border-collapse min-w-[900px]">
+            <table class="datatable w-full text-left text-sm border-collapse min-w-[900px]">
                 <thead>
                     <tr class="bg-slate-50/50 dark:bg-slate-955/20 text-slate-500 border-b border-slate-200 dark:border-slate-800">
                         <th class="p-4 font-semibold whitespace-nowrap">Vehicle</th>
