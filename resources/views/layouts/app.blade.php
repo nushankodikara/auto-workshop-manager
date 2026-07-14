@@ -137,16 +137,56 @@
             cursor: pointer;
             width: 100%;
         }
+
+        /* Collapsible Sidebar Styles */
+        @media (min-width: 768px) {
+            aside {
+                transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            }
+            aside.collapsed {
+                width: 4.75rem !important; /* 76px */
+            }
+            aside.collapsed .truncate,
+            aside.collapsed nav a span,
+            aside.collapsed .user-details {
+                display: none !important;
+            }
+            aside.collapsed nav a {
+                justify-content: center;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            aside.collapsed .branding-container {
+                justify-content: center;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            aside.collapsed .user-container {
+                justify-content: center;
+                padding: 1rem 0.5rem !important;
+            }
+            aside.collapsed .user-container form {
+                width: 100%;
+            }
+            aside.collapsed .user-container button {
+                width: 100%;
+                justify-content: center;
+                padding: 0.5rem 0 !important;
+            }
+            aside.collapsed .user-container button span {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body class="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
 
 
     <!-- Sidebar Navigation -->
-    <aside class="w-full md:w-64 bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 transition-colors duration-200">
-        <div>
+    <aside class="w-full md:w-64 bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 transition-all duration-300 md:h-screen md:sticky md:top-0">
+        <div class="flex flex-col flex-1 min-h-0">
             <!-- Branding -->
-            <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40">
+            <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 shrink-0 branding-container">
                 @if(file_exists(public_path('images/logo.png')))
                     <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Logo" class="w-8 h-8 object-contain rounded-lg shrink-0">
                 @else
@@ -161,108 +201,111 @@
                 <span class="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
                     {{ config('app.name', 'Auto Workshop Manager') }}
                 </span>
+                <button onclick="toggleSidebarCollapse()" class="hidden md:flex p-1.5 hover:bg-slate-250 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer ml-auto shrink-0 transition" title="Toggle Sidebar Width">
+                    <i id="collapse-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
             </div>
             
             <!-- Navigation Links -->
-            <nav class="mt-6 px-4 space-y-1">
+            <nav class="flex-1 overflow-y-auto mt-6 px-4 space-y-1 pr-2">
                 @if(auth()->user()->hasModuleAccess('dashboard'))
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('dashboard') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
                         <span>Dashboard</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('job-cards'))
                     <a href="{{ route('job-cards.board') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('job-cards.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                        <i data-lucide="clipboard-list" class="w-4 h-4 shrink-0"></i>
                         <span>Job Cards Board</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('appointments'))
                     <a href="{{ route('appointments.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('appointments.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <i data-lucide="calendar" class="w-4 h-4 shrink-0"></i>
                         <span>Appointments</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('quotations'))
                     <a href="{{ route('quotations.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('quotations.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <i data-lucide="file-text" class="w-4 h-4 shrink-0"></i>
                         <span>Quotation Workspace</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('clients'))
                     <a href="{{ route('clients.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('clients.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="users" class="w-4 h-4"></i>
+                        <i data-lucide="users" class="w-4 h-4 shrink-0"></i>
                         <span>Clients Directory</span>
                     </a>
                     <a href="{{ route('vehicles.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('vehicles.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="car" class="w-4 h-4"></i>
+                        <i data-lucide="car" class="w-4 h-4 shrink-0"></i>
                         <span>Vehicles Directory</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('inventory'))
                     <a href="{{ route('inventory.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('inventory.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="package" class="w-4 h-4"></i>
+                        <i data-lucide="package" class="w-4 h-4 shrink-0"></i>
                         <span>Inventory & Stock</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('payroll'))
                     <a href="{{ route('payroll.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('payroll.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="coins" class="w-4 h-4"></i>
+                        <i data-lucide="coins" class="w-4 h-4 shrink-0"></i>
                         <span>Payroll & HR</span>
                     </a>
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('insights'))
                     <a href="{{ route('dashboard.insights') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('dashboard.insights') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="line-chart" class="w-4 h-4"></i>
+                        <i data-lucide="line-chart" class="w-4 h-4 shrink-0"></i>
                         <span>Data Insights</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('statistics'))
                     <a href="{{ route('dashboard.statistics') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('dashboard.statistics') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="trending-up" class="w-4 h-4"></i>
+                        <i data-lucide="trending-up" class="w-4 h-4 shrink-0"></i>
                         <span>Statistics & Finance</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('finance'))
                     <a href="{{ route('finance.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('finance.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="wallet" class="w-4 h-4"></i>
+                        <i data-lucide="wallet" class="w-4 h-4 shrink-0"></i>
                         <span>Bookkeeping & Ledger</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('outsourcing'))
                     <a href="{{ route('outsourcing.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('outsourcing.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="handshake" class="w-4 h-4"></i>
+                        <i data-lucide="handshake" class="w-4 h-4 shrink-0"></i>
                         <span>Outsourcing Partners</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('predefined-services'))
                     <a href="{{ route('services.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('services.*') ? 'bg-primary text-white' : 'text-slate-650 dark:text-slate-405 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-105' }}">
-                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                        <i data-lucide="clipboard-list" class="w-4 h-4 shrink-0"></i>
                         <span>Predefined Services</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('broadcast'))
                     <a href="{{ route('broadcast.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('broadcast.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="megaphone" class="w-4 h-4"></i>
+                        <i data-lucide="megaphone" class="w-4 h-4 shrink-0"></i>
                         <span>Broadcast Messages</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('settings'))
                     <a href="{{ route('settings.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('settings.index') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
                         <span>Settings & Backups</span>
                     </a>
                 @endif
                 @if(auth()->user()->hasModuleAccess('telemetry'))
                     <a href="{{ route('telemetry.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('telemetry.index') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
-                        <i data-lucide="activity" class="w-4 h-4"></i>
+                        <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
                         <span>Tracker Telemetry</span>
                     </a>
                 @endif
@@ -271,15 +314,15 @@
         </div>
 
         <!-- User Profile Summary at bottom -->
-        <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/20">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ auth()->user()->name }}</div>
-                    <div class="text-xs text-slate-500 capitalize">{{ auth()->user()->role }}</div>
+        <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/20 shrink-0 user-container">
+            <div class="flex items-center justify-between gap-2">
+                <div class="user-details min-w-0">
+                    <div class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{{ auth()->user()->name }}</div>
+                    <div class="text-xs text-slate-500 capitalize truncate">{{ auth()->user()->role }}</div>
                 </div>
-                <form action="{{ route('logout') }}" method="POST">
+                <form action="{{ route('logout') }}" method="POST" class="shrink-0">
                     @csrf
-                    <button type="submit" class="text-xs text-red-500 hover:text-red-400 font-semibold p-2 hover:bg-red-500/10 rounded-lg transition flex items-center gap-1">
+                    <button type="submit" class="text-xs text-red-500 hover:text-red-400 font-semibold p-2 hover:bg-red-500/10 rounded-lg transition flex items-center gap-1 cursor-pointer" title="Logout">
                         <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                         <span>Logout</span>
                     </button>
@@ -423,6 +466,50 @@
             const isDark = html.classList.contains('dark');
             html.className = (isDark ? 'dark' : '') + ' accent-' + color + ' h-full';
         }
+
+        // Sidebar Collapsible Toggler
+        function toggleSidebarCollapse() {
+            const aside = document.querySelector('aside');
+            const icon = document.getElementById('collapse-icon');
+            
+            if (aside.classList.contains('collapsed')) {
+                aside.classList.remove('collapsed');
+                localStorage.setItem('sidebar-collapsed', 'false');
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'chevron-left');
+                }
+            } else {
+                aside.classList.add('collapsed');
+                localStorage.setItem('sidebar-collapsed', 'true');
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'chevron-right');
+                }
+            }
+            
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        // Apply stored collapse preference on load
+        (function() {
+            const collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (collapsed && window.innerWidth >= 768) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    const aside = document.querySelector('aside');
+                    const icon = document.getElementById('collapse-icon');
+                    if (aside) {
+                        aside.classList.add('collapsed');
+                    }
+                    if (icon) {
+                        icon.setAttribute('data-lucide', 'chevron-right');
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                        }
+                    }
+                });
+            }
+        })();
     </script>
     
     <!-- PWA Service Worker Registration -->
