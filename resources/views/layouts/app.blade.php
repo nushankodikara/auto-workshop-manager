@@ -39,6 +39,9 @@
         .datatable-wrapper {
             width: 100%;
         }
+        .datatable-table th, .datatable-table td {
+            padding: 1rem 1.25rem !important;
+        }
         .datatable-top, .datatable-bottom {
             display: flex;
             justify-content: space-between;
