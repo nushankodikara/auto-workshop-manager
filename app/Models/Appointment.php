@@ -14,7 +14,6 @@ use Carbon\Carbon;
 class Appointment extends Model
 {
     protected $casts = [
-        'appointment_date'   => 'date',
         'notified_on_create' => 'boolean',
         'notified_day_prior' => 'boolean',
         'notified_morning'   => 'boolean',
@@ -85,5 +84,17 @@ class Appointment extends Model
             'cancelled' => 'bg-slate-500/10 text-slate-500 border-slate-400/25',
             default     => 'bg-slate-200 text-slate-600 border-slate-300',
         };
+    }
+
+    // ── Custom Accessors & Mutators for SQLite Compatibility ───────
+
+    public function getAppointmentDateAttribute($value)
+    {
+        return $value ? Carbon::parse($value) : null;
+    }
+
+    public function setAppointmentDateAttribute($value)
+    {
+        $this->attributes['appointment_date'] = $value ? Carbon::parse($value)->format('Y-m-d') : null;
     }
 }
