@@ -114,6 +114,8 @@ Route::middleware('auth')->group(function () {
 
     // Inventory Stock & Movements
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/forecast', [InventoryController::class, 'forecast'])->name('inventory.forecast');
+    Route::get('/inventory/forecast/export', [InventoryController::class, 'exportForecastCsv'])->name('inventory.forecast.export');
     Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
     Route::get('/inventory/{item}', [InventoryController::class, 'show'])->name('inventory.show');
     Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
@@ -203,6 +205,11 @@ Route::middleware('auth')->group(function () {
     // Customer Broadcast Messaging (Super Manager Only)
     Route::get('/broadcast', [BroadcastController::class, 'index'])->name('broadcast.index');
     Route::post('/broadcast/send', [BroadcastController::class, 'send'])->name('broadcast.send');
+
+    // Tracker Telemetry & Sync (Super Manager / Allowed roles)
+    Route::get('/telemetry', [App\Http\Controllers\TrackerSyncController::class, 'telemetryIndex'])->name('telemetry.index');
+    Route::post('/telemetry/sync', [App\Http\Controllers\TrackerSyncController::class, 'telemetrySync'])->name('telemetry.sync');
+    Route::post('/telemetry/approve/{trackerVehicle}', [App\Http\Controllers\TrackerSyncController::class, 'telemetryApprove'])->name('telemetry.approve');
 
 });
 

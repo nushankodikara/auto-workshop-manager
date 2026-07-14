@@ -34,6 +34,7 @@ class Role extends Model
         'predefined-services' => 'Predefined Services',
         'broadcast' => 'Outreach Broadcasts',
         'quotations' => 'Quotation Workspace',
-        'settings' => 'System Settings & Backups'
+        'settings' => 'System Settings & Backups',
+        'telemetry' => 'Tracker Telemetry'
     ];
 }

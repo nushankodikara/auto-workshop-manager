@@ -328,4 +328,196 @@ class InventoryController extends Controller
         $item->delete();
         return back()->with('success', 'Inventory item deleted.');
     }
+
+    /**
+     * Check if authenticated user has access to the inventory module.
+     */
+    private function checkAccess()
+    {
+        if (!auth()->user() || !auth()->user()->hasModuleAccess('inventory')) {
+            abort(403, 'Unauthorized action.');
+        }
+    }
+
+    /**
+     * Display inventory demand forecast and order recommendations.
+     */
+    public function forecast(Request $request)
+    {
+        $this->checkAccess();
+
+        $days = (int) $request->input('days', 30);
+        $safetyFactor = (float) $request->input('safety_factor', 1.0);
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+        $sortBy = $request->input('sort_by', 'reorder_qty');
+
+        $query = Inventory::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        $allItems = $query->get();
+        $forecastData = [];
+
+        foreach ($allItems as $item) {
+            $usage = abs(StockMovement::where('inventory_id', $item->id)
+                ->where('quantity', '<', 0)
+                ->where('created_at', '>=', now()->subDays($days))
+                ->sum('quantity'));
+
+            $daysActive = max(1, min($days, max(1, now()->diffInDays($item->created_at))));
+            $dailyUsage = $usage / $daysActive;
+            $predictedDemand = $dailyUsage * 30;
+            $targetInventory = ceil($predictedDemand * $safetyFactor);
+            
+            $requiredLevel = max($targetInventory, (int)$item->low_stock_alert_qty);
+            $recommendedOrder = max(0, $requiredLevel - $item->quantity);
+
+            $forecastData[] = (object) [
+                'id' => $item->id,
+                'name' => $item->name,
+                'sku' => $item->sku,
+                'quantity' => $item->quantity,
+                'unit' => $item->unit,
+                'cost_price' => $item->cost_price,
+                'selling_price' => $item->selling_price,
+                'low_stock_alert_qty' => $item->low_stock_alert_qty,
+                'days_active' => $daysActive,
+                'historical_usage' => $usage,
+                'daily_usage' => $dailyUsage,
+                'predicted_demand' => $predictedDemand,
+                'target_inventory' => $targetInventory,
+                'recommended_order' => $recommendedOrder,
+                'forecast_status' => $recommendedOrder > 0 ? 'reorder' : 'sufficient'
+            ];
+        }
+
+        $collection = collect($forecastData);
+
+        // Filter by Status
+        if ($status === 'reorder') {
+            $collection = $collection->where('recommended_order', '>', 0);
+        } elseif ($status === 'sufficient') {
+            $collection = $collection->where('recommended_order', '==', 0);
+        }
+
+        // Sort by
+        if ($sortBy === 'daily_usage') {
+            $collection = $collection->sortByDesc('daily_usage');
+        } elseif ($sortBy === 'stock_level') {
+            $collection = $collection->sortBy('quantity');
+        } elseif ($sortBy === 'name') {
+            $collection = $collection->sortBy('name');
+        } else { // default 'reorder_qty'
+            $collection = $collection->sortByDesc('recommended_order');
+        }
+
+        // Paginate
+        $perPage = 15;
+        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentPageItems = $collection->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $items = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentPageItems,
+            $collection->count(),
+            $perPage,
+            $currentPage,
+            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->query()]
+        );
+
+        return view('inventory.forecast', compact('items', 'days', 'safetyFactor', 'search', 'status', 'sortBy'));
+    }
+
+    /**
+     * Export demand forecast recommendations as a CSV.
+     */
+    public function exportForecastCsv(Request $request)
+    {
+        $this->checkAccess();
+
+        $days = (int) $request->input('days', 30);
+        $safetyFactor = (float) $request->input('safety_factor', 1.0);
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+
+        $query = Inventory::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->orderBy('name')->get();
+        $fileName = 'inventory_forecast_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($items, $days, $safetyFactor, $status) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, [
+                'SKU', 
+                'Part Name', 
+                'Current Stock', 
+                'Unit', 
+                'Low Stock Threshold', 
+                'Historical Usage (' . $days . ' days)', 
+                'Avg Daily Usage', 
+                'Predicted Demand (30 days)', 
+                'Target Stock Level', 
+                'Recommended Order Qty'
+            ]);
+
+            foreach ($items as $item) {
+                $usage = abs(StockMovement::where('inventory_id', $item->id)
+                    ->where('quantity', '<', 0)
+                    ->where('created_at', '>=', now()->subDays($days))
+                    ->sum('quantity'));
+
+                $daysActive = max(1, min($days, max(1, now()->diffInDays($item->created_at))));
+                $dailyUsage = $usage / $daysActive;
+                $predictedDemand = $dailyUsage * 30;
+                $targetInventory = ceil($predictedDemand * $safetyFactor);
+                
+                $requiredLevel = max($targetInventory, (int)$item->low_stock_alert_qty);
+                $recommendedOrder = max(0, $requiredLevel - $item->quantity);
+
+                // Apply status filter if not 'all'
+                if ($status === 'reorder' && $recommendedOrder <= 0) {
+                    continue;
+                }
+                if ($status === 'sufficient' && $recommendedOrder > 0) {
+                    continue;
+                }
+
+                fputcsv($file, [
+                    $item->sku,
+                    $item->name,
+                    $item->quantity,
+                    $item->unit,
+                    $item->low_stock_alert_qty,
+                    $usage,
+                    round($dailyUsage, 2),
+                    round($predictedDemand, 2),
+                    $targetInventory,
+                    $recommendedOrder
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

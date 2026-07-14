@@ -5,6 +5,19 @@
 @section('content')
 <div class="space-y-6">
 
+    <!-- Sub-navigation Tabs -->
+    <div class="flex border-b border-slate-200 dark:border-slate-800">
+        <a href="{{ route('inventory.index') }}" 
+           class="px-5 py-3 font-semibold text-sm border-b-2 border-primary text-primary transition">
+            Current Stock Inventory
+        </a>
+        <a href="{{ route('inventory.forecast') }}" 
+           class="px-5 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-350 transition flex items-center gap-1.5">
+            <i data-lucide="trending-up" class="w-4 h-4"></i>
+            <span>Demand Forecast (Next Month)</span>
+        </a>
+    </div>
+
     <!-- Header Actions and Search -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <!-- Search bar -->
