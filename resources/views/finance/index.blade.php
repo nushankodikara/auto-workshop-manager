@@ -10,6 +10,8 @@
                   count($auditResults['duplicateBatches']) +
                   count($auditResults['missingSlips']) +
                   count($auditResults['duplicateSlips']) +
+                  count($auditResults['missingPayments']) +
+                  count($auditResults['duplicatePayments']) +
                   count($auditResults['orphanedEntries']);
 @endphp
 <div class="space-y-6">

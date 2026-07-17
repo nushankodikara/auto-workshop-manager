@@ -481,6 +481,30 @@ class FinanceController extends Controller
             }
         }
 
+        // 5. Check Advanced Payments
+        $missingPayments = [];
+        $duplicatePayments = [];
+        $payments = \App\Models\JobCardAdvancedPayment::all();
+        foreach ($payments as $payment) {
+            $ref = "ADV-PAY-{$payment->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($entries->count() === 0) {
+                $missingPayments[] = [
+                    'id' => $payment->id,
+                    'client' => $payment->jobCard->vehicle->client->name ?? 'Unknown',
+                    'date' => $payment->paid_at->format('Y-m-d'),
+                    'total' => $payment->amount
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicatePayments[] = [
+                    'id' => $payment->id,
+                    'client' => $payment->jobCard->vehicle->client->name ?? 'Unknown',
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
         // 4. Check Orphaned Entries
         $orphanedEntries = [];
         $allEntries = JournalEntry::all();
@@ -511,6 +535,10 @@ class FinanceController extends Controller
                 $type = 'Payroll Slip';
                 $exists = \App\Models\PayrollSlip::where('id', $matches[1])->exists();
                 if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^ADV-PAY-(\d+)$/', $ref, $matches)) {
+                $type = 'Advanced Payment';
+                $exists = \App\Models\JobCardAdvancedPayment::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
             }
 
             if ($isOrphan) {
@@ -531,6 +559,8 @@ class FinanceController extends Controller
             'duplicateBatches' => $duplicateBatches,
             'missingSlips' => $missingSlips,
             'duplicateSlips' => $duplicateSlips,
+            'missingPayments' => $missingPayments,
+            'duplicatePayments' => $duplicatePayments,
             'orphanedEntries' => $orphanedEntries
         ];
     }
@@ -583,7 +613,20 @@ class FinanceController extends Controller
                 }
             }
 
-            // 4. Delete orphaned entries
+            // 4. Re-sync missing/duplicate advanced payments
+            $affectedPaymentIds = array_unique(array_merge(
+                array_column($audit['missingPayments'], 'id'),
+                array_column($audit['duplicatePayments'], 'id')
+            ));
+            foreach ($affectedPaymentIds as $paymentId) {
+                JournalEntry::where('reference', "ADV-PAY-{$paymentId}")->delete();
+                $payment = \App\Models\JobCardAdvancedPayment::find($paymentId);
+                if ($payment) {
+                    \App\Services\DoubleEntryService::postAdvancedPayment($payment);
+                }
+            }
+
+            // 5. Delete orphaned entries
             foreach ($audit['orphanedEntries'] as $orphan) {
                 JournalEntry::where('id', $orphan['id'])->delete();
             }

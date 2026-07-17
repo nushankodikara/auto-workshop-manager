@@ -139,27 +139,32 @@ class DoubleEntryService
 
             // 3. Payment Entry (Cash/Bank debit, Accounts Receivable credit)
             if ($bill->status === 'paid') {
-                $paymentEntry = JournalEntry::create([
-                    'entry_date' => date('Y-m-d'),
-                    'reference' => $bill->bill_number . '-PAY',
-                    'description' => "Payment received for Bill {$bill->bill_number} (Client: {$client->name})"
-                ]);
+                $advancedPaymentsTotal = (double)$jobCard->advancedPayments()->sum('amount');
+                $finalPaymentAmount = $invoiceTotal - $advancedPaymentsTotal;
 
-                // Debit Cash/Bank
-                $paymentEntry->items()->create([
-                    'account_id' => $cashAccount->id,
-                    'debit' => $invoiceTotal,
-                    'credit' => 0.00,
-                    'customer_mobile' => $customerMobile
-                ]);
+                if ($finalPaymentAmount > 0) {
+                    $paymentEntry = JournalEntry::create([
+                        'entry_date' => date('Y-m-d'),
+                        'reference' => $bill->bill_number . '-PAY',
+                        'description' => "Final payment received for Bill {$bill->bill_number} (Client: {$client->name})"
+                    ]);
 
-                // Credit Accounts Receivable
-                $paymentEntry->items()->create([
-                    'account_id' => $arAccount->id,
-                    'debit' => 0.00,
-                    'credit' => $invoiceTotal,
-                    'customer_mobile' => $customerMobile
-                ]);
+                    // Debit Cash/Bank
+                    $paymentEntry->items()->create([
+                        'account_id' => $cashAccount->id,
+                        'debit' => $finalPaymentAmount,
+                        'credit' => 0.00,
+                        'customer_mobile' => $customerMobile
+                    ]);
+
+                    // Credit Accounts Receivable
+                    $paymentEntry->items()->create([
+                        'account_id' => $arAccount->id,
+                        'debit' => 0.00,
+                        'credit' => $finalPaymentAmount,
+                        'customer_mobile' => $customerMobile
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             Log::error("DoubleEntryService Error: " . $e->getMessage());
@@ -294,6 +299,61 @@ class DoubleEntryService
             }
         } catch (\Exception $e) {
             Log::error("DoubleEntryService postPayrollSlipTransaction Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Automatically log an advanced payment on a Job Card to the ledger (Debit Cash Drawer, Credit Accounts Receivable).
+     */
+    public static function postAdvancedPayment($payment)
+    {
+        try {
+            $reference = 'ADV-PAY-' . $payment->id;
+            
+            // Delete existing journal entries for this advanced payment
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            $cashAccount = Account::where('code', '1000')->first();
+            $arAccount = Account::where('code', '1200')->first();
+
+            if (!$cashAccount || !$arAccount) {
+                return;
+            }
+
+            $jobCard = $payment->jobCard;
+            $client = $jobCard->vehicle->client;
+            $customerMobile = $client->phone ?? '0000000000';
+
+            $entry = JournalEntry::create([
+                'entry_date' => $payment->paid_at ? $payment->paid_at->format('Y-m-d') : date('Y-m-d'),
+                'reference' => $reference,
+                'description' => "Advanced payment received for Job Card {$jobCard->card_number} (Client: {$client->name})"
+            ]);
+
+            // Debit Cash Drawer (1000)
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => floatval($payment->amount),
+                'credit' => 0.00,
+                'customer_mobile' => $customerMobile
+            ]);
+
+            // Credit Accounts Receivable (1200)
+            $entry->items()->create([
+                'account_id' => $arAccount->id,
+                'debit' => 0.00,
+                'credit' => floatval($payment->amount),
+                'customer_mobile' => $customerMobile
+            ]);
+
+            // Save the journal entry link quiet to prevent boot event loops
+            $payment->updateQuietly(['journal_entry_id' => $entry->id]);
+
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postAdvancedPayment Error: " . $e->getMessage());
         }
     }
 }

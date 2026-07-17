@@ -85,6 +85,8 @@ Route::middleware('auth')->group(function () {
     // These POST routes use {jobCard} so must come AFTER the static delete routes above
     Route::post('/job-cards/{jobCard}/outsourcing', [JobCardController::class, 'addOutsourcing'])->name('job-cards.add-outsourcing');
     Route::post('/job-cards/{jobCard}/misc-parts', [JobCardController::class, 'addMiscPart'])->name('job-cards.add-misc-part');
+    Route::post('/job-cards/{jobCard}/advanced-payments', [JobCardController::class, 'addAdvancedPayment'])->name('job-cards.add-advanced-payment');
+    Route::delete('/job-cards/advanced-payments/{payment}', [JobCardController::class, 'deleteAdvancedPayment'])->name('job-cards.delete-advanced-payment');
 
     // Appointments
     // Static sub-routes MUST precede the {appointment} wildcard

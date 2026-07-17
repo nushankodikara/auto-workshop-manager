@@ -450,6 +450,111 @@
                 @endif
             </div>
 
+            {{-- ── 5. Advanced Payments (Deposits) ─────────────────── --}}
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <i data-lucide="wallet" class="w-4 h-4 text-primary"></i>
+                        <span>Advanced Payments / Deposits</span>
+                    </span>
+                    <span class="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                        Total Received: {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->advanced_payments_sum, 2) }}
+                    </span>
+                </h3>
+
+                <div class="space-y-3">
+                    @forelse($jobCard->advancedPayments as $payment)
+                        <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($payment->amount, 2) }}</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase">{{ str_replace('_', ' ', $payment->payment_method) }}</span>
+                                </div>
+                                <div class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <span>
+                                        <i data-lucide="calendar" class="w-3 h-3 inline-block align-middle mr-0.5"></i>
+                                        {{ $payment->paid_at->format('D, d M Y') }}
+                                    </span>
+                                    @if($payment->transaction_reference)
+                                        <span>
+                                            <i data-lucide="file-text" class="w-3 h-3 inline-block align-middle mr-0.5"></i>
+                                            Ref: {{ $payment->transaction_reference }}
+                                        </span>
+                                    @endif
+                                    @if($payment->notes)
+                                        <span class="italic text-slate-400">"{{ $payment->notes }}"</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div>
+                                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                                    <form action="{{ route('job-cards.delete-advanced-payment', $payment->id) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('Delete this advanced payment record?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Delete">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                            No advanced payments recorded for this job.
+                        </div>
+                    @endforelse
+                </div>
+
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    <form action="{{ route('job-cards.add-advanced-payment', $jobCard->id) }}" method="POST"
+                          class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        @csrf
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Deposit Amount ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="amount" required placeholder="0.00" min="0.01"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Payment Method</label>
+                            <select name="payment_method" required
+                                    class="w-full px-3 py-2 app-input rounded-lg text-slate-950 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
+                                <option value="cash">Cash</option>
+                                <option value="card">Card Payment</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Payment Date</label>
+                            <input type="date" name="paid_at" required value="{{ date('Y-m-d') }}"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Transaction Reference</label>
+                            <input type="text" name="transaction_reference" placeholder="Receipt / Slip No."
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div class="md:col-span-3">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Notes / Remarks</label>
+                            <input type="text" name="notes" placeholder="Optional notes..."
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div class="md:col-span-5 flex justify-end">
+                            <button type="submit"
+                                    class="py-2 px-4 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-primary dark:text-slate-200 font-bold rounded-lg text-xs transition flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Record Advanced Payment</span>
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <div class="text-xs text-slate-500 bg-slate-50 dark:bg-slate-955/35 p-3 rounded-lg border border-slate-200 dark:border-slate-800 mt-2 flex items-center gap-1.5">
+                        <i data-lucide="lock" class="w-3.5 h-3.5 text-primary shrink-0"></i>
+                        <span>Payments are locked because an invoice has already been generated.</span>
+                    </div>
+                @endif
+            </div>
+
             <!-- 3. Discussion Feed (Comments) -->
             <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">

@@ -92,6 +92,11 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - **Double-Entry Ledger Audit & Reconciliation Tool**: Built an integrity checking console under the Bookkeeping & Ledger module that scans, audits, and compares double-entry transactions against the operational database tables. Detects missing invoice/batch/payroll ledger postings, duplicate/double-entered entries, and orphaned entries whose original records were deleted. Provides a single-action "Fix & Reconstitute Ledger" button to reconstruct missing entries, merge duplicates, and delete orphaned lines automatically. Fixed missing ledger synchronization when a draft invoice's status is updated to `paid`.
 - **Database Backup Download, Upload & Restore UI**: Enhanced the database backup console within the Settings module. Admins can now download any sqlite database backup file directly from the list in the UI, and upload any SQLite backup file which immediately triggers restoration and database overwrites.
 - **S3 Cloud Backup Integration**: Added direct cloud uploads using a lightweight standalone S3 client featuring AWS Signature Version 4 signing (requiring no composer dependencies). Settings for bucket, key, secret, region, and custom endpoints (to support compatible S3 like MinIO or R2) can be configured directly inside the main Settings form, enabling automatic mirroring of all local backups onto cloud storage.
+- **Job Card Advanced Payments**: Added table `job_card_advanced_payments` mapping multiple advance deposits onto a job card (amount, method, trans reference, notes, paid date).
+  * Advanced payments are automatically posted to the double-entry books (Debit Cash Drawer `1000`, Credit Accounts Receivable `1200`).
+  * On final invoice generation/print, advanced payments are displayed as deductions and subtracted from the `total_amount` to compute the remaining "Balance Due".
+  * The ledger billing payment transaction posts only the remaining unsettled amount (Cash debit, AR credit) to prevent duplicate cash logging.
+  * Supported by the Ledger Audit & Reconciliation system, which automatically detects missing or duplicate advanced payment ledger postings.
 
 ## Tracker Integration & Bi-directional Sync
 

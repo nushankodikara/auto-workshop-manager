@@ -168,8 +168,20 @@
                 
                 <div class="flex justify-between text-base font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-slate-850 dark:text-slate-100 print:text-black">
                     <span>Total Amount:</span>
-                    <span class="font-mono text-primary print:text-black">{{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->bill->total_amount, 2) }}</span>
+                    <span class="font-mono text-slate-800 dark:text-slate-200 print:text-black">{{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->bill->total_amount, 2) }}</span>
                 </div>
+
+                @if($jobCard->advanced_payments_sum > 0)
+                    <div class="flex justify-between text-emerald-600 dark:text-emerald-400 text-sm">
+                        <span>Advanced Payments:</span>
+                        <span class="font-mono font-semibold">-{{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->advanced_payments_sum, 2) }}</span>
+                    </div>
+                    @php $dueAmount = max(0.00, $jobCard->bill->total_amount - $jobCard->advanced_payments_sum); @endphp
+                    <div class="flex justify-between text-lg font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-slate-850 dark:text-slate-100 print:text-black">
+                        <span>Balance Due:</span>
+                        <span class="font-mono text-primary print:text-black">{{ config('app.currency', 'Rs.') }}{{ number_format($dueAmount, 2) }}</span>
+                    </div>
+                @endif
             </div>
         </div>
 

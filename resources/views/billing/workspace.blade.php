@@ -252,6 +252,18 @@
         </div>
 
         <!-- 4. Billing Preferences & Summary -->
+        @if($jobCard->advanced_payments_sum > 0)
+            <div class="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm flex items-center justify-between gap-3 shadow-xs">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="wallet" class="w-4 h-4 shrink-0"></i>
+                    <span>This Job Card has <strong>{{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->advanced_payments_sum, 2) }}</strong> in advanced payments. This will be deducted from the customer's final balance.</span>
+                </div>
+                <div class="font-bold text-xs bg-emerald-500/20 px-2.5 py-1 rounded-lg">
+                    Advanced Deposits Active
+                </div>
+            </div>
+        @endif
+
         <div class="app-card rounded-2xl p-6 grid grid-cols-1 md:grid-cols-4 gap-6 items-end shadow-xs">
             <div>
                 <label for="tax" class="block text-xs text-slate-500 mb-1.5 font-semibold">Apply Tax Percentage (%)</label>

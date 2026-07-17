@@ -100,6 +100,11 @@ class JobCard extends Model
         return $this->hasMany(JobCardAssignment::class);
     }
 
+    public function advancedPayments()
+    {
+        return $this->hasMany(JobCardAdvancedPayment::class);
+    }
+
     public function getWorkerActiveHours($worker)
     {
         $assignments = $this->assignments()->where('user_id', $worker->id)->get();
@@ -172,5 +177,10 @@ class JobCard extends Model
         }
 
         return $sum;
+    }
+
+    public function getAdvancedPaymentsSumAttribute()
+    {
+        return (double)$this->advancedPayments()->sum('amount');
     }
 }

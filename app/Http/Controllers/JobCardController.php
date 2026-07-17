@@ -103,6 +103,7 @@ class JobCardController extends Controller
             'services',
             'outsourcingItems.outsourcingCompany',
             'miscParts',
+            'advancedPayments',
         ]);
 
         $allWorkers = User::where('role', 'worker')->where('is_archived', false)->get();
@@ -783,5 +784,76 @@ class JobCardController extends Controller
         $miscPart->delete();
 
         return back()->with('success', 'Misc part removed.');
+    }
+
+    /**
+     * Record an advanced payment on a Job Card.
+     */
+    public function addAdvancedPayment(Request $request, JobCard $jobCard)
+    {
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:cash,card,bank_transfer',
+            'transaction_reference' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:255',
+            'paid_at' => 'required|date',
+        ]);
+
+        $payment = DB::transaction(function () use ($jobCard, $data) {
+            $payment = \App\Models\JobCardAdvancedPayment::create([
+                'job_card_id' => $jobCard->id,
+                'amount' => $data['amount'],
+                'payment_method' => $data['payment_method'],
+                'transaction_reference' => $data['transaction_reference'],
+                'notes' => $data['notes'],
+                'paid_at' => \Carbon\Carbon::parse($data['paid_at']),
+                'created_by' => Auth::id(),
+            ]);
+
+            // Sync to double entry bookkeeping system
+            \App\Services\DoubleEntryService::postAdvancedPayment($payment);
+
+            // Re-post bill if it exists to reconcile
+            if ($jobCard->bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'advanced_payment_added',
+                'details' => "Advanced payment of " . config('app.currency', 'Rs.') . number_format($payment->amount, 2) . " received via " . strtoupper($payment->payment_method)
+            ]);
+
+            return $payment;
+        });
+
+        return back()->with('success', 'Advanced payment recorded successfully.');
+    }
+
+    /**
+     * Delete an advanced payment from a Job Card.
+     */
+    public function deleteAdvancedPayment(\App\Models\JobCardAdvancedPayment $payment)
+    {
+        $jobCard = $payment->jobCard;
+
+        DB::transaction(function () use ($jobCard, $payment) {
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'advanced_payment_removed',
+                'details' => "Advanced payment of " . config('app.currency', 'Rs.') . number_format($payment->amount, 2) . " removed"
+            ]);
+
+            $payment->delete();
+
+            // Re-post bill if it exists to reconcile
+            if ($jobCard->bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+            }
+        });
+
+        return back()->with('success', 'Advanced payment deleted.');
     }
 }
