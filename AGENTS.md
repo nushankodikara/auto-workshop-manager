@@ -77,9 +77,27 @@ docker compose exec app php artisan db:restore {filename}
 
 ---
 
+## 🎨 UI & UX Design Guidelines
+
+To maintain visual excellence and consistency across the ERP dashboard screens:
+1. **Side-Sliding Drawers (Slide-overs) over Center Modals:**
+   * For registering new items, adding logs, and general forms, use side-sliding drawers that slide in from the right edge of the screen rather than center-aligned popup modals.
+   * Drawer positioning classes: `pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10`.
+   * Overlay backdrop classes: `bg-slate-950/75 transition-opacity` (clicking the backdrop overlay must close the drawer).
+   * **Do NOT use backdrop-blur filters** (`backdrop-blur-*`), as they can cause text rendering blur and layout clipping inconsistencies on specific GPU/screen setups.
+2. **Responsive DataTables:**
+   * Always wrap tables containing dense rows in an `overflow-x-auto` wrapper to allow horizontal scrolling on mobile/tablet screens.
+   * Apply the `.datatable` class on `<table>` elements to integrate simple client-side search, sorting, and pagination.
+3. **Typography & Cell Spacing:**
+   * Global table padding should use `1rem` vertical and `1.25rem` horizontal (`py-4 px-5` or equivalent) to keep grids spacious and legible.
+4. **Interactive Element Stacking:**
+   * Render drawer code blocks outside tabular elements (e.g. at the bottom of the main content blade template) to avoid HTML validation warnings and index stacking constraints.
+
+---
+
 ## ✍️ Documentation Protocol
 
 To keep the codebase maintainable for future developers and AI coding assistants:
-1. **Document Before coding**: Always write down scope changes, API endpoints, or database structures in [docs/AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/AI_HANDOFF.md) before implementing them.
-2. **Keep the Handoff Updated**: Update [docs/AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/AI_HANDOFF.md) whenever a change is made or a feature is implemented/expanded to reflect the true current state of the application.
+1. **Document Before coding**: Always write down scope changes, API endpoints, or database structures in [docs/AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%2520Laravel/docs/AI_HANDOFF.md) before implementing them.
+2. **Keep the Handoff Updated**: Update [docs/AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%2520Laravel/docs/AI_HANDOFF.md) whenever a change is made or a feature is implemented/expanded to reflect the true current state of the application.
 3. **Use Descriptive Diffs**: Maintain a clean Git history and document any schema changes inside migrations.

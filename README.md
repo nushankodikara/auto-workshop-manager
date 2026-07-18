@@ -102,3 +102,46 @@ docker compose exec app php artisan test
 * **Default Technician Account**:
   * **Email**: `alex@workshop.com`
   * **Password**: `Password123!`
+
+---
+
+## 📜 Version History & Changelog
+
+### v1.4.0 (2026-07-18) — Towing/Transportation & Ledger Integrity
+* **Towing & Transportation:** Added provided vs. hired transportation fees on Job Cards with custom double-entry bookkeeping integrations.
+* **Transportation Account Mapping:** Added settings validation and dropdown selections for Transportation Asset, Revenue, and Hire Expense accounts.
+* **Maintenance Utilities:** Created a historical transportation data reconciliation utility in settings.
+* **Eloquent Cascade Cleanups:** Added deleting hooks on Client, Vehicle, JobCard, and Bill to cascade Eloquent deletions and prevent orphaned journal entries in Cash Book or Accounts Receivable.
+* **Duplicate Vehicle Merging:** Added duplicate vehicle finder and one-click merging tool.
+* **Premium UX Drawers:** Converted Consumables modals into side-sliding drawers (slide-overs) to resolve layout rendering blur bugs.
+
+### v1.3.0 (2026-07-17) — Consumables & Advanced Payments
+* **Consumables Inventory:** Implemented consumables supply tracking, logs, and next-month order predictions.
+* **Advanced Payments:** Added advanced payments record tracking for job cards with double-entry ledger integration.
+* **Layout Enhancements:** Added collapsible sidebar drawer navigation, increased cell paddings for DataTables, and fixed timezone settings (Asia/Colombo).
+
+### v1.2.0 (2026-07-03) — Outsourcing, Appointments & Payroll
+* **Outsourcing:** Added outsourcing logs and misc parts to Job Cards with ledger billing integration.
+* **Appointments Module:** Implemented appointment booking panel with auto-formatting and Carbon fallback fixes.
+* **Payroll & Roles:** Integrated dynamic role permission manager and basic/overtime payroll processing.
+* **Backups Console:** Integrated S3 cloud database backups and restore panel in settings.
+
+### v1.1.0 (2026-06-25) — Tracker Sync API & Telemetry
+* **Tracker Telemetry:** Integrated vehicle telemetry logs and live tracking details fetch.
+* **Tracker Sync API:** Developed automatic sync on Client/Vehicle updates.
+* **Client Deduplication:** Added duplicate clients check and profile merging utility.
+
+### v1.0.0 (2026-06-18) — Initial Setup
+* **CRM Core:** Initial database tables, auth routing, client directories, and basic repair job cards.
+
+---
+
+## ✍️ Changelog Maintenance Guidelines
+
+To ensure release notes remain helpful and accurate for all team members and AI coding assistants:
+1. **Semantic Versioning (SemVer):** Increment version numbers as follows:
+   * **PATCH** (e.g., `v1.4.0` -> `v1.4.1`) for backwards-compatible bug fixes.
+   * **MINOR** (e.g., `v1.4.0` -> `v1.5.0`) for new backwards-compatible features.
+   * **MAJOR** (e.g., `v1.4.0` -> `v2.0.0`) for breaking changes.
+2. **Commit Alignment:** Update the changelog *immediately* prior to tagging releases or merging feature branches into `main`.
+3. **Include Key Files:** Note critical code files modified (e.g., migrations, double-entry service rules) to help downstream developers identify side-effects.

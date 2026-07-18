@@ -81,58 +81,62 @@
         </div>
     </div>
 
-    <!-- Create Consumable Modal -->
-    <div id="create-consumable-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onclick="document.getElementById('create-consumable-modal').classList.add('hidden')"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <!-- Sidebar Drawer Modal: Register Consumable -->
+    <div id="create-consumable-modal" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="document.getElementById('create-consumable-modal').classList.add('hidden')"></div>
 
-            <div class="inline-block align-middle bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200 dark:border-slate-800">
-                <div class="bg-slate-50 dark:bg-slate-950/20 px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200" id="modal-title">Register Consumable Supply</h3>
-                    <button onclick="document.getElementById('create-consumable-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-655 dark:hover:text-slate-300">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
+            <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                <div class="pointer-events-auto w-screen max-w-md">
+                    <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+                            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <i data-lucide="sparkles" class="w-5 h-5 text-primary"></i>
+                                <span>Register Consumable Supply</span>
+                            </h2>
+                            <button onclick="document.getElementById('create-consumable-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                        </div>
+
+                        <form action="{{ route('consumables.store') }}" method="POST" class="flex-1 p-6 space-y-5">
+                            @csrf
+                            <div>
+                                <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Supply Item Name</label>
+                                <input type="text" name="name" id="name" required placeholder="e.g. Wurth Brake Cleaner"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="sku" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">SKU / Code</label>
+                                    <input type="text" name="sku" id="sku" placeholder="e.g. WURTH-BC-500"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono uppercase">
+                                </div>
+                                <div>
+                                    <label for="unit" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Measurement Unit</label>
+                                    <input type="text" name="unit" id="unit" required placeholder="e.g. cans, bottles, liters"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="description" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Description</label>
+                                <textarea name="description" id="description" rows="3" placeholder="Additional details or supplier information..."
+                                          class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm"></textarea>
+                            </div>
+
+                            <div class="border-t border-slate-200 dark:border-slate-800 pt-5 flex justify-end gap-3">
+                                <button type="button" onclick="document.getElementById('create-consumable-modal').classList.add('hidden')"
+                                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer border-0">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                        class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg text-xs transition shadow-sm cursor-pointer border-0">
+                                    Register Supply
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <form action="{{ route('consumables.store') }}" method="POST" class="p-6 space-y-4">
-                    @csrf
-                    <div>
-                        <label for="name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Supply Item Name</label>
-                        <input type="text" name="name" id="name" required placeholder="e.g. Wurth Brake Cleaner"
-                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="sku" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">SKU / Code</label>
-                            <input type="text" name="sku" id="sku" placeholder="e.g. WURTH-BC-500"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono uppercase">
-                        </div>
-                        <div>
-                            <label for="unit" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Measurement Unit</label>
-                            <input type="text" name="unit" id="unit" required placeholder="e.g. cans, bottles, liters"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="description" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Description</label>
-                        <textarea name="description" id="description" rows="3" placeholder="Additional details or supplier information..."
-                                  class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm"></textarea>
-                    </div>
-
-                    <div class="border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex justify-end gap-3">
-                        <button type="button" onclick="document.getElementById('create-consumable-modal').classList.add('hidden')"
-                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg text-xs transition shadow-sm cursor-pointer border-0">
-                            Register Supply
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

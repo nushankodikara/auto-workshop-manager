@@ -213,8 +213,10 @@ class BillingController extends Controller
                 ]);
                 $totalAmount += $price;
             }
+            // 4. Add Transportation fee from job card
+            $totalAmount += floatval($jobCard->transportation_fee);
 
-            // 4. Apply Discount Percentage
+            // 5. Apply Discount Percentage
             $subtotal = $totalAmount;
             if ($bill->discount_percent > 0) {
                 $discountAmount = ($subtotal * ($bill->discount_percent / 100));

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['vehicle_id', 'shop_id', 'status', 'notes', 'estimated_cost', 'completed_at', 'mileage', 'card_number', 'last_email', 'last_sms'])]
+#[Fillable(['vehicle_id', 'shop_id', 'status', 'notes', 'estimated_cost', 'transportation_fee', 'completed_at', 'mileage', 'card_number', 'last_email', 'last_sms'])]
 class JobCard extends Model
 {
     protected static function boot()
@@ -32,6 +32,16 @@ class JobCard extends Model
 
                 $xxx = str_pad($nextNum, 3, '0', STR_PAD_LEFT);
                 $jobCard->card_number = $prefix . $dateTimePart . $xxx;
+            }
+        });
+
+        static::deleting(function ($jobCard) {
+            $jobCard->advancedPayments->each(function ($payment) {
+                $payment->delete();
+            });
+
+            if ($jobCard->bill) {
+                $jobCard->bill->delete();
             }
         });
     }

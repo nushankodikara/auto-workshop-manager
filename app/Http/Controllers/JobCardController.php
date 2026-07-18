@@ -128,6 +128,8 @@ class JobCardController extends Controller
             'shop_id' => 'required|exists:shops,id',
             'notes' => 'nullable|string',
             'estimated_cost' => 'nullable|numeric|min:0',
+            'transportation_fee' => 'nullable|numeric|min:0',
+            'transportation_type' => 'nullable|in:provided,hire',
             'mileage' => 'nullable|integer|min:0',
             'workers' => 'nullable|array',
             'workers.*' => 'exists:users,id',
@@ -139,6 +141,8 @@ class JobCardController extends Controller
                 'shop_id' => $data['shop_id'],
                 'notes' => $data['notes'] ?? null,
                 'estimated_cost' => $data['estimated_cost'] ?? 0.00,
+                'transportation_fee' => $data['transportation_fee'] ?? 0.00,
+                'transportation_type' => $data['transportation_type'] ?? 'provided',
                 'status' => 'received-vehicle',
                 'mileage' => $data['mileage'] ?? null
             ]);
@@ -195,6 +199,8 @@ class JobCardController extends Controller
         $data = $request->validate([
             'notes'        => 'nullable|string',
             'estimated_cost' => 'nullable|numeric|min:0',
+            'transportation_fee' => 'nullable|numeric|min:0',
+            'transportation_type' => 'nullable|in:provided,hire',
             'mileage'      => 'nullable|integer|min:0',
             'created_at'   => 'nullable|date_format:Y-m-d\TH:i',
         ]);
@@ -203,8 +209,15 @@ class JobCardController extends Controller
             $jobCard->update([
                 'notes'          => $data['notes'] ?? null,
                 'estimated_cost' => $data['estimated_cost'] ?? $jobCard->estimated_cost ?? 0.00,
+                'transportation_fee' => $data['transportation_fee'] ?? $jobCard->transportation_fee ?? 0.00,
+                'transportation_type' => $data['transportation_type'] ?? $jobCard->transportation_type ?? 'provided',
                 'mileage'        => $data['mileage'] ?? null,
             ]);
+
+            // Re-post bill if it exists to reconcile
+            if ($jobCard->bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+            }
 
             // Check and update vehicle mileage if higher
             if (!empty($data['mileage'])) {

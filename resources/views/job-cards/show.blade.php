@@ -740,7 +740,22 @@
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
-
+                        <!-- Transportation Details -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit_transportation_fee" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Transportation Fee (Rs.)</label>
+                                <input type="number" step="0.01" name="transportation_fee" id="edit_transportation_fee" placeholder="0.00" value="{{ $jobCard->transportation_fee }}" min="0"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="edit_transportation_type" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Transport Mode / Type</label>
+                                <select name="transportation_type" id="edit_transportation_type"
+                                        class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                    <option value="provided" {{ $jobCard->transportation_type === 'provided' ? 'selected' : '' }}>Company Provided</option>
+                                    <option value="hire" {{ $jobCard->transportation_type === 'hire' ? 'selected' : '' }}>Third-Party Hire</option>
+                                </select>
+                            </div>
+                        </div>
 
                         <!-- Notes -->
                         <div>

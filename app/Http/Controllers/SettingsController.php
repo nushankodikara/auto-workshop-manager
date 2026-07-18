@@ -213,6 +213,9 @@ class SettingsController extends Controller
             'account_cogs' => 'required|exists:accounts,code',
             'account_salaries' => 'required|exists:accounts,code',
             'account_consumables' => 'required|exists:accounts,code',
+            'account_transportation' => 'required|exists:accounts,code',
+            'account_transportation_revenue' => 'required|exists:accounts,code',
+            'account_transportation_hire_expense' => 'required|exists:accounts,code',
         ]);
 
         $data['s3_enabled'] = $request->has('s3_enabled') ? '1' : '0';
@@ -331,6 +334,72 @@ class SettingsController extends Controller
         $role->delete();
 
         return back()->with('success', "Role '{$role->label}' has been deleted.");
+    }
+
+    /**
+     * Scan and convert historical labor transportation line items into the formal transportation_fee field.
+     */
+    public function reconcileHistoricalTransportation(Request $request)
+    {
+        $this->checkAccess();
+
+        $count = \Illuminate\Support\Facades\DB::transaction(function () {
+            $updatedJobCardIds = [];
+            $updatedBillIds = [];
+
+            // 1. Process unbilled (or draft) Job Card Service items
+            $services = \App\Models\JobCardService::where(function ($query) {
+                $query->where('name', 'like', '%transport%')
+                      ->orWhere('name', 'like', '%towing%')
+                      ->orWhere('name', 'like', '%transportation%');
+            })->get();
+
+            foreach ($services as $service) {
+                $jobCard = $service->jobCard;
+                if (!$jobCard) continue;
+
+                $jobCard->update([
+                    'transportation_fee' => floatval($jobCard->transportation_fee) + floatval($service->price),
+                    'transportation_type' => 'provided'
+                ]);
+
+                $updatedJobCardIds[] = $jobCard->id;
+                $service->delete();
+            }
+
+            // 2. Process Bill Items (already generated invoices)
+            $billItems = \App\Models\BillItem::where('type', 'labor')
+                ->where(function ($query) {
+                    $query->where('description', 'like', '%transport%')
+                          ->orWhere('description', 'like', '%towing%')
+                          ->orWhere('description', 'like', '%transportation%');
+                })->get();
+
+            foreach ($billItems as $item) {
+                $bill = $item->bill;
+                if (!$bill) continue;
+                $jobCard = $bill->jobCard;
+                if (!$jobCard) continue;
+
+                $jobCard->update([
+                    'transportation_fee' => floatval($jobCard->transportation_fee) + floatval($item->total_price),
+                    'transportation_type' => 'provided'
+                ]);
+
+                $updatedBillIds[] = $bill->id;
+                $item->delete();
+            }
+
+            // 3. Re-post and sync bookkeeping for affected bills
+            $affectedBills = \App\Models\Bill::whereIn('id', array_unique($updatedBillIds))->get();
+            foreach ($affectedBills as $bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($bill);
+            }
+
+            return count(array_unique(array_merge($updatedJobCardIds, $updatedBillIds)));
+        });
+
+        return back()->with('success', "Successfully reconciled {$count} historical transportation record(s) and re-balanced the bookkeeping ledger.");
     }
 }
 

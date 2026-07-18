@@ -28,6 +28,9 @@ class DoubleEntryService
             $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
             $cogsCode = \App\Models\Setting::get('account_cogs', '5000');
             $inventoryCode = \App\Models\Setting::get('account_inventory', '1300');
+            $transCode = \App\Models\Setting::get('account_transportation', '1030');
+            $transRevCode = \App\Models\Setting::get('account_transportation_revenue', '4200');
+            $transHireCode = \App\Models\Setting::get('account_transportation_hire_expense', '5500');
 
             $arAccount = Account::where('code', $arCode)->first();
             $partsRevAccount = Account::where('code', $partsRevCode)->first();
@@ -35,9 +38,12 @@ class DoubleEntryService
             $cashAccount = Account::where('code', $cashCode)->first();
             $cogsAccount = Account::where('code', $cogsCode)->first();
             $inventoryAccount = Account::where('code', $inventoryCode)->first();
+            $transAccount = Account::where('code', $transCode)->first();
+            $transRevAccount = Account::where('code', $transRevCode)->first();
+            $transHireAccount = Account::where('code', $transHireCode)->first();
 
-            if (!$arAccount || !$partsRevAccount || !$serviceRevAccount || !$cashAccount || !$cogsAccount || !$inventoryAccount) {
-                Log::warning("DoubleEntryService: Standard accounts not seeded. Skipping post.");
+            if (!$arAccount || !$partsRevAccount || !$serviceRevAccount || !$cashAccount || !$cogsAccount || !$inventoryAccount || !$transAccount || !$transRevAccount || !$transHireAccount) {
+                Log::warning("DoubleEntryService: Standard or Transportation accounts not seeded. Skipping post.");
                 return;
             }
 
@@ -59,20 +65,25 @@ class DoubleEntryService
                 }
             }
 
+            // Calculate transportation total
+            $transportationTotal = floatval($jobCard->transportation_fee);
+
             // Apply discount proportionally if any
             if ($bill->discount_percent > 0) {
                 $partsTotal -= $partsTotal * (floatval($bill->discount_percent) / 100);
                 $serviceTotal -= $serviceTotal * (floatval($bill->discount_percent) / 100);
+                $transportationTotal -= $transportationTotal * (floatval($bill->discount_percent) / 100);
             }
 
             // Apply tax proportionally if any
             if ($bill->tax > 0) {
                 $partsTotal += $partsTotal * (floatval($bill->tax) / 100);
                 $serviceTotal += $serviceTotal * (floatval($bill->tax) / 100);
+                $transportationTotal += $transportationTotal * (floatval($bill->tax) / 100);
             }
 
             // Total invoiced
-            $invoiceTotal = $partsTotal + $serviceTotal;
+            $invoiceTotal = $partsTotal + $serviceTotal + $transportationTotal;
 
             // Adjust rounding discrepancy to service revenue
             $diff = floatval($bill->total_amount) - $invoiceTotal;
@@ -119,6 +130,15 @@ class DoubleEntryService
                 ]);
             }
 
+            if ($transportationTotal > 0) {
+                $invoiceEntry->items()->create([
+                    'account_id' => $transRevAccount->id,
+                    'debit' => 0.00,
+                    'credit' => $transportationTotal,
+                    'customer_mobile' => $customerMobile
+                ]);
+            }
+
             // 2. Cost of Goods Sold Entry (COGS debit, Inventory credit)
             if ($partsCostTotal > 0) {
                 $cogsEntry = JournalEntry::create([
@@ -156,19 +176,63 @@ class DoubleEntryService
                         'description' => "Final payment received for Bill {$bill->bill_number} (Client: {$client->name})"
                     ]);
 
-                    // Debit Cash/Bank
-                    $paymentEntry->items()->create([
-                        'account_id' => $cashAccount->id,
-                        'debit' => $finalPaymentAmount,
-                        'credit' => 0.00,
-                        'customer_mobile' => $customerMobile
-                    ]);
+                    // Determine transportation payment portion
+                    $transPaymentPortion = 0.00;
+                    if ($transportationTotal > 0) {
+                        $transPaymentPortion = min($transportationTotal, $finalPaymentAmount);
+                    }
+                    $cashPaymentPortion = $finalPaymentAmount - $transPaymentPortion;
+
+                    // Debit Transportation Account if any
+                    if ($transPaymentPortion > 0) {
+                        $paymentEntry->items()->create([
+                            'account_id' => $transAccount->id,
+                            'debit' => $transPaymentPortion,
+                            'credit' => 0.00,
+                            'customer_mobile' => $customerMobile
+                        ]);
+                    }
+
+                    // Debit Cash/Bank for the remaining portion
+                    if ($cashPaymentPortion > 0) {
+                        $paymentEntry->items()->create([
+                            'account_id' => $cashAccount->id,
+                            'debit' => $cashPaymentPortion,
+                            'credit' => 0.00,
+                            'customer_mobile' => $customerMobile
+                        ]);
+                    }
 
                     // Credit Accounts Receivable
                     $paymentEntry->items()->create([
                         'account_id' => $arAccount->id,
                         'debit' => 0.00,
                         'credit' => $finalPaymentAmount,
+                        'customer_mobile' => $customerMobile
+                    ]);
+                }
+
+                // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
+                if ($jobCard->transportation_type === 'hire' && $transportationTotal > 0) {
+                    $hireEntry = JournalEntry::create([
+                        'entry_date' => date('Y-m-d'),
+                        'reference' => $bill->bill_number . '-HIRE',
+                        'description' => "Transportation hire third-party payout for Job Card {$jobCard->card_number}"
+                    ]);
+
+                    // Debit Transportation Hire Expense
+                    $hireEntry->items()->create([
+                        'account_id' => $transHireAccount->id,
+                        'debit' => $transportationTotal,
+                        'credit' => 0.00,
+                        'customer_mobile' => $customerMobile
+                    ]);
+
+                    // Credit Transportation Account
+                    $hireEntry->items()->create([
+                        'account_id' => $transAccount->id,
+                        'debit' => 0.00,
+                        'credit' => $transportationTotal,
                         'customer_mobile' => $customerMobile
                     ]);
                 }

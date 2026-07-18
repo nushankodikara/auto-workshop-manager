@@ -209,6 +209,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/backup/upload-restore', [App\Http\Controllers\SettingsController::class, 'uploadRestore'])->name('settings.backup.upload-restore');
     Route::post('/settings/logo', [App\Http\Controllers\SettingsController::class, 'uploadLogo'])->name('settings.logo');
     Route::delete('/settings/logo', [App\Http\Controllers\SettingsController::class, 'deleteLogo'])->name('settings.logo.delete');
+    Route::post('/settings/reconcile-transportation', [App\Http\Controllers\SettingsController::class, 'reconcileHistoricalTransportation'])->name('settings.reconcile-transportation');
     Route::post('/settings/update', [App\Http\Controllers\SettingsController::class, 'updateSettings'])->name('settings.update');
     Route::post('/settings/shops', [App\Http\Controllers\SettingsController::class, 'storeShop'])->name('settings.shops.store');
     Route::delete('/settings/shops/{shop}', [App\Http\Controllers\SettingsController::class, 'deleteShop'])->name('settings.shops.delete');

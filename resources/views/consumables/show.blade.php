@@ -184,119 +184,127 @@
         </div>
     </div>
 
-    <!-- Modal 1: Add Purchase -->
-    <div id="add-purchase-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onclick="document.getElementById('add-purchase-modal').classList.add('hidden')"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <!-- Sidebar Drawer: Log Consumable Purchase -->
+    <div id="add-purchase-modal" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute inset-0 bg-slate-955/75 transition-opacity" onclick="document.getElementById('add-purchase-modal').classList.add('hidden')"></div>
 
-            <div class="inline-block align-middle bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200 dark:border-slate-800">
-                <div class="bg-slate-50 dark:bg-slate-950/20 px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Log Consumable Purchase</h3>
-                    <button onclick="document.getElementById('add-purchase-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-655 dark:hover:text-slate-300">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
+            <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                <div class="pointer-events-auto w-screen max-w-md">
+                    <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+                            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <i data-lucide="download" class="w-5 h-5 text-emerald-500"></i>
+                                <span>Log Consumable Purchase</span>
+                            </h2>
+                            <button onclick="document.getElementById('add-purchase-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                        </div>
+
+                        <form action="{{ route('consumables.purchase.store', $consumable->id) }}" method="POST" class="flex-1 p-6 space-y-5">
+                            @csrf
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Quantity Purchased ({{ $consumable->unit }})</label>
+                                    <input type="number" step="0.01" name="quantity" id="quantity" required placeholder="e.g. 24"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                                </div>
+                                <div>
+                                    <label for="cost_price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Total Cost ({{ config('app.currency', 'Rs.') }})</label>
+                                    <input type="number" step="0.01" name="cost_price" id="cost_price" required placeholder="e.g. 18500"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="supplier" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Supplier</label>
+                                <input type="text" name="supplier" id="supplier" placeholder="e.g. Wurth Lanka (Pvt) Ltd"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="purchased_at" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Purchase Date</label>
+                                    <input type="date" name="purchased_at" id="purchased_at" required value="{{ date('Y-m-d') }}"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                                </div>
+                                <div>
+                                    <label for="payment_method" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Payment Mode</label>
+                                    <select name="payment_method" id="payment_method" required
+                                            class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                                        <option value="cash">Cash Registry</option>
+                                        <option value="card">Credit Card</option>
+                                        <option value="bank_transfer">Bank Transfer</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-200 dark:border-slate-800 pt-5 flex justify-end gap-3">
+                                <button type="button" onclick="document.getElementById('add-purchase-modal').classList.add('hidden')"
+                                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer border-0">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                        class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow-sm cursor-pointer border-0">
+                                    Post Purchase
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <form action="{{ route('consumables.purchase.store', $consumable->id) }}" method="POST" class="p-6 space-y-4">
-                    @csrf
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Quantity Purchased ({{ $consumable->unit }})</label>
-                            <input type="number" step="0.01" name="quantity" id="quantity" required placeholder="e.g. 24"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                        </div>
-                        <div>
-                            <label for="cost_price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Total Cost ({{ config('app.currency', 'Rs.') }})</label>
-                            <input type="number" step="0.01" name="cost_price" id="cost_price" required placeholder="e.g. 18500"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="supplier" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Supplier</label>
-                        <input type="text" name="supplier" id="supplier" placeholder="e.g. Wurth Lanka (Pvt) Ltd"
-                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="purchased_at" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Purchase Date</label>
-                            <input type="date" name="purchased_at" id="purchased_at" required value="{{ date('Y-m-d') }}"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                        </div>
-                        <div>
-                            <label for="payment_method" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Payment Mode</label>
-                            <select name="payment_method" id="payment_method" required
-                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                                <option value="cash">Cash Registry</option>
-                                <option value="card">Credit Card</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex justify-end gap-3">
-                        <button type="button" onclick="document.getElementById('add-purchase-modal').classList.add('hidden')"
-                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow-sm cursor-pointer border-0">
-                            Post Purchase
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal 2: Log Usage -->
-    <div id="add-usage-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onclick="document.getElementById('add-usage-modal').classList.add('hidden')"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <!-- Sidebar Drawer: Log Consumable Usage / Stocktake -->
+    <div id="add-usage-modal" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute inset-0 bg-slate-955/75 transition-opacity" onclick="document.getElementById('add-usage-modal').classList.add('hidden')"></div>
 
-            <div class="inline-block align-middle bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-slate-200 dark:border-slate-800">
-                <div class="bg-slate-50 dark:bg-slate-950/20 px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Log Consumable Usage / Stocktake Adjustment</h3>
-                    <button onclick="document.getElementById('add-usage-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-655 dark:hover:text-slate-300">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
+            <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                <div class="pointer-events-auto w-screen max-w-md">
+                    <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/40">
+                            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <i data-lucide="upload" class="w-5 h-5 text-amber-500"></i>
+                                <span>Log Usage & Stocktake</span>
+                            </h2>
+                            <button onclick="document.getElementById('add-usage-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                        </div>
+
+                        <form action="{{ route('consumables.usage.store', $consumable->id) }}" method="POST" class="flex-1 p-6 space-y-5">
+                            @csrf
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="quantity_consumed" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Quantity Consumed ({{ $consumable->unit }})</label>
+                                    <input type="number" step="0.01" name="quantity_consumed" id="quantity_consumed" required placeholder="e.g. 5"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                                </div>
+                                <div>
+                                    <label for="recorded_at" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Date Recorded</label>
+                                    <input type="date" name="recorded_at" id="recorded_at" required value="{{ date('Y-m-d') }}"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Notes / Reason</label>
+                                <input type="text" name="notes" id="notes" placeholder="e.g. Weekly shop floor stocktake correction"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                            </div>
+
+                            <div class="border-t border-slate-200 dark:border-slate-800 pt-5 flex justify-end gap-3">
+                                <button type="button" onclick="document.getElementById('add-usage-modal').classList.add('hidden')"
+                                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer border-0">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                        class="px-4 py-2.5 bg-amber-605 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition shadow-sm cursor-pointer border-0">
+                                    Log Usage
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <form action="{{ route('consumables.usage.store', $consumable->id) }}" method="POST" class="p-6 space-y-4">
-                    @csrf
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="quantity_consumed" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Quantity Consumed ({{ $consumable->unit }})</label>
-                            <input type="number" step="0.01" name="quantity_consumed" id="quantity_consumed" required placeholder="e.g. 5"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                        </div>
-                        <div>
-                            <label for="recorded_at" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Date Recorded</label>
-                            <input type="date" name="recorded_at" id="recorded_at" required value="{{ date('Y-m-d') }}"
-                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Notes / Reason</label>
-                        <input type="text" name="notes" id="notes" placeholder="e.g. Weekly shop floor stocktake correction"
-                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
-                    </div>
-
-                    <div class="border-t border-slate-200 dark:border-slate-800 pt-4 mt-6 flex justify-end gap-3">
-                        <button type="button" onclick="document.getElementById('add-usage-modal').classList.add('hidden')"
-                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition cursor-pointer">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2.5 bg-amber-605 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition shadow-sm cursor-pointer border-0">
-                            Log Usage
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

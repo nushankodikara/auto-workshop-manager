@@ -213,6 +213,9 @@
                             ['name' => 'account_cogs', 'label' => 'Cost of Goods Sold (COGS)', 'default' => '5000', 'desc' => 'Debit on parts stock consumption'],
                             ['name' => 'account_salaries', 'label' => 'Salaries Expense', 'default' => '5100', 'desc' => 'Debit on payroll slips processing'],
                             ['name' => 'account_consumables', 'label' => 'Tools & Consumables Expense', 'default' => '5400', 'desc' => 'Debit on consumable purchases'],
+                            ['name' => 'account_transportation', 'label' => 'Transportation Asset Account', 'default' => '1030', 'desc' => 'Accumulates cash for transportation / towing charges'],
+                            ['name' => 'account_transportation_revenue', 'label' => 'Transportation Revenue Account', 'default' => '4200', 'desc' => 'Credits invoiced transportation and towing fees'],
+                            ['name' => 'account_transportation_hire_expense', 'label' => 'Transportation Hire Expense Account', 'default' => '5500', 'desc' => 'Debits pass-through costs of hired third-party towing'],
                         ];
                     @endphp
 
@@ -414,6 +417,28 @@
                     </table>
                 </div>
             @endif
+    <!-- Section 2.5: Maintenance Utilities -->
+    <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs border border-slate-200 dark:border-slate-800">
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <i data-lucide="wrench" class="w-4 h-4 text-primary"></i>
+                    <span>Maintenance & Reconcile Utilities</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">Run system integrity repairs, clean orphaned profiles, and fix historical data records.</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <form action="{{ route('settings.reconcile-transportation') }}" method="POST"
+                      onsubmit="return confirm('WARNING: This will scan all past Job Cards and Bills, converting labor items containing \'transport\' or \'towing\' into formal transportation fees, and re-balance their double-entry ledger items.\n\nThis operation cannot be undone. Proceed?')">
+                    @csrf
+                    <button type="submit" 
+                            class="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold rounded-lg text-xs transition flex items-center gap-1.5 border border-amber-500/25 cursor-pointer">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Reconcile Historical Transportation</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
