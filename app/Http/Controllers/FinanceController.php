@@ -505,6 +505,30 @@ class FinanceController extends Controller
             }
         }
 
+        // 6. Check Consumable Purchases
+        $missingConsumables = [];
+        $duplicateConsumables = [];
+        $conPurchases = \App\Models\ConsumablePurchase::with('consumable')->get();
+        foreach ($conPurchases as $cp) {
+            $ref = "CONS-PURCH-{$cp->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($entries->count() === 0) {
+                $missingConsumables[] = [
+                    'id' => $cp->id,
+                    'item' => $cp->consumable->name ?? 'Unknown',
+                    'date' => $cp->purchased_at->format('Y-m-d'),
+                    'total' => $cp->cost_price
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicateConsumables[] = [
+                    'id' => $cp->id,
+                    'item' => $cp->consumable->name ?? 'Unknown',
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
         // 4. Check Orphaned Entries
         $orphanedEntries = [];
         $allEntries = JournalEntry::all();
@@ -539,6 +563,10 @@ class FinanceController extends Controller
                 $type = 'Advanced Payment';
                 $exists = \App\Models\JobCardAdvancedPayment::where('id', $matches[1])->exists();
                 if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^CONS-PURCH-(\d+)$/', $ref, $matches)) {
+                $type = 'Consumable Purchase';
+                $exists = \App\Models\ConsumablePurchase::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
             }
 
             if ($isOrphan) {
@@ -561,6 +589,8 @@ class FinanceController extends Controller
             'duplicateSlips' => $duplicateSlips,
             'missingPayments' => $missingPayments,
             'duplicatePayments' => $duplicatePayments,
+            'missingConsumables' => $missingConsumables,
+            'duplicateConsumables' => $duplicateConsumables,
             'orphanedEntries' => $orphanedEntries
         ];
     }
@@ -626,7 +656,20 @@ class FinanceController extends Controller
                 }
             }
 
-            // 5. Delete orphaned entries
+            // 5. Re-sync missing/duplicate consumable purchases
+            $affectedCPIds = array_unique(array_merge(
+                array_column($audit['missingConsumables'], 'id'),
+                array_column($audit['duplicateConsumables'], 'id')
+            ));
+            foreach ($affectedCPIds as $cpId) {
+                JournalEntry::where('reference', "CONS-PURCH-{$cpId}")->delete();
+                $cp = \App\Models\ConsumablePurchase::find($cpId);
+                if ($cp) {
+                    \App\Services\DoubleEntryService::postConsumablePurchase($cp);
+                }
+            }
+
+            // 6. Delete orphaned entries
             foreach ($audit['orphanedEntries'] as $orphan) {
                 JournalEntry::where('id', $orphan['id'])->delete();
             }

@@ -194,6 +194,50 @@
                 </div>
             </div>
 
+            <div class="border-t border-slate-200 dark:border-slate-800/80 pt-4 mt-6">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1">
+                    <i data-lucide="book-open" class="w-4 h-4 text-primary"></i>
+                    <span>Operational Ledger Accounts Mapping</span>
+                </h4>
+                <p class="text-xs text-slate-505 dark:text-slate-400 mb-4">Map automated system transactions (like job card invoicing, payroll, purchases) to specific double-entry accounts.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    @php
+                        $mappingFields = [
+                            ['name' => 'account_cashbook', 'label' => 'Cashbook Account', 'default' => '1000', 'desc' => 'Debit on payments, credit on expense payouts'],
+                            ['name' => 'account_receivable', 'label' => 'Accounts Receivable', 'default' => '1200', 'desc' => 'Credit on payments, debit on draft billing'],
+                            ['name' => 'account_inventory', 'label' => 'Parts Inventory Asset', 'default' => '1300', 'desc' => 'Debit on parts batch purchase inflow'],
+                            ['name' => 'account_payable', 'label' => 'Accounts Payable Liability', 'default' => '2000', 'desc' => 'Credit on draft payroll slips'],
+                            ['name' => 'account_service_revenue', 'label' => 'Service Revenue', 'default' => '4000', 'desc' => 'Credit on job card service revenue'],
+                            ['name' => 'account_parts_revenue', 'label' => 'Parts Revenue', 'default' => '4105', 'desc' => 'Credit on job card parts inventory revenue'],
+                            ['name' => 'account_cogs', 'label' => 'Cost of Goods Sold (COGS)', 'default' => '5000', 'desc' => 'Debit on parts stock consumption'],
+                            ['name' => 'account_salaries', 'label' => 'Salaries Expense', 'default' => '5100', 'desc' => 'Debit on payroll slips processing'],
+                            ['name' => 'account_consumables', 'label' => 'Tools & Consumables Expense', 'default' => '5400', 'desc' => 'Debit on consumable purchases'],
+                        ];
+                    @endphp
+
+                    @foreach($mappingFields as $field)
+                        <div>
+                            <label for="{{ $field['name'] }}" class="block text-xs font-semibold uppercase tracking-wider text-slate-550 dark:text-slate-400 mb-1.5">
+                                {{ $field['label'] }}
+                            </label>
+                            <select name="{{ $field['name'] }}" id="{{ $field['name'] }}" required
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
+                                @php
+                                    $currentVal = \App\Models\Setting::get($field['name'], $field['default']);
+                                @endphp
+                                @foreach($accounts as $acc)
+                                    <option value="{{ $acc->code }}" {{ $currentVal == $acc->code ? 'selected' : '' }}>
+                                        [{{ $acc->code }}] {{ $acc->name }} ({{ ucfirst($acc->type) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-500 mt-1 leading-normal font-medium">{{ $field['desc'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
             <div>
                 <button type="submit" 
                         class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer border-0">

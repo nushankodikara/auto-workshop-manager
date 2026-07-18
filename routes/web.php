@@ -11,6 +11,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ConsumablesController;
 use Illuminate\Http\Request;
 
 // Guest Routes
@@ -109,6 +110,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/clients/sync-all', [ClientVehicleController::class, 'clientsSyncAll'])->name('clients.sync-all');
     Route::post('/clients/{client}/sync', [ClientVehicleController::class, 'clientSync'])->name('clients.sync');
     Route::get('/vehicles', [ClientVehicleController::class, 'vehiclesIndex'])->name('vehicles.index');
+    Route::get('/vehicles/duplicates', [ClientVehicleController::class, 'vehiclesDuplicates'])->name('vehicles.duplicates');
+    Route::post('/vehicles/merge', [ClientVehicleController::class, 'vehiclesMerge'])->name('vehicles.merge');
     Route::get('/vehicles/{vehicle}/history', [ClientVehicleController::class, 'vehicleHistory'])->name('vehicles.history');
     Route::post('/vehicles', [ClientVehicleController::class, 'vehicleStore'])->name('vehicles.store');
     Route::put('/vehicles/{vehicle}', [ClientVehicleController::class, 'vehicleUpdate'])->name('vehicles.update');
@@ -124,6 +127,16 @@ Route::middleware('auth')->group(function () {
     Route::patch('/inventory/{item}/adjust', [InventoryController::class, 'adjustStock'])->name('inventory.adjust');
     Route::post('/inventory/{item}/batch', [InventoryController::class, 'addBatch'])->name('inventory.add-batch');
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
+
+    // Consumables Supplies
+    Route::get('/consumables', [ConsumablesController::class, 'index'])->name('consumables.index');
+    Route::get('/consumables/forecast', [ConsumablesController::class, 'forecast'])->name('consumables.forecast');
+    Route::post('/consumables', [ConsumablesController::class, 'store'])->name('consumables.store');
+    Route::get('/consumables/{consumable}', [ConsumablesController::class, 'show'])->name('consumables.show');
+    Route::post('/consumables/{consumable}/purchase', [ConsumablesController::class, 'storePurchase'])->name('consumables.purchase.store');
+    Route::delete('/consumables/purchase/{purchase}', [ConsumablesController::class, 'deletePurchase'])->name('consumables.purchase.delete');
+    Route::post('/consumables/{consumable}/usage', [ConsumablesController::class, 'storeUsage'])->name('consumables.usage.store');
+    Route::delete('/consumables/usage/{usage}', [ConsumablesController::class, 'deleteUsage'])->name('consumables.usage.delete');
 
     // Billing & Invoices
     Route::get('/job-cards/{jobCard}/billing/workspace', [BillingController::class, 'showWorkspace'])->name('billing.workspace');

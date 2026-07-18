@@ -13,11 +13,19 @@
                 <span>Vehicles Directory</span>
             </h2>
         </div>
-        <button onclick="document.getElementById('create-vehicle-drawer').classList.remove('hidden')"
-                class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm cursor-pointer ml-auto sm:ml-0">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            <span>Register Vehicle</span>
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('vehicles.duplicates') }}"
+               class="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium rounded-lg text-sm transition flex items-center gap-1.5 border border-amber-500/25">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                <span>Find Duplicates</span>
+            </a>
+
+            <button onclick="document.getElementById('create-vehicle-drawer').classList.remove('hidden')"
+                    class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm cursor-pointer border-0">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Register Vehicle</span>
+            </button>
+        </div>
     </div>
 
     <!-- Vehicles List Table -->

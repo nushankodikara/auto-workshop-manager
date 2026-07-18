@@ -22,12 +22,19 @@ class DoubleEntryService
             }
 
             // Get standard accounts
-            $arAccount = Account::where('code', '1200')->first();
-            $partsRevAccount = Account::where('code', '4105')->orWhere('code', '4100')->first();
-            $serviceRevAccount = Account::where('code', '4000')->first();
-            $cashAccount = Account::where('code', '1000')->first();
-            $cogsAccount = Account::where('code', '5000')->first();
-            $inventoryAccount = Account::where('code', '1300')->first();
+            $arCode = \App\Models\Setting::get('account_receivable', '1200');
+            $partsRevCode = \App\Models\Setting::get('account_parts_revenue', '4105');
+            $serviceRevCode = \App\Models\Setting::get('account_service_revenue', '4000');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+            $cogsCode = \App\Models\Setting::get('account_cogs', '5000');
+            $inventoryCode = \App\Models\Setting::get('account_inventory', '1300');
+
+            $arAccount = Account::where('code', $arCode)->first();
+            $partsRevAccount = Account::where('code', $partsRevCode)->first();
+            $serviceRevAccount = Account::where('code', $serviceRevCode)->first();
+            $cashAccount = Account::where('code', $cashCode)->first();
+            $cogsAccount = Account::where('code', $cogsCode)->first();
+            $inventoryAccount = Account::where('code', $inventoryCode)->first();
 
             if (!$arAccount || !$partsRevAccount || !$serviceRevAccount || !$cashAccount || !$cogsAccount || !$inventoryAccount) {
                 Log::warning("DoubleEntryService: Standard accounts not seeded. Skipping post.");
@@ -183,8 +190,11 @@ class DoubleEntryService
                 $oldEntry->delete();
             }
 
-            $inventoryAccount = Account::where('code', '1300')->first();
-            $cashAccount = Account::where('code', '1000')->first();
+            $inventoryCode = \App\Models\Setting::get('account_inventory', '1300');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+
+            $inventoryAccount = Account::where('code', $inventoryCode)->first();
+            $cashAccount = Account::where('code', $cashCode)->first();
 
             if (!$inventoryAccount || !$cashAccount) {
                 return;
@@ -231,16 +241,20 @@ class DoubleEntryService
                 $oldEntry->delete();
             }
 
-            $salariesExpenseAcc = Account::where('code', '5100')->first();
+            $salariesCode = \App\Models\Setting::get('account_salaries', '5100');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+            $payableCode = \App\Models\Setting::get('account_payable', '2000');
+
+            $salariesExpenseAcc = Account::where('code', $salariesCode)->first();
             if (!$salariesExpenseAcc) {
                 return;
             }
 
-            // If paid: Credit Cash Drawer (1000). If draft: Credit Accounts Payable (2000).
+            // If paid: Credit Cash Drawer. If draft: Credit Accounts Payable.
             if ($payrollSlip->status === 'paid') {
-                $creditAccount = Account::where('code', '1000')->first();
+                $creditAccount = Account::where('code', $cashCode)->first();
             } else {
-                $creditAccount = Account::where('code', '2000')->first();
+                $creditAccount = Account::where('code', $payableCode)->first();
             }
 
             if (!$creditAccount) {
@@ -316,8 +330,11 @@ class DoubleEntryService
                 $oldEntry->delete();
             }
 
-            $cashAccount = Account::where('code', '1000')->first();
-            $arAccount = Account::where('code', '1200')->first();
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+            $arCode = \App\Models\Setting::get('account_receivable', '1200');
+
+            $cashAccount = Account::where('code', $cashCode)->first();
+            $arAccount = Account::where('code', $arCode)->first();
 
             if (!$cashAccount || !$arAccount) {
                 return;
@@ -354,6 +371,59 @@ class DoubleEntryService
 
         } catch (\Exception $e) {
             Log::error("DoubleEntryService postAdvancedPayment Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Automatically log a consumable purchase to the ledger (Debit Tools & Consumables, Credit Cash Drawer).
+     */
+    public static function postConsumablePurchase($purchase)
+    {
+        try {
+            $reference = 'CONS-PURCH-' . $purchase->id;
+            
+            // Delete existing journal entries for this purchase
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            $consumablesCode = \App\Models\Setting::get('account_consumables', '5400');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+
+            $consumablesAccount = Account::where('code', $consumablesCode)->first();
+            $cashAccount = Account::where('code', $cashCode)->first();
+
+            if (!$consumablesAccount || !$cashAccount) {
+                Log::warning("DoubleEntryService: Consumables or Cash accounts not found. Skipping post.");
+                return;
+            }
+
+            $entry = JournalEntry::create([
+                'entry_date' => $purchase->purchased_at ? $purchase->purchased_at->format('Y-m-d') : date('Y-m-d'),
+                'reference' => $reference,
+                'description' => "Consumable purchase batch {$purchase->batch_code} (Item: " . ($purchase->consumable->name ?? 'Unknown') . ")"
+            ]);
+
+            // Debit Tools & Consumables Expense (5400)
+            $entry->items()->create([
+                'account_id' => $consumablesAccount->id,
+                'debit' => floatval($purchase->cost_price),
+                'credit' => 0.00
+            ]);
+
+            // Credit Cash Drawer (1000)
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => 0.00,
+                'credit' => floatval($purchase->cost_price)
+            ]);
+
+            // Save the journal entry link quiet
+            $purchase->updateQuietly(['journal_entry_id' => $entry->id]);
+
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postConsumablePurchase Error: " . $e->getMessage());
         }
     }
 }

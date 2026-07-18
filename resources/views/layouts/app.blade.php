@@ -251,9 +251,13 @@
                 @endif
 
                 @if(auth()->user()->hasModuleAccess('inventory'))
-                    <a href="{{ route('inventory.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('inventory.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                    <a href="{{ route('inventory.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('inventory.*') && !request()->routeIs('consumables.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
                         <i data-lucide="package" class="w-4 h-4 shrink-0"></i>
                         <span>Inventory & Stock</span>
+                    </a>
+                    <a href="{{ route('consumables.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('consumables.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                        <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
+                        <span>Consumables Supplies</span>
                     </a>
                 @endif
 

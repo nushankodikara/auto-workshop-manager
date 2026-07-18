@@ -270,4 +270,57 @@ class VehicleTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Security Block: Destructive keywords (INSERT, UPDATE, DELETE, etc.) are prohibited.');
     }
+
+    public function test_vehicle_duplicates_and_merging()
+    {
+        $this->actingAs($this->superManager);
+
+        // Create duplicate vehicles (same plate_number)
+        $vehicle1 = Vehicle::create([
+            'client_id' => $this->client->id,
+            'make' => 'Toyota',
+            'model' => 'Prius',
+            'year' => 2018,
+            'plate_number' => 'WP CAD-1234',
+            'vin' => 'VIN-1111'
+        ]);
+
+        $vehicle2 = Vehicle::create([
+            'client_id' => $this->client->id,
+            'make' => 'Toyota',
+            'model' => 'Prius',
+            'year' => 2018,
+            'plate_number' => 'WP CAD-1234',
+            'vin' => 'VIN-2222'
+        ]);
+
+        // Link a job card to the duplicate vehicle
+        $shop = Shop::create(['name' => 'Main Shop']);
+        $jobCard = JobCard::create([
+            'card_number' => 'TDC-100',
+            'vehicle_id' => $vehicle2->id,
+            'shop_id' => $shop->id,
+            'status' => 'draft',
+            'km_in' => 12000
+        ]);
+
+        // 1. Visit duplicate page
+        $response = $this->get(route('vehicles.duplicates'));
+        $response->assertStatus(200);
+        $response->assertSee('WP CAD-1234');
+
+        // 2. Perform merge
+        $mergeResponse = $this->post(route('vehicles.merge'), [
+            'primary_id' => $vehicle1->id,
+            'duplicate_ids' => [$vehicle2->id]
+        ]);
+
+        $mergeResponse->assertRedirect();
+        $this->assertDatabaseMissing('vehicles', ['id' => $vehicle2->id]);
+        $this->assertDatabaseHas('vehicles', ['id' => $vehicle1->id]);
+
+        // Verify job card has been reassigned to the primary vehicle
+        $jobCard->refresh();
+        $this->assertEquals($vehicle1->id, $jobCard->vehicle_id);
+    }
 }

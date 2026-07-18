@@ -44,8 +44,9 @@ class SettingsController extends Controller
 
         $shops = \App\Models\Shop::all();
         $roles = \App\Models\Role::all();
+        $accounts = \App\Models\Account::orderBy('code')->get();
 
-        return view('settings.index', compact('backups', 'shops', 'roles'));
+        return view('settings.index', compact('backups', 'shops', 'roles', 'accounts'));
     }
 
 
@@ -203,6 +204,15 @@ class SettingsController extends Controller
             's3_region' => 'nullable|string|max:50',
             's3_bucket' => 'nullable|string|max:255',
             's3_endpoint' => 'nullable|string|max:255',
+            'account_cashbook' => 'required|exists:accounts,code',
+            'account_receivable' => 'required|exists:accounts,code',
+            'account_inventory' => 'required|exists:accounts,code',
+            'account_payable' => 'required|exists:accounts,code',
+            'account_service_revenue' => 'required|exists:accounts,code',
+            'account_parts_revenue' => 'required|exists:accounts,code',
+            'account_cogs' => 'required|exists:accounts,code',
+            'account_salaries' => 'required|exists:accounts,code',
+            'account_consumables' => 'required|exists:accounts,code',
         ]);
 
         $data['s3_enabled'] = $request->has('s3_enabled') ? '1' : '0';

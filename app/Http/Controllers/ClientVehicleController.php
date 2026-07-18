@@ -236,4 +236,67 @@ class ClientVehicleController extends Controller
         return redirect()->route('clients.duplicates')
             ->with('success', "Merged {$mergedCount} duplicate record(s) successfully. All vehicles have been reassigned to the primary client.");
     }
+
+    /**
+     * Show all duplicate vehicle groups (same plate number, multiple records).
+     */
+    public function vehiclesDuplicates()
+    {
+        // Find plate numbers that appear more than once (case-insensitive)
+        $duplicatePlates = Vehicle::selectRaw('upper(plate_number) as plate')
+            ->groupByRaw('upper(plate_number)')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('plate');
+
+        // Load all vehicles in those groups with client details and job card counts
+        $groups = $duplicatePlates->map(function ($plate) {
+            return Vehicle::whereRaw('upper(plate_number) = ?', [$plate])
+                ->with(['client'])
+                ->withCount(['jobCards'])
+                ->oldest()
+                ->get();
+        });
+
+        $totalDuplicates = $groups->sum(fn($g) => $g->count() - 1);
+
+        return view('vehicles.duplicates', compact('groups', 'totalDuplicates'));
+    }
+
+    /**
+     * Merge duplicate vehicle records into one primary record.
+     * Reassigns all job cards, appointments, and telemetry links, then deletes duplicates.
+     */
+    public function vehiclesMerge(Request $request)
+    {
+        $request->validate([
+            'primary_id'      => 'required|exists:vehicles,id',
+            'duplicate_ids'   => 'required|array|min:1',
+            'duplicate_ids.*' => 'exists:vehicles,id|different:primary_id',
+        ]);
+
+        $primaryId    = $request->input('primary_id');
+        $duplicateIds = $request->input('duplicate_ids');
+
+        DB::transaction(function () use ($primaryId, $duplicateIds) {
+            // 1. Reassign job cards
+            \App\Models\JobCard::whereIn('vehicle_id', $duplicateIds)
+                ->update(['vehicle_id' => $primaryId]);
+
+            // 2. Reassign appointments
+            \App\Models\Appointment::whereIn('vehicle_id', $duplicateIds)
+                ->update(['vehicle_id' => $primaryId]);
+
+            // 3. Reassign tracker telemetry links
+            \App\Models\TrackerVehicle::whereIn('tdc_vehicle_id', $duplicateIds)
+                ->update(['tdc_vehicle_id' => $primaryId]);
+
+            // 4. Delete the duplicate vehicle records
+            Vehicle::whereIn('id', $duplicateIds)->delete();
+        });
+
+        $mergedCount = count($duplicateIds);
+
+        return redirect()->route('vehicles.duplicates')
+            ->with('success', "Merged {$mergedCount} duplicate vehicle record(s) successfully. All job cards, appointments, and telemetry links have been reassigned to the primary vehicle.");
+    }
 }
