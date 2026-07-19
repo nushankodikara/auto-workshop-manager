@@ -23,7 +23,7 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 
 ## Core modules
 
-- Job cards with kanban workflow: `received-vehicle`, `on-going`, `blocked`, `testing`, `waiting-to-pickup`
+- Job cards with kanban workflow: `received-vehicle`, `on-going`, `blocked`, `testing`, `waiting-to-pickup` (status can be changed on the board via drag-and-drop or directly from the job card details page using an auto-submitting quick-select dropdown)
 - Multi-worker assignment
 - Client and vehicle management
 - Inventory and stock usage
