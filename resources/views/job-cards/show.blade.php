@@ -55,9 +55,24 @@
                                 <span>Edit Details</span>
                             </button>
                         @endif
-                        <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 capitalize">
-                            Status: {{ str_replace('-', ' ', $jobCard->status) }}
-                        </span>
+                        @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                            <form action="{{ route('job-cards.update-status', $jobCard->id) }}" method="POST" class="inline">
+                                @csrf
+                                @method('PATCH')
+                                <select name="status" onchange="this.form.submit()" 
+                                        class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 focus:outline-none cursor-pointer">
+                                    <option value="received-vehicle" {{ $jobCard->status === 'received-vehicle' ? 'selected' : '' }}>Received</option>
+                                    <option value="on-going" {{ $jobCard->status === 'on-going' ? 'selected' : '' }}>Ongoing</option>
+                                    <option value="blocked" {{ $jobCard->status === 'blocked' ? 'selected' : '' }}>Blocked</option>
+                                    <option value="testing" {{ $jobCard->status === 'testing' ? 'selected' : '' }}>Testing</option>
+                                    <option value="waiting-to-pickup" {{ $jobCard->status === 'waiting-to-pickup' ? 'selected' : '' }}>Waiting to Pickup</option>
+                                </select>
+                            </form>
+                        @else
+                            <span class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 capitalize">
+                                Status: {{ str_replace('-', ' ', $jobCard->status) }}
+                            </span>
+                        @endif
                     </div>
                 </div>
                 
