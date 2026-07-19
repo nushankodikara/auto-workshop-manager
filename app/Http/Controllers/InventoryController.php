@@ -366,8 +366,10 @@ class InventoryController extends Controller
                 ->sum('quantity'));
 
             $daysActive = max(1, min($days, max(1, now()->diffInDays($item->created_at))));
-            $dailyUsage = $usage / $daysActive;
-            $predictedDemand = $dailyUsage * 30;
+            
+            // Forecast using time series Holt's Exponential Smoothing method
+            $predictedDemand = \App\Services\ForecastingService::forecast30DaysDemand('stock_movements', 'inventory_id', $item->id);
+            $dailyUsage = $predictedDemand / 30;
             $targetInventory = ceil($predictedDemand * $safetyFactor);
             
             $requiredLevel = max($targetInventory, (int)$item->low_stock_alert_qty);
@@ -481,8 +483,10 @@ class InventoryController extends Controller
                     ->sum('quantity'));
 
                 $daysActive = max(1, min($days, max(1, now()->diffInDays($item->created_at))));
-                $dailyUsage = $usage / $daysActive;
-                $predictedDemand = $dailyUsage * 30;
+                
+                // Forecast using time series Holt's Exponential Smoothing method
+                $predictedDemand = \App\Services\ForecastingService::forecast30DaysDemand('stock_movements', 'inventory_id', $item->id);
+                $dailyUsage = $predictedDemand / 30;
                 $targetInventory = ceil($predictedDemand * $safetyFactor);
                 
                 $requiredLevel = max($targetInventory, (int)$item->low_stock_alert_qty);

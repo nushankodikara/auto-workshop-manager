@@ -212,8 +212,19 @@ class ConsumablesController extends Controller
             }
 
             $daysActive = max(1, min($days, max(1, now()->diffInDays($item->created_at))));
-            $dailyUsage = $usage / $daysActive;
-            $predictedDemand = $dailyUsage * 30;
+            
+            // Forecast using time series Holt's Exponential Smoothing method
+            $table = 'consumable_usages';
+            $foreignKey = 'consumable_id';
+            
+            // Fallback to purchases if no usages are logged in the past period
+            $usagesCount = $item->usages()->where('recorded_at', '>=', now()->subDays($days))->count();
+            if ($usagesCount <= 0) {
+                $table = 'consumable_purchases';
+            }
+
+            $predictedDemand = \App\Services\ForecastingService::forecast30DaysDemand($table, $foreignKey, $item->id);
+            $dailyUsage = $predictedDemand / 30;
             $targetInventory = ceil($predictedDemand * $safetyFactor);
             
             $recommendedOrder = max(0.00, $targetInventory - $item->quantity);
