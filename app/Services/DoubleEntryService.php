@@ -65,22 +65,27 @@ class DoubleEntryService
                 }
             }
 
-            // Calculate transportation total
-            $transportationTotal = floatval($jobCard->transportation_fee);
+            // Calculate transportation totals based on log lines
+            $providedTotal = floatval($jobCard->transportations()->where('type', 'provided')->sum('amount'));
+            $hireTotal = floatval($jobCard->transportations()->where('type', 'hire')->sum('amount'));
 
             // Apply discount proportionally if any
             if ($bill->discount_percent > 0) {
                 $partsTotal -= $partsTotal * (floatval($bill->discount_percent) / 100);
                 $serviceTotal -= $serviceTotal * (floatval($bill->discount_percent) / 100);
-                $transportationTotal -= $transportationTotal * (floatval($bill->discount_percent) / 100);
+                $providedTotal -= $providedTotal * (floatval($bill->discount_percent) / 100);
+                $hireTotal -= $hireTotal * (floatval($bill->discount_percent) / 100);
             }
 
             // Apply tax proportionally if any
             if ($bill->tax > 0) {
                 $partsTotal += $partsTotal * (floatval($bill->tax) / 100);
                 $serviceTotal += $serviceTotal * (floatval($bill->tax) / 100);
-                $transportationTotal += $transportationTotal * (floatval($bill->tax) / 100);
+                $providedTotal += $providedTotal * (floatval($bill->tax) / 100);
+                $hireTotal += $hireTotal * (floatval($bill->tax) / 100);
             }
+
+            $transportationTotal = $providedTotal + $hireTotal;
 
             // Total invoiced
             $invoiceTotal = $partsTotal + $serviceTotal + $transportationTotal;
@@ -219,7 +224,7 @@ class DoubleEntryService
                 }
 
                 // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
-                if ($jobCard->transportation_type === 'hire' && $transportationTotal > 0) {
+                if ($hireTotal > 0) {
                     $hireEntry = JournalEntry::create([
                         'entry_date' => date('Y-m-d'),
                         'reference' => $bill->bill_number . '-HIRE',
@@ -229,7 +234,7 @@ class DoubleEntryService
                     // Debit Transportation Hire Expense
                     $hireEntry->items()->create([
                         'account_id' => $transHireAccount->id,
-                        'debit' => $transportationTotal,
+                        'debit' => $hireTotal,
                         'credit' => 0.00,
                         'customer_mobile' => $customerMobile
                     ]);
@@ -238,7 +243,7 @@ class DoubleEntryService
                     $hireEntry->items()->create([
                         'account_id' => $transAccount->id,
                         'debit' => 0.00,
-                        'credit' => $transportationTotal,
+                        'credit' => $hireTotal,
                         'customer_mobile' => $customerMobile
                     ]);
                 }

@@ -106,9 +106,10 @@
                     <div>
                         <span class="text-slate-500 block text-xs font-semibold">Transport Fee</span>
                         <span class="font-bold text-slate-855 dark:text-slate-200 mt-0.5 block">
-                            @if($jobCard->transportation_fee > 0)
-                                {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->transportation_fee, 2) }}
-                                <span class="block text-[10px] text-slate-500 font-normal capitalize">({{ $jobCard->transportation_type === 'provided' ? 'Company Provided' : 'Third-Party Hire' }})</span>
+                            @php $transSum = $jobCard->transportations->sum('amount'); @endphp
+                            @if($transSum > 0)
+                                {{ config('app.currency', 'Rs.') }}{{ number_format($transSum, 2) }}
+                                <span class="block text-[10px] text-slate-500 font-normal">({{ $jobCard->transportations->where('type', 'provided')->count() }} Prov / {{ $jobCard->transportations->where('type', 'hire')->count() }} Hire)</span>
                             @else
                                 {{ config('app.currency', 'Rs.') }}0.00
                             @endif
@@ -581,6 +582,88 @@
                 @endif
             </div>
 
+            {{-- ── 5b. Towing & Transportation Tracking ─────────────────── --}}
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <i data-lucide="truck" class="w-4 h-4 text-primary"></i>
+                        <span>Towing & Transportation Tracking</span>
+                    </span>
+                    <span class="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                        Total Fee: {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->transportations->sum('amount'), 2) }}
+                    </span>
+                </h3>
+
+                <div class="space-y-3">
+                    @forelse($jobCard->transportations as $trans)
+                        <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 text-sm">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($trans->amount, 2) }}</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase">{{ $trans->type === 'provided' ? 'Company Provided' : 'Third-Party Hire' }}</span>
+                                </div>
+                                <div class="text-xs text-slate-500 mt-1">
+                                    {{ $trans->description }}
+                                </div>
+                            </div>
+                            <div>
+                                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                                    <form action="{{ route('job-cards.delete-transportation', $trans->id) }}" method="POST"
+                                          onsubmit="return confirm('Are you sure you want to delete this transportation log?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition cursor-pointer">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="text-slate-500 text-sm py-6 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                            No towing or transportation logged for this job card.
+                        </div>
+                    @endforelse
+                </div>
+
+                @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                    <form action="{{ route('job-cards.add-transportation', $jobCard->id) }}" method="POST"
+                          class="pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        @csrf
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Towing / Transportation Description</label>
+                            <input type="text" name="description" required placeholder="e.g. Towing from Colombo 03"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Mode / Type</label>
+                            <select name="type" required
+                                    class="w-full px-3 py-2 app-input rounded-lg text-slate-950 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
+                                <option value="provided">Company Provided</option>
+                                <option value="hire">Third-Party Hire</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1 font-semibold">Fee Amount ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="amount" required placeholder="0.00" min="0.01"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-mono">
+                        </div>
+                        <div class="flex items-end">
+                            <button type="submit"
+                                    class="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-primary dark:text-slate-200 font-bold rounded-lg text-xs transition flex items-center justify-center gap-1 cursor-pointer">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Add Log</span>
+                            </button>
+                        </div>
+                    </form>
+                @else
+                    <div class="text-xs text-slate-500 bg-slate-50 dark:bg-slate-955/35 p-3 rounded-lg border border-slate-200 dark:border-slate-800 mt-2 flex items-center gap-1.5">
+                        <i data-lucide="lock" class="w-3.5 h-3.5 text-primary shrink-0"></i>
+                        <span>Transportation details are locked because an invoice has already been generated.</span>
+                    </div>
+                @endif
+            </div>
+
             <!-- 3. Discussion Feed (Comments) -->
             <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
@@ -766,22 +849,7 @@
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                         </div>
 
-                        <!-- Transportation Details -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label for="edit_transportation_fee" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Transportation Fee (Rs.)</label>
-                                <input type="number" step="0.01" name="transportation_fee" id="edit_transportation_fee" placeholder="0.00" value="{{ $jobCard->transportation_fee }}" min="0"
-                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
-                            </div>
-                            <div>
-                                <label for="edit_transportation_type" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Transport Mode / Type</label>
-                                <select name="transportation_type" id="edit_transportation_type"
-                                        class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
-                                    <option value="provided" {{ $jobCard->transportation_type === 'provided' ? 'selected' : '' }}>Company Provided</option>
-                                    <option value="hire" {{ $jobCard->transportation_type === 'hire' ? 'selected' : '' }}>Third-Party Hire</option>
-                                </select>
-                            </div>
-                        </div>
+
 
                         <!-- Notes -->
                         <div>

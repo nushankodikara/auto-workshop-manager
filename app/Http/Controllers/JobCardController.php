@@ -869,4 +869,73 @@ class JobCardController extends Controller
 
         return back()->with('success', 'Advanced payment deleted.');
     }
+
+    /**
+     * Add a Towing / Transportation log line to a Job Card.
+     */
+    public function addTransportation(Request $request, JobCard $jobCard)
+    {
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify transportation details.']);
+        }
+
+        $data = $request->validate([
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0.01',
+            'type' => 'required|in:provided,hire',
+        ]);
+
+        DB::transaction(function () use ($jobCard, $data) {
+            $trans = \App\Models\JobCardTransportation::create([
+                'job_card_id' => $jobCard->id,
+                'description' => $data['description'],
+                'amount' => $data['amount'],
+                'type' => $data['type'],
+            ]);
+
+            // Re-post bill if it exists to reconcile
+            if ($jobCard->bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'transportation_added',
+                'details' => "Transportation log added: {$trans->description} (" . ucfirst($trans->type) . ") - " . config('app.currency', 'Rs.') . number_format($trans->amount, 2)
+            ]);
+        });
+
+        return back()->with('success', 'Transportation details recorded successfully.');
+    }
+
+    /**
+     * Delete a Towing / Transportation log line.
+     */
+    public function deleteTransportation(\App\Models\JobCardTransportation $transportation)
+    {
+        $jobCard = $transportation->jobCard;
+
+        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify transportation details.']);
+        }
+
+        DB::transaction(function () use ($jobCard, $transportation) {
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id' => Auth::id(),
+                'action' => 'transportation_removed',
+                'details' => "Transportation log removed: {$transportation->description} - " . config('app.currency', 'Rs.') . number_format($transportation->amount, 2)
+            ]);
+
+            $transportation->delete();
+
+            // Re-post bill if it exists to reconcile
+            if ($jobCard->bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+            }
+        });
+
+        return back()->with('success', 'Transportation log deleted successfully.');
+    }
 }

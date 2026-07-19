@@ -88,6 +88,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/job-cards/{jobCard}/misc-parts', [JobCardController::class, 'addMiscPart'])->name('job-cards.add-misc-part');
     Route::post('/job-cards/{jobCard}/advanced-payments', [JobCardController::class, 'addAdvancedPayment'])->name('job-cards.add-advanced-payment');
     Route::delete('/job-cards/advanced-payments/{payment}', [JobCardController::class, 'deleteAdvancedPayment'])->name('job-cards.delete-advanced-payment');
+    Route::post('/job-cards/{jobCard}/transportations', [JobCardController::class, 'addTransportation'])->name('job-cards.add-transportation');
+    Route::delete('/job-cards/transportations/{transportation}', [JobCardController::class, 'deleteTransportation'])->name('job-cards.delete-transportation');
 
     // Appointments
     // Static sub-routes MUST precede the {appointment} wildcard

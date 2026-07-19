@@ -40,6 +40,10 @@ class JobCard extends Model
                 $payment->delete();
             });
 
+            $jobCard->transportations->each(function ($trans) {
+                $trans->delete();
+            });
+
             if ($jobCard->bill) {
                 $jobCard->bill->delete();
             }
@@ -113,6 +117,11 @@ class JobCard extends Model
     public function advancedPayments()
     {
         return $this->hasMany(JobCardAdvancedPayment::class);
+    }
+
+    public function transportations()
+    {
+        return $this->hasMany(JobCardTransportation::class);
     }
 
     public function getWorkerActiveHours($worker)
