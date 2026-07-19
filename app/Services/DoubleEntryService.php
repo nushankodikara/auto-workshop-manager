@@ -217,7 +217,7 @@ class DoubleEntryService
                         'customer_mobile' => $customerMobile
                     ]);
                 }
-            }
+
                 // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
                 if ($jobCard->transportation_type === 'hire' && $transportationTotal > 0) {
                     $hireEntry = JournalEntry::create([
