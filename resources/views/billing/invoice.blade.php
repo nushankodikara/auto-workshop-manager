@@ -149,6 +149,20 @@
                     <span class="font-mono font-semibold">{{ config('app.currency', 'Rs.') }}{{ number_format($subtotal, 2) }}</span>
                 </div>
                 
+                @php 
+                    $transSum = $jobCard->transportations->sum('amount');
+                    if ($transSum == 0 && floatval($jobCard->transportation_fee) > 0) {
+                        $transSum = floatval($jobCard->transportation_fee);
+                    }
+                @endphp
+                @if($transSum > 0)
+                    <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                        <span>Towing & Transportation:</span>
+                        <span class="font-mono font-semibold">{{ config('app.currency', 'Rs.') }}{{ number_format($transSum, 2) }}</span>
+                    </div>
+                    @php $subtotal += $transSum; @endphp
+                @endif
+                
                 @if($jobCard->bill->discount_percent > 0)
                     @php $discountAmount = ($subtotal * ($jobCard->bill->discount_percent / 100)); @endphp
                     <div class="flex justify-between text-red-500">

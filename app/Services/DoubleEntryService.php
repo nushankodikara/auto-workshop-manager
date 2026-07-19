@@ -65,9 +65,17 @@ class DoubleEntryService
                 }
             }
 
-            // Calculate transportation totals based on log lines
+            // Calculate transportation totals based on log lines (with fallback to legacy fields)
             $providedTotal = floatval($jobCard->transportations()->where('type', 'provided')->sum('amount'));
             $hireTotal = floatval($jobCard->transportations()->where('type', 'hire')->sum('amount'));
+
+            if ($providedTotal == 0 && $hireTotal == 0 && floatval($jobCard->transportation_fee) > 0) {
+                if ($jobCard->transportation_type === 'hire') {
+                    $hireTotal = floatval($jobCard->transportation_fee);
+                } else {
+                    $providedTotal = floatval($jobCard->transportation_fee);
+                }
+            }
 
             // Apply discount proportionally if any
             if ($bill->discount_percent > 0) {
