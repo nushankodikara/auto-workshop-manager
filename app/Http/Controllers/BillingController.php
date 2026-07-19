@@ -63,6 +63,9 @@ class BillingController extends Controller
             // Allocated parts mappings (altered prices)
             'parts_cost' => 'nullable|array',
             'parts_price' => 'nullable|array',
+            // Transportation details
+            'transportation_fee' => 'nullable|numeric|min:0',
+            'transportation_type' => 'nullable|string|in:provided,hire',
         ]);
 
         if ($jobCard->bill && !auth()->user()->isSuperManager()) {
@@ -70,6 +73,12 @@ class BillingController extends Controller
         }
 
         $bill = DB::transaction(function () use ($jobCard, $data) {
+            // Update transportation details on the job card
+            $jobCard->update([
+                'transportation_fee' => $data['transportation_fee'] ?? 0.00,
+                'transportation_type' => $data['transportation_type'] ?? 'provided'
+            ]);
+
             if ($jobCard->bill) {
                 $bill = $jobCard->bill;
                 $bill->update([

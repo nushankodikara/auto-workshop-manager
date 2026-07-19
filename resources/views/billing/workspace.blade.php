@@ -251,6 +251,31 @@
             </button>
         </div>
 
+        <!-- 3b. Towing & Transportation Section -->
+        <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-2">
+                <i data-lucide="truck" class="w-4 h-4 text-primary"></i>
+                <span>Towing & Transportation Tracking</span>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="transportation_fee" class="block text-xs text-slate-500 mb-1.5 font-semibold">Transportation / Towing Fee (Rs.)</label>
+                    <input type="number" step="0.01" name="transportation_fee" id="transportation_fee" placeholder="0.00" value="{{ $jobCard->transportation_fee ?? '0.00' }}" min="0"
+                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono font-semibold">
+                    <span class="text-[10px] text-slate-450 block mt-1">Leave empty or set to 0.00 if no towing was provided.</span>
+                </div>
+                <div>
+                    <label for="transportation_type" class="block text-xs text-slate-500 mb-1.5 font-semibold">Transportation Mode / Type</label>
+                    <select name="transportation_type" id="transportation_type"
+                            class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs cursor-pointer">
+                        <option value="provided" {{ ($jobCard->transportation_type ?? 'provided') === 'provided' ? 'selected' : '' }}>Company Provided (Direct Revenue)</option>
+                        <option value="hire" {{ ($jobCard->transportation_type ?? 'provided') === 'hire' ? 'selected' : '' }}>Third-Party Hire (Pass-through Tow Payout)</option>
+                    </select>
+                    <span class="text-[10px] text-slate-450 block mt-1">If set to Third-Party Hire, an additional payout entry to expense will be posted.</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 4. Billing Preferences & Summary -->
         @if($jobCard->advanced_payments_sum > 0)
             <div class="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm flex items-center justify-between gap-3 shadow-xs">
