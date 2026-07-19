@@ -61,7 +61,7 @@
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm mt-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 text-sm mt-3">
                     <div>
                         <span class="text-slate-500 block text-xs font-semibold">Vehicle</span>
                         <span class="font-bold text-slate-800 dark:text-slate-200 mt-0.5 block">{{ $jobCard->vehicle->make }} {{ $jobCard->vehicle->model }} ({{ $jobCard->vehicle->year }})</span>
@@ -82,11 +82,22 @@
                     </div>
                     <div>
                         <span class="text-slate-500 block text-xs font-semibold">Odometer / Mileage</span>
-                        <span class="font-bold text-slate-850 dark:text-slate-200 mt-0.5 block">{{ $jobCard->mileage ? number_format($jobCard->mileage) . ' km' : 'Not recorded' }}</span>
+                        <span class="font-bold text-slate-855 dark:text-slate-200 mt-0.5 block">{{ $jobCard->mileage ? number_format($jobCard->mileage) . ' km' : 'Not recorded' }}</span>
                     </div>
                     <div>
                         <span class="text-slate-500 block text-xs font-semibold">Open Duration</span>
-                        <span class="font-bold text-slate-850 dark:text-slate-200 mt-0.5 block">{{ $jobCard->open_duration }}</span>
+                        <span class="font-bold text-slate-855 dark:text-slate-200 mt-0.5 block">{{ $jobCard->open_duration }}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block text-xs font-semibold">Transport Fee</span>
+                        <span class="font-bold text-slate-855 dark:text-slate-200 mt-0.5 block">
+                            @if($jobCard->transportation_fee > 0)
+                                {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->transportation_fee, 2) }}
+                                <span class="block text-[10px] text-slate-500 font-normal capitalize">({{ $jobCard->transportation_type === 'provided' ? 'Company Provided' : 'Third-Party Hire' }})</span>
+                            @else
+                                {{ config('app.currency', 'Rs.') }}0.00
+                            @endif
+                        </span>
                     </div>
                 </div>
 
