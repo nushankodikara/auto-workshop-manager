@@ -101,7 +101,11 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
   * On final invoice generation/print, advanced payments are displayed as deductions and subtracted from the `total_amount` to compute the remaining "Balance Due".
   * The ledger billing payment transaction posts only the remaining unsettled amount (Cash debit, AR credit) to prevent duplicate cash logging.
   * Supported by the Ledger Audit & Reconciliation system, which automatically detects missing or duplicate advanced payment ledger postings.
-- **Consumables Inventory Tracking**: Added tables `consumables`, `consumable_purchases`, and `consumable_usages` to track supplies. Uses FIFO calculations for forecasting purchase demands for next month. Supply logs forms utilize side-sliding drawers (slide-overs) instead of center modals to avoid screen blurring.
+- **Consumables & Parts Inventory Forecasting**: Replaced the previous linear average forecasting model with a **Time Series Forecasting engine** based on **Holt's Linear (Double) Exponential Smoothing** (implemented in `ForecastingService.php`).
+  * Calculates base usage levels ($L_t$) and trend directions ($T_t$) over weekly buckets.
+  * Projects 30 days (4.285 weeks) of future demand adaptively, giving higher weights to recent consumption peaks/trends.
+  * Includes a weighted average fallback algorithm for newer items lacking sufficient history.
+- **Consumables Inventory Tracking**: Added tables `consumables`, `consumable_purchases`, and `consumable_usages` to track supplies. Uses FIFO calculations for forecasting purchase demands. Supply logs forms utilize side-sliding drawers (slide-overs) instead of center modals to avoid screen blurring.
 - **Ledger Mapping Configurations Settings**: Added selections inside Settings layout allowing configuration of custom accounts (cashbook, accounts payable, service/parts revenues, COGS, salaries expense, tools assets/consumables, employee advances, and transportation asset/revenue/hire expense accounts) used dynamically in double-entry auto-posting routines.
 - **Vehicle Duplicate Finder & Merging**: Added duplicate vehicle plates detector, allowing managers to merge redundant profiles and transfer all job cards, quotes, and records cleanly.
 - **Towing & Transportation Tracking**: Added line-by-line transportation logging card on the Job Card page (`job_card_transportations` table) tracking descriptions, types (provided vs hire), and amounts.
