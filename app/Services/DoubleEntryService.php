@@ -356,27 +356,89 @@ class DoubleEntryService
                 'credit' => $netSalary
             ]);
 
-            // Credit Accounts Payable (2000) for deductions
-            if ($deductions > 0) {
-                $apAccount = Account::where('code', '2000')->first();
-                if ($apAccount && $apAccount->id !== $creditAccount->id) {
+            // Calculate advance recovery and other deductions
+            $advanceRecoveryAmount = floatval($payrollSlip->advances()->where('status', 'deducted')->sum('amount'));
+            $otherDeductions = max(0.00, $deductions - $advanceRecoveryAmount);
+
+            // Credit Employee Advances Asset Account (1220) to clear the advance
+            if ($advanceRecoveryAmount > 0) {
+                $advancesCode = \App\Models\Setting::get('account_employee_advances', '1220');
+                $advancesAccount = Account::where('code', $advancesCode)->first();
+                if ($advancesAccount) {
                     $entry->items()->create([
-                        'account_id' => $apAccount->id,
+                        'account_id' => $advancesAccount->id,
                         'debit' => 0.00,
-                        'credit' => $deductions
+                        'credit' => $advanceRecoveryAmount
                     ]);
-                } elseif ($apAccount && $apAccount->id === $creditAccount->id) {
-                    // If both net salary and deductions credit to Accounts Payable (2000), merge them or add separate line.
-                    // Separate line is cleaner for audit trail
+                }
+            }
+
+            // Credit Accounts Payable (2000) for the other deductions portion
+            if ($otherDeductions > 0) {
+                $apAccount = Account::where('code', $payableCode)->first();
+                if ($apAccount) {
                     $entry->items()->create([
                         'account_id' => $apAccount->id,
                         'debit' => 0.00,
-                        'credit' => $deductions
+                        'credit' => $otherDeductions
                     ]);
                 }
             }
         } catch (\Exception $e) {
             Log::error("DoubleEntryService postPayrollSlipTransaction Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Post a salary advance payment transaction to the ledger (Debit Advances Asset, Credit Cashbook).
+     */
+    public static function postEmployeeAdvanceTransaction($advance)
+    {
+        try {
+            $reference = 'ADVANCE-' . $advance->id;
+
+            // Delete existing
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            if ($advance->status === 'cancelled') {
+                return;
+            }
+
+            $advancesCode = \App\Models\Setting::get('account_employee_advances', '1220');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+
+            $advancesAccount = Account::where('code', $advancesCode)->first();
+            $cashAccount = Account::where('code', $cashCode)->first();
+
+            if (!$advancesAccount || !$cashAccount) {
+                Log::warning("DoubleEntryService: Salary advances or Cashbook accounts not seeded.");
+                return;
+            }
+
+            $entry = JournalEntry::create([
+                'entry_date' => $advance->advance_date->format('Y-m-d'),
+                'reference' => $reference,
+                'description' => "Emergency salary advance paid to employee: " . ($advance->user->name ?? 'Staff') . " (Reason: " . ($advance->reason ?: 'Emergency') . ")"
+            ]);
+
+            // Debit Advances asset
+            $entry->items()->create([
+                'account_id' => $advancesAccount->id,
+                'debit' => floatval($advance->amount),
+                'credit' => 0.00
+            ]);
+
+            // Credit Cashbook asset
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => 0.00,
+                'credit' => floatval($advance->amount)
+            ]);
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postEmployeeAdvanceTransaction Error: " . $e->getMessage());
         }
     }
 

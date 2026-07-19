@@ -149,6 +149,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/quotations/create', [App\Http\Controllers\QuotationController::class, 'create'])->name('quotations.create');
     Route::post('/quotations', [App\Http\Controllers\QuotationController::class, 'store'])->name('quotations.store');
     Route::get('/quotations/{quotation}', [App\Http\Controllers\QuotationController::class, 'show'])->name('quotations.show');
+    Route::get('/quotations/{quotation}/edit', [App\Http\Controllers\QuotationController::class, 'edit'])->name('quotations.edit');
+    Route::put('/quotations/{quotation}', [App\Http\Controllers\QuotationController::class, 'update'])->name('quotations.update');
     Route::delete('/quotations/{quotation}', [App\Http\Controllers\QuotationController::class, 'destroy'])->name('quotations.destroy');
 
     // Payroll Salary Slips
@@ -158,6 +160,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/payroll/{payrollSlip}', [PayrollController::class, 'show'])->name('payroll.show');
     Route::get('/payroll/{payrollSlip}/edit', [PayrollController::class, 'edit'])->name('payroll.edit');
     Route::put('/payroll/{payrollSlip}', [PayrollController::class, 'update'])->name('payroll.update');
+    Route::post('/payroll/advances', [PayrollController::class, 'storeAdvance'])->name('payroll.advances.store');
+    Route::delete('/payroll/advances/{advance}', [PayrollController::class, 'destroyAdvance'])->name('payroll.advances.destroy');
     Route::delete('/payroll/{payrollSlip}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
     Route::patch('/payroll/{payrollSlip}/status', [PayrollController::class, 'updateStatus'])->name('payroll.update-status');
 

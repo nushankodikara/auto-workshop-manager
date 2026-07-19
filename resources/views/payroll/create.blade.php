@@ -163,11 +163,17 @@
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center deduction-row">
                         <div class="md:col-span-3">
                             <input type="text" name="item_name[]" value="{{ $cat->name }}" readonly
-                                   class="w-full px-4 py-2 bg-slate-100/60 dark:bg-slate-950/40 border border-slate-250 dark:border-slate-850 rounded-lg text-slate-500 dark:text-slate-400 text-xs focus:outline-none">
+                                   class="w-full px-4 py-2 bg-slate-100/60 dark:bg-slate-955/40 border border-slate-250 dark:border-slate-850 rounded-lg text-slate-500 dark:text-slate-400 text-xs focus:outline-none">
                             <input type="hidden" name="item_type[]" value="deduction">
                         </div>
                         <div>
-                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $cat->default_amount ?? '' }}" oninput="recalculateTotal()"
+                            @php
+                                $val = $cat->default_amount ?? '';
+                                if ($cat->name === 'Advance Payment' && isset($pendingAdvancesSum) && $pendingAdvancesSum > 0) {
+                                    $val = $pendingAdvancesSum;
+                                }
+                            @endphp
+                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $val }}" oninput="recalculateTotal()"
                                    class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary deduction-amount">
                         </div>
                     </div>

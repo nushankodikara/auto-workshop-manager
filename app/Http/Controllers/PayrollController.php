@@ -22,7 +22,7 @@ class PayrollController extends Controller
 
         $slips = PayrollSlip::where('year', $year)
             ->where('month', $month)
-            ->with('user')
+            ->with(['user', 'advances'])
             ->latest()
             ->get();
 
@@ -37,7 +37,11 @@ class PayrollController extends Controller
             ->get()
             ->groupBy('user_id');
 
-        return view('payroll.index', compact('slips', 'users', 'archivedUsers', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData'));
+        $advances = \App\Models\EmployeeAdvance::with('user')
+            ->orderBy('advance_date', 'desc')
+            ->get();
+
+        return view('payroll.index', compact('slips', 'users', 'archivedUsers', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData', 'advances'));
     }
 
     /**
@@ -89,8 +93,9 @@ class PayrollController extends Controller
         $baseAllowance = max(0.00, floatval($user->total_salary) - floatval($user->basic_salary));
 
         $categories = PayrollCategory::all();
+        $pendingAdvancesSum = floatval($user->pendingAdvances()->sum('amount'));
 
-        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 'baseAllowance'));
+        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 'baseAllowance', 'pendingAdvancesSum'));
     }
 
     /**
@@ -148,6 +153,15 @@ class PayrollController extends Controller
                 'net_salary' => $data['prorated_salary'] + $data['overtime_amount'],
                 'status' => 'draft'
             ]);
+
+            // Link pending advances to this payroll slip & mark as deducted
+            $pendingAdvances = $user->pendingAdvances()->get();
+            foreach ($pendingAdvances as $advance) {
+                $advance->update([
+                    'status' => 'deducted',
+                    'payroll_slip_id' => $slip->id
+                ]);
+            }
 
             if (!empty($data['item_name'])) {
                 foreach ($data['item_name'] as $key => $name) {
@@ -668,5 +682,52 @@ class PayrollController extends Controller
         $user->update(['is_archived' => false]);
 
         return redirect()->route('payroll.index')->with('success', 'Employee restored successfully.');
+    }
+
+    /**
+     * Store employee advance payment.
+     */
+    public function storeAdvance(Request $request)
+    {
+        $data = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'amount' => 'required|numeric|min:1',
+            'advance_date' => 'required|date',
+            'reason' => 'nullable|string|max:1000'
+        ]);
+
+        $advance = DB::transaction(function () use ($data) {
+            $advance = \App\Models\EmployeeAdvance::create([
+                'user_id' => $data['user_id'],
+                'amount' => floatval($data['amount']),
+                'advance_date' => $data['advance_date'],
+                'reason' => $data['reason'] ?? null,
+                'status' => 'pending'
+            ]);
+
+            \App\Services\DoubleEntryService::postEmployeeAdvanceTransaction($advance);
+
+            return $advance;
+        });
+
+        return back()->with('success', 'Salary advance of ' . config('app.currency', 'Rs.') . number_format($advance->amount, 2) . ' recorded and posted to ledger.');
+    }
+
+    /**
+     * Cancel/Delete employee advance payment.
+     */
+    public function destroyAdvance(\App\Models\EmployeeAdvance $advance)
+    {
+        if ($advance->status === 'deducted') {
+            return back()->withErrors(['advance' => 'Cannot delete an advance that has already been deducted from a salary slip.']);
+        }
+
+        DB::transaction(function () use ($advance) {
+            $advance->update(['status' => 'cancelled']);
+            \App\Services\DoubleEntryService::postEmployeeAdvanceTransaction($advance);
+            $advance->delete();
+        });
+
+        return back()->with('success', 'Salary advance cancelled and matching ledger entry cleared.');
     }
 }

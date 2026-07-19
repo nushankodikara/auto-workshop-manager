@@ -89,4 +89,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(PayrollSlip::class);
     }
+
+    public function advances()
+    {
+        return $this->hasMany(EmployeeAdvance::class);
+    }
+
+    public function pendingAdvances()
+    {
+        return $this->advances()->where('status', 'pending');
+    }
 }

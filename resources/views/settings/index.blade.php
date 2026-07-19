@@ -216,6 +216,7 @@
                             ['name' => 'account_transportation', 'label' => 'Transportation Asset Account', 'default' => '1030', 'desc' => 'Accumulates cash for transportation / towing charges'],
                             ['name' => 'account_transportation_revenue', 'label' => 'Transportation Revenue Account', 'default' => '4200', 'desc' => 'Credits invoiced transportation and towing fees'],
                             ['name' => 'account_transportation_hire_expense', 'label' => 'Transportation Hire Expense Account', 'default' => '5500', 'desc' => 'Debits pass-through costs of hired third-party towing'],
+                            ['name' => 'account_employee_advances', 'label' => 'Employee Advances Asset Account', 'default' => '1220', 'desc' => 'Debits on emergency advance payments to employees, credits on payslip deduction recovery'],
                         ];
                     @endphp
 

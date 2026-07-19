@@ -40,6 +40,9 @@
             <button onclick="switchTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition">
                 Employee Directory
             </button>
+            <button onclick="switchTab('tab-advances')" id="btn-tab-advances" class="px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition">
+                Salary Advances
+            </button>
         </div>
     </div>
 
@@ -640,6 +643,154 @@
     </div>
 </div>
 
+    <!-- 4. TAB: Salary Advances -->
+    <div id="tab-advances" class="space-y-6 tab-content hidden">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Employee Salary Advances</h3>
+                <p class="text-xs text-slate-500 mt-1">Advances are interest-free cash payments made to employees, automatically deducted from their next payslip.</p>
+            </div>
+            <button onclick="document.getElementById('create-advance-drawer').classList.remove('hidden')"
+                    class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Record Advance Payment</span>
+            </button>
+        </div>
+
+        <div class="app-card rounded-2xl overflow-x-auto shadow-xs">
+            <table class="datatable w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                        <th class="py-4 px-6">Employee</th>
+                        <th class="py-4 px-6">Date</th>
+                        <th class="py-4 px-6">Reason / Emergency Notes</th>
+                        <th class="py-4 px-6 text-right">Amount</th>
+                        <th class="py-4 px-6">Status</th>
+                        <th class="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                    @forelse($advances as $adv)
+                        <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition text-slate-750 dark:text-slate-300">
+                            <td class="py-4 px-6 font-semibold text-slate-855 dark:text-slate-200 capitalize">
+                                {{ $adv->user->name }}
+                                <span class="block text-[10px] text-slate-500 mt-0.5 capitalize">{{ $adv->user->role }}</span>
+                            </td>
+                            <td class="py-4 px-6 font-mono text-xs">
+                                {{ $adv->advance_date->format('Y-m-d') }}
+                            </td>
+                            <td class="py-4 px-6 text-xs max-w-xs truncate" title="{{ $adv->reason }}">
+                                {{ $adv->reason ?: 'Emergency advance payment' }}
+                            </td>
+                            <td class="py-4 px-6 text-right font-mono font-semibold text-slate-800 dark:text-slate-205">
+                                {{ config('app.currency', 'Rs.') }}{{ number_format($adv->amount, 2) }}
+                            </td>
+                            <td class="py-4 px-6 text-xs">
+                                @if($adv->status === 'pending')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">Pending Recovery</span>
+                                @elseif($adv->status === 'deducted')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 border border-green-500/20">Recovered (Deducted)</span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20">Cancelled</span>
+                                @endif
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                @if($adv->status === 'pending')
+                                    <form action="{{ route('payroll.advances.destroy', $adv->id) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('Are you sure you want to cancel and delete this advance payment? This will clear the ledger entry.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs font-bold text-red-650 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded transition hover:bg-red-650 hover:text-white cursor-pointer flex items-center gap-1 justify-end ml-auto">
+                                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                            <span>Cancel</span>
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="text-slate-400 font-italic text-xs">No actions</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="py-12 text-center text-slate-500">
+                                No employee advance payments recorded yet.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Sidebar Drawer Modal: Record New Advance -->
+        <div id="create-advance-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+            <div class="absolute inset-0 overflow-hidden">
+                <div class="absolute inset-0 bg-slate-955/75 transition-opacity" onclick="document.getElementById('create-advance-drawer').classList.add('hidden')"></div>
+
+                <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                    <div class="pointer-events-auto w-screen max-w-md">
+                        <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                                <h2 class="text-lg font-bold text-slate-850 dark:text-slate-200 flex items-center gap-2">
+                                    <i data-lucide="plus-circle" class="w-5 h-5 text-primary"></i>
+                                    <span>Record Advance Payment</span>
+                                </h2>
+                                <button onclick="document.getElementById('create-advance-drawer').classList.add('hidden')" class="text-slate-500 hover:text-slate-400 font-bold p-2 cursor-pointer">✕</button>
+                            </div>
+
+                            <form action="{{ route('payroll.advances.store') }}" method="POST" class="flex-1 p-6 space-y-5">
+                                @csrf
+
+                                <!-- Select Employee -->
+                                <div>
+                                    <label for="adv_user_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Select Employee</label>
+                                    <select name="user_id" id="adv_user_id" required
+                                            class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                        <option value="">-- Choose employee --</option>
+                                        @foreach($users as $emp)
+                                            <option value="{{ $emp->id }}">{{ $emp->name }} ({{ $emp->role }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Date -->
+                                <div>
+                                    <label for="adv_date" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Payment Date</label>
+                                    <input type="date" name="advance_date" id="adv_date" required value="{{ date('Y-m-d') }}"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                                </div>
+
+                                <!-- Amount -->
+                                <div>
+                                    <label for="adv_amount" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Advance Amount (Rs.)</label>
+                                    <input type="number" step="0.01" min="1" name="amount" id="adv_amount" required placeholder="0.00"
+                                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono font-semibold">
+                                </div>
+
+                                <!-- Reason -->
+                                <div>
+                                    <label for="adv_reason" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Reason / Emergency Details</label>
+                                    <textarea name="reason" id="adv_reason" rows="4" placeholder="Emergency hospital expenses, personal advance..."
+                                              class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm"></textarea>
+                                </div>
+
+                                <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                                    <button type="submit"
+                                            class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                        Confirm & Post Ledger
+                                    </button>
+                                    <button type="button" onclick="document.getElementById('create-advance-drawer').classList.add('hidden')"
+                                            class="py-2.5 px-4 bg-slate-250 dark:bg-slate-850 hover:bg-slate-350 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition text-sm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
     // Tab switcher function
     function switchTab(tabId) {
@@ -649,6 +800,7 @@
         document.getElementById('btn-tab-slips').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
         document.getElementById('btn-tab-attendance').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
         document.getElementById('btn-tab-employees').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
+        document.getElementById('btn-tab-advances').className = "px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition";
         
         // Show target tab
         document.getElementById(tabId).classList.remove('hidden');

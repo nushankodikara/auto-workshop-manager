@@ -107,6 +107,11 @@ docker compose exec app php artisan test
 
 ## 📜 Version History & Changelog
 
+### v1.5.0 (2026-07-19) — Quotation Revisions & Employee Advances
+* **Quotation Edits & Revision History:** Implemented quotation editing with database transactions, and a revision log drawer restoring previous JSON-snapshots (line items, tax, discount, total) on details workspace.
+* **Employee Advances:** Created emergency employee advances module, automated recovery deduction on payslip, and double-entry postings (Debit Advances asset, Credit Cashbook).
+* **Deductions:** Pre-seeded food and meals category deduction options, and pre-populated pending advances total recovery deduction in the payslip workspace.
+
 ### v1.4.0 (2026-07-18) — Towing/Transportation & Ledger Integrity
 * **Towing & Transportation:** Added provided vs. hired transportation fees on Job Cards with custom double-entry bookkeeping integrations.
 * **Transportation Account Mapping:** Added settings validation and dropdown selections for Transportation Asset, Revenue, and Hire Expense accounts.

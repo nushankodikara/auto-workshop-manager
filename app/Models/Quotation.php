@@ -30,4 +30,9 @@ class Quotation extends Model
     {
         return $this->hasMany(QuotationItem::class);
     }
+
+    public function revisions()
+    {
+        return $this->hasMany(QuotationRevision::class);
+    }
 }

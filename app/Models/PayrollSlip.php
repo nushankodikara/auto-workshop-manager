@@ -36,4 +36,9 @@ class PayrollSlip extends Model
     {
         return $this->hasMany(PayrollSlipItem::class);
     }
+
+    public function advances()
+    {
+        return $this->hasMany(EmployeeAdvance::class);
+    }
 }
