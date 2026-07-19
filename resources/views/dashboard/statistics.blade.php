@@ -491,18 +491,36 @@
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
                     <span>7-Day Short Forecast</span>
                 </h3>
-                <div class="space-y-3 font-mono text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
-                        <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-week">0</span>
+                <div class="space-y-4 font-mono text-xs">
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-week">0</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-jobs-week">0 - 0</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
-                        <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-week">Rs. 0.00</span>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
+                            <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-week">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-income-week">Rs. 0.00 - Rs. 0.00</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
-                        <span class="font-bold text-red-500" id="forecast-expenditure-week">Rs. 0.00</span>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
+                            <span class="font-bold text-red-500" id="forecast-expenditure-week">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-expenditure-week">Rs. 0.00 - Rs. 0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -513,18 +531,36 @@
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
                     <span>30-Day Medium Forecast</span>
                 </h3>
-                <div class="space-y-3 font-mono text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
-                        <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-month">0</span>
+                <div class="space-y-4 font-mono text-xs">
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-month">0</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-jobs-month">0 - 0</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
-                        <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-month">Rs. 0.00</span>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
+                            <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-month">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-income-month">Rs. 0.00 - Rs. 0.00</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
-                        <span class="font-bold text-red-500" id="forecast-expenditure-month">Rs. 0.00</span>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
+                            <span class="font-bold text-red-500" id="forecast-expenditure-month">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-expenditure-month">Rs. 0.00 - Rs. 0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -535,18 +571,36 @@
                     <i data-lucide="sparkles" class="w-4 h-4"></i>
                     <span>365-Day Long Forecast</span>
                 </h3>
-                <div class="space-y-3 font-mono text-xs">
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
-                        <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-year">0</span>
+                <div class="space-y-4 font-mono text-xs">
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
+                            <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-year">0</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-jobs-year">0 - 0</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
-                        <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-year">Rs. 0.00</span>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
+                            <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-year">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-income-year">Rs. 0.00 - Rs. 0.00</span>
+                        </div>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
-                        <span class="font-bold text-red-500" id="forecast-expenditure-year">Rs. 0.00</span>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
+                            <span class="font-bold text-red-500" id="forecast-expenditure-year">Rs. 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
+                            <span>Realistic Range:</span>
+                            <span id="range-expenditure-year">Rs. 0.00 - Rs. 0.00</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1185,77 +1239,122 @@
     }
 
     // -------------------------------------------------------------
-    // LINEAR REGRESSION FORECASTING ENGINE (Tab 3)
+    // DAMPENED HOLT'S DOUBLE EXPONENTIAL SMOOTHING FORECAST ENGINE (Tab 3)
     // -------------------------------------------------------------
     function runLinearRegressionForecasts() {
         const timeline = @json($dailyTimeline);
         const n = timeline.length;
 
-        // Perform linear regression helper (y = mx + c)
-        function getLinearRegression(data, key) {
-            if (data.length === 0) return { slope: 0, intercept: 0, avg: 0 };
-            
-            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-            for (let i = 0; i < data.length; i++) {
-                const x = i;
-                const y = data[i][key] || 0.00;
-                sumX += x;
-                sumY += y;
-                sumXY += x * y;
-                sumXX += x * x;
-            }
-            
-            const denom = (data.length * sumXX - sumX * sumX);
-            const slope = denom === 0 ? 0 : (data.length * sumXY - sumX * sumY) / denom;
-            const intercept = (sumY - slope * sumX) / data.length;
-            const avg = sumY / data.length;
+        // Perform Dampened Holt's Double Exponential Smoothing
+        function getDampenedHoltForecast(data, key, days) {
+            const values = data.map(item => Number(item[key] || 0));
+            const len = values.length;
 
-            return { slope, intercept, avg };
+            if (len === 0) {
+                return { forecast: 0, lowerBound: 0, upperBound: 0, slope: 0, avg: 0 };
+            }
+
+            // Smoothing constants and dampening factor
+            const alpha = 0.25;
+            const beta = 0.10;
+            const phi = 0.90; // trend dampening parameter
+
+            let level = values[0];
+            let trend = values[1] ? (values[1] - values[0]) : 0;
+            const smoothedValues = [level];
+
+            for (let t = 1; t < len; t++) {
+                const prevLevel = level;
+                level = alpha * values[t] + (1 - alpha) * (level + phi * trend);
+                trend = beta * (level - prevLevel) + (1 - beta) * phi * trend;
+                smoothedValues.push(level + trend);
+            }
+
+            // Calculate standard error of residuals
+            let sumSquaredResiduals = 0;
+            let actualCount = 0;
+            for (let t = 1; t < len; t++) {
+                const error = values[t] - smoothedValues[t - 1];
+                sumSquaredResiduals += error * error;
+                actualCount++;
+            }
+            const stdError = actualCount > 1 ? Math.sqrt(sumSquaredResiduals / (actualCount - 1)) : 0;
+
+            // Project forecast forward
+            let forecastSum = 0;
+            for (let m = 1; m <= days; m++) {
+                let dampenedTrendFactor = 0;
+                for (let i = 1; i <= m; i++) {
+                    dampenedTrendFactor += Math.pow(phi, i);
+                }
+                const dayForecast = level + dampenedTrendFactor * trend;
+                forecastSum += Math.max(0, dayForecast);
+            }
+
+            // Cumulative variance scales with target interval duration (approx. standard error * sqrt(days))
+            const margin = 1.28 * stdError * Math.sqrt(days);
+            const lowerBound = Math.max(0, forecastSum - margin);
+            const upperBound = forecastSum + margin;
+            const avg = values.reduce((a, b) => a + b, 0) / len;
+
+            return {
+                forecast: forecastSum,
+                lowerBound,
+                upperBound,
+                slope: trend,
+                avg
+            };
         }
 
-        const incomeStats = getLinearRegression(timeline, 'income');
-        const expenditureStats = getLinearRegression(timeline, 'expenditure');
-        const jobsStats = getLinearRegression(timeline, 'jobs');
-
-        // Render predictions helper
-        function calculateForecastSum(stats, days) {
-            let sum = 0;
-            for (let i = 0; i < days; i++) {
-                // Extrapolate slope beyond historical n points
-                const forecastDayVal = stats.slope * (n + i) + stats.intercept;
-                sum += Math.max(0, forecastDayVal);
-            }
-            // Fallback to average daily value * days if data is flat/insufficient
-            if (n < 3 || stats.slope === 0) {
-                sum = stats.avg * days;
-            }
-            return sum;
-        }
+        const incomeStats = getDampenedHoltForecast(timeline, 'income', 30); // Use 30 days for base stats
+        const expenditureStats = getDampenedHoltForecast(timeline, 'expenditure', 30);
+        const jobsStats = getDampenedHoltForecast(timeline, 'jobs', 30);
 
         // 1. Populate expectation forecasts
-        // Income
-        const incWeek = calculateForecastSum(incomeStats, 7);
-        const incMonth = calculateForecastSum(incomeStats, 30);
-        const incYear = calculateForecastSum(incomeStats, 365);
-        document.getElementById('forecast-income-week').innerText = 'Rs. ' + incWeek.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('forecast-income-month').innerText = 'Rs. ' + incMonth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('forecast-income-year').innerText = 'Rs. ' + incYear.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        // Weekly
+        const incWeek = getDampenedHoltForecast(timeline, 'income', 7);
+        const expWeek = getDampenedHoltForecast(timeline, 'expenditure', 7);
+        const jobsWeek = getDampenedHoltForecast(timeline, 'jobs', 7);
 
-        // Expenditure
-        const expWeek = calculateForecastSum(expenditureStats, 7);
-        const expMonth = calculateForecastSum(expenditureStats, 30);
-        const expYear = calculateForecastSum(expenditureStats, 365);
-        document.getElementById('forecast-expenditure-week').innerText = 'Rs. ' + expWeek.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('forecast-expenditure-month').innerText = 'Rs. ' + expMonth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('forecast-expenditure-year').innerText = 'Rs. ' + expYear.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        // Monthly
+        const incMonth = getDampenedHoltForecast(timeline, 'income', 30);
+        const expMonth = getDampenedHoltForecast(timeline, 'expenditure', 30);
+        const jobsMonth = getDampenedHoltForecast(timeline, 'jobs', 30);
 
-        // Jobs
-        const jobsWeek = Math.round(calculateForecastSum(jobsStats, 7));
-        const jobsMonth = Math.round(calculateForecastSum(jobsStats, 30));
-        const jobsYear = Math.round(calculateForecastSum(jobsStats, 365));
-        document.getElementById('forecast-jobs-week').innerText = jobsWeek;
-        document.getElementById('forecast-jobs-month').innerText = jobsMonth;
-        document.getElementById('forecast-jobs-year').innerText = jobsYear;
+        // Yearly
+        const incYear = getDampenedHoltForecast(timeline, 'income', 365);
+        const expYear = getDampenedHoltForecast(timeline, 'expenditure', 365);
+        const jobsYear = getDampenedHoltForecast(timeline, 'jobs', 365);
+
+        // Populate Income
+        document.getElementById('forecast-income-week').innerText = 'Rs. ' + incWeek.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('range-income-week').innerText = 'Rs. ' + incWeek.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + incWeek.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        document.getElementById('forecast-income-month').innerText = 'Rs. ' + incMonth.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('range-income-month').innerText = 'Rs. ' + incMonth.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + incMonth.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        document.getElementById('forecast-income-year').innerText = 'Rs. ' + incYear.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('range-income-year').innerText = 'Rs. ' + incYear.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + incYear.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        // Populate Expenditure
+        document.getElementById('forecast-expenditure-week').innerText = 'Rs. ' + expWeek.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('range-expenditure-week').innerText = 'Rs. ' + expWeek.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + expWeek.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        document.getElementById('forecast-expenditure-month').innerText = 'Rs. ' + expMonth.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('range-expenditure-month').innerText = 'Rs. ' + expMonth.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + expMonth.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        document.getElementById('forecast-expenditure-year').innerText = 'Rs. ' + expYear.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('range-expenditure-year').innerText = 'Rs. ' + expYear.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + expYear.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        // Populate Jobs
+        document.getElementById('forecast-jobs-week').innerText = Math.round(jobsWeek.forecast);
+        document.getElementById('range-jobs-week').innerText = Math.round(jobsWeek.lowerBound) + ' - ' + Math.round(jobsWeek.upperBound);
+
+        document.getElementById('forecast-jobs-month').innerText = Math.round(jobsMonth.forecast);
+        document.getElementById('range-jobs-month').innerText = Math.round(jobsMonth.lowerBound) + ' - ' + Math.round(jobsMonth.upperBound);
+
+        document.getElementById('forecast-jobs-year').innerText = Math.round(jobsYear.forecast);
+        document.getElementById('range-jobs-year').innerText = Math.round(jobsYear.lowerBound) + ' - ' + Math.round(jobsYear.upperBound);
 
         // 2. Populate Trend direction badges & slope texts
         function buildTrendBadgeAndText(stats, targetTextId, targetBadgeId, label) {
@@ -1263,7 +1362,7 @@
             const badgeContainer = document.getElementById(targetBadgeId);
             
             const rateStr = (stats.slope >= 0 ? '+' : '') + stats.slope.toFixed(2);
-            slopeText.innerHTML = `Daily change rate: <strong class="font-mono">${rateStr}</strong> units/day (Average base: ${Math.round(stats.avg)})`;
+            slopeText.innerHTML = `Daily change rate (Trend): <strong class="font-mono">${rateStr}</strong> units/day (Average base: ${Math.round(stats.avg)})`;
 
             let badgeHtml = '';
             if (stats.slope > 0.05) {
