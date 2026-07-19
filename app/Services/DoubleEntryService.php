@@ -169,41 +169,47 @@ class DoubleEntryService
                 $advancedPaymentsTotal = (double)$jobCard->advancedPayments()->sum('amount');
                 $finalPaymentAmount = $invoiceTotal - $advancedPaymentsTotal;
 
-                if ($finalPaymentAmount > 0) {
-                    $paymentEntry = JournalEntry::create([
-                        'entry_date' => date('Y-m-d'),
-                        'reference' => $bill->bill_number . '-PAY',
-                        'description' => "Final payment received for Bill {$bill->bill_number} (Client: {$client->name})"
+                $totalCollected = $invoiceTotal;
+                $transCollected = min($transportationTotal, $totalCollected);
+
+                $paymentEntry = JournalEntry::create([
+                    'entry_date' => date('Y-m-d'),
+                    'reference' => $bill->bill_number . '-PAY',
+                    'description' => "Final payment received and cash allocations for Bill {$bill->bill_number} (Client: {$client->name})"
+                ]);
+
+                // Debit Transportation Account for the total collected transportation fee portion
+                if ($transCollected > 0) {
+                    $paymentEntry->items()->create([
+                        'account_id' => $transAccount->id,
+                        'debit' => $transCollected,
+                        'credit' => 0.00,
+                        'customer_mobile' => $customerMobile
                     ]);
+                }
 
-                    // Determine transportation payment portion
-                    $transPaymentPortion = 0.00;
-                    if ($transportationTotal > 0) {
-                        $transPaymentPortion = min($transportationTotal, $finalPaymentAmount);
-                    }
-                    $cashPaymentPortion = $finalPaymentAmount - $transPaymentPortion;
+                // Calculate Net Cash/Bank change from this final settlement
+                $netCashBankChange = $finalPaymentAmount - $transCollected;
 
-                    // Debit Transportation Account if any
-                    if ($transPaymentPortion > 0) {
-                        $paymentEntry->items()->create([
-                            'account_id' => $transAccount->id,
-                            'debit' => $transPaymentPortion,
-                            'credit' => 0.00,
-                            'customer_mobile' => $customerMobile
-                        ]);
-                    }
+                if ($netCashBankChange > 0) {
+                    $paymentEntry->items()->create([
+                        'account_id' => $cashAccount->id,
+                        'debit' => $netCashBankChange,
+                        'credit' => 0.00,
+                        'customer_mobile' => $customerMobile
+                    ]);
+                } elseif ($netCashBankChange < 0) {
+                    // Credit Cash/Bank - to move cash collected in advances to Transportation Account
+                    $paymentEntry->items()->create([
+                        'account_id' => $cashAccount->id,
+                        'debit' => 0.00,
+                        'credit' => abs($netCashBankChange),
+                        'customer_mobile' => $customerMobile
+                    ]);
+                }
 
-                    // Debit Cash/Bank for the remaining portion
-                    if ($cashPaymentPortion > 0) {
-                        $paymentEntry->items()->create([
-                            'account_id' => $cashAccount->id,
-                            'debit' => $cashPaymentPortion,
-                            'credit' => 0.00,
-                            'customer_mobile' => $customerMobile
-                        ]);
-                    }
-
-                    // Credit Accounts Receivable
+                // Credit Accounts Receivable for the final payment amount
+                if ($finalPaymentAmount > 0) {
                     $paymentEntry->items()->create([
                         'account_id' => $arAccount->id,
                         'debit' => 0.00,
@@ -211,7 +217,7 @@ class DoubleEntryService
                         'customer_mobile' => $customerMobile
                     ]);
                 }
-
+            }
                 // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
                 if ($jobCard->transportation_type === 'hire' && $transportationTotal > 0) {
                     $hireEntry = JournalEntry::create([
