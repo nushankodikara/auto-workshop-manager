@@ -140,7 +140,7 @@
                                 <!-- Action bar -->
                                 <div class="flex items-center justify-between mt-1 gap-2">
                                     <!-- Ticket Sum -->
-                                    <span class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300" title="Current Ticket Sum (Services + Parts)">
+                                    <span class="text-xs font-bold font-mono text-slate-700 dark:text-slate-300" title="Current Ticket Sum (Services + Parts + Transport)">
                                         {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->ticket_sum, 2) }}
                                     </span>
 

@@ -16,8 +16,14 @@
             <span class="text-slate-650 dark:text-slate-350 font-semibold text-sm">Job Card #{{ $jobCard->card_number ?? str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }}</span>
         </div>
 
-        <!-- Invoice / Billing Link -->
-        <div>
+        <!-- Invoice / Billing Link & Ticket Sum -->
+        <div class="flex items-center gap-4">
+            <div class="text-right hidden sm:block">
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">Live Ticket Total</span>
+                <span class="font-bold text-sm font-mono text-emerald-600 dark:text-emerald-400" title="Includes Services, Parts, Outsourcing, Misc Parts & Transport Fee">
+                    {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->ticket_sum, 2) }}
+                </span>
+            </div>
             @if($jobCard->bill)
                 <a href="{{ route('billing.show', $jobCard->id) }}" 
                    class="px-4 py-2 bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500/20 transition flex items-center gap-1.5 shadow-sm">

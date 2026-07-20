@@ -189,7 +189,13 @@ class JobCard extends Model
         // Misc parts (dealer-direct parts recorded on job card)
         $miscPartsSum = (double)$this->miscParts()->sum('selling_price');
 
-        $sum = $servicesSum + $partsSum + $outsourcingSum + $miscPartsSum;
+        // Towing & Transportation fee
+        $transSum = (double)$this->transportations()->sum('amount');
+        if ($transSum == 0 && (double)$this->transportation_fee > 0) {
+            $transSum = (double)$this->transportation_fee;
+        }
+
+        $sum = $servicesSum + $partsSum + $outsourcingSum + $miscPartsSum + $transSum;
 
         if ($sum == 0 && $this->estimated_cost > 0) {
             return (double)$this->estimated_cost;

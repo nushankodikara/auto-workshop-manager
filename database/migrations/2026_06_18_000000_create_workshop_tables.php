@@ -72,7 +72,7 @@ return new class extends Migration
         // 7. Activity History on Job Cards
         Schema::create('activities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('job_card_id')->constrained()->onDelete('cascade');
+            $table->foreignId('job_card_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('action'); // e.g. status_changed, worker_assigned, inventory_added
             $table->text('details')->nullable();

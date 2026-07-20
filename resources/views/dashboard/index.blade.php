@@ -169,8 +169,10 @@
                                     {{ $act->details }}
                                 </p>
                                 <div class="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                                    <span>Job #{{ $act->job_card_id }}</span>
-                                    <span>•</span>
+                                    @if($act->job_card_id)
+                                        <span>Job #{{ $act->job_card_id }}</span>
+                                        <span>•</span>
+                                    @endif
                                     <span>{{ $act->created_at->diffForHumans() }}</span>
                                 </div>
                             </div>
