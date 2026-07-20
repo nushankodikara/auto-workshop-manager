@@ -316,6 +316,84 @@ class InventoryController extends Controller
     }
 
     /**
+     * Dispose / Write-Off damaged, expired, or lost stock items.
+     */
+    public function disposeStock(Request $request, Inventory $item)
+    {
+        $this->checkAccess();
+
+        $data = $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'reason' => 'required|string|in:damaged,expired,stolen,obsolete,other',
+            'notes' => 'nullable|string|max:255',
+            'purchase_batch_id' => 'nullable|exists:purchase_batches,id',
+            'disposed_at' => 'required|date',
+        ]);
+
+        if ($data['quantity'] > $item->quantity) {
+            return back()->withErrors(['quantity' => "Cannot dispose {$data['quantity']} {$item->unit}. Only {$item->quantity} {$item->unit} currently in stock."]);
+        }
+
+        DB::transaction(function () use ($item, $data) {
+            $qtyToDeduct = (int) $data['quantity'];
+            $reasonLabel = ucfirst($data['reason']);
+            if (!empty($data['notes'])) {
+                $reasonLabel .= " - " . $data['notes'];
+            }
+
+            if (!empty($data['purchase_batch_id'])) {
+                $batches = \App\Models\PurchaseBatch::where('id', $data['purchase_batch_id'])->get();
+            } else {
+                // FIFO batch selection
+                $batches = \App\Models\PurchaseBatch::where('inventory_id', $item->id)
+                    ->where('quantity_remaining', '>', 0)
+                    ->orderBy('purchased_at', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->get();
+            }
+
+            $totalDisposedQty = 0;
+
+            foreach ($batches as $batch) {
+                if ($qtyToDeduct <= 0) break;
+
+                $deduct = min($qtyToDeduct, $batch->quantity_remaining);
+                $batch->quantity_remaining -= $deduct;
+                $batch->save();
+
+                // Record Stock Movement of type 'disposal'
+                $movement = StockMovement::create([
+                    'inventory_id' => $item->id,
+                    'purchase_batch_id' => $batch->id,
+                    'type' => 'disposal',
+                    'quantity' => -$deduct,
+                    'cost_price' => $batch->cost_price,
+                    'notes' => "Stock Write-off / Disposal: {$reasonLabel} (Batch: {$batch->batch_code})"
+                ]);
+
+                // Sync to Double Entry Ledger (Debit 5600 Inventory Shrinkage/Disposal, Credit 1300 Parts Inventory)
+                \App\Services\DoubleEntryService::postInventoryDisposalTransaction($item, $movement, $reasonLabel);
+
+                $qtyToDeduct -= $deduct;
+                $totalDisposedQty += $deduct;
+            }
+
+            // Decrement parent inventory quantity
+            $item->quantity = max(0, $item->quantity - $totalDisposedQty);
+            $item->save();
+
+            // Activity log
+            \App\Models\Activity::create([
+                'user_id' => auth()->id(),
+                'action' => 'inventory_disposed',
+                'details' => "Disposed/Wrote-off {$totalDisposedQty} {$item->unit} of '{$item->name}' (Reason: {$reasonLabel})"
+            ]);
+        });
+
+        return back()->with('success', "Disposal/write-off recorded successfully for {$item->name} and posted to double-entry ledger.");
+    }
+
+    /**
      * Delete an inventory item.
      */
     public function destroy(Inventory $item)

@@ -217,6 +217,7 @@ class SettingsController extends Controller
             'account_transportation_revenue' => 'required|exists:accounts,code',
             'account_transportation_hire_expense' => 'required|exists:accounts,code',
             'account_employee_advances' => 'required|exists:accounts,code',
+            'account_inventory_disposal' => 'required|exists:accounts,code',
         ]);
 
         $data['s3_enabled'] = $request->has('s3_enabled') ? '1' : '0';

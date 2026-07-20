@@ -205,6 +205,13 @@
                         <i data-lucide="activity" class="w-4 h-4 text-primary"></i>
                         <span>Stock Movement History</span>
                     </h3>
+                    @if($item->quantity > 0)
+                        <button onclick="document.getElementById('dispose-stock-drawer').classList.remove('hidden')"
+                                class="px-3 py-1.5 bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20 hover:bg-red-500/20 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Dispose / Write-Off Stock</span>
+                        </button>
+                    @endif
                 </div>
 
                 <div class="overflow-x-auto">
@@ -227,6 +234,8 @@
                                             <span class="px-2 py-0.5 rounded bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 font-bold">IN</span>
                                         @elseif($mov->type === 'out')
                                             <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20 font-bold">OUT</span>
+                                        @elseif($mov->type === 'disposal')
+                                            <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30 font-bold uppercase text-[9px]">DISPOSAL</span>
                                         @else
                                             <span class="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-650 dark:text-yellow-450 border border-yellow-500/20 font-bold">ADJ</span>
                                         @endif
@@ -351,5 +360,84 @@
 
     </div>
 
+</div>
+
+<!-- Side-Sliding Drawer: Dispose / Write-Off Stock -->
+<div id="dispose-stock-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="document.getElementById('dispose-stock-drawer').classList.add('hidden')"></div>
+    <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+        <div class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/50">
+                <div class="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">Dispose / Write-Off Stock</h2>
+                </div>
+                <button type="button" onclick="document.getElementById('dispose-stock-drawer').classList.add('hidden')" class="text-slate-400 hover:text-slate-500 p-1 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Form -->
+            <form action="{{ route('inventory.dispose', $item) }}" method="POST" class="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+                @csrf
+                <div class="bg-red-500/10 text-red-700 dark:text-red-400 p-3.5 rounded-xl border border-red-500/20 leading-relaxed text-xs">
+                    <span class="font-bold block mb-1">Accounting Notice:</span>
+                    Writing off disposed items will reduce parts inventory asset balance and post a debit expense to <strong>Account 5600 (Inventory Shrinkage & Disposal Expense)</strong>.
+                </div>
+
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">Quantity to Dispose ({{ $item->unit }})</label>
+                    <input type="number" name="quantity" required min="1" max="{{ $item->quantity }}" placeholder="1"
+                           class="w-full px-3 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono text-sm">
+                    <span class="text-[10px] text-slate-400 mt-1 block">Current available stock: {{ $item->quantity }} {{ $item->unit }}</span>
+                </div>
+
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">Disposal / Write-Off Reason</label>
+                    <select name="reason" required class="w-full px-3 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary cursor-pointer text-xs">
+                        <option value="damaged">Damaged in Storage / Workshop</option>
+                        <option value="expired">Expired / Shelf-Life Outdated</option>
+                        <option value="stolen">Stolen / Unaccounted Shrinkage</option>
+                        <option value="obsolete">Obsolete / Scrapped</option>
+                        <option value="other">Other Reason</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">Select Specific Purchase Batch (Optional)</label>
+                    <select name="purchase_batch_id" class="w-full px-3 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary cursor-pointer text-xs">
+                        <option value="">Auto (FIFO First-In-First-Out)</option>
+                        @foreach($item->purchaseBatches->where('quantity_remaining', '>', 0) as $b)
+                            <option value="{{ $b->id }}">{{ $b->batch_code }} (Remaining: {{ $b->quantity_remaining }} {{ $item->unit }} @ {{ config('app.currency', 'Rs.') }}{{ number_format($b->cost_price, 2) }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">Disposal Date</label>
+                    <input type="date" name="disposed_at" required value="{{ date('Y-m-d') }}"
+                           class="w-full px-3 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                </div>
+
+                <div>
+                    <label class="block text-slate-500 dark:text-slate-400 mb-1.5 font-semibold">Notes / Explanation</label>
+                    <textarea name="notes" rows="3" placeholder="Additional remarks regarding disposal..."
+                              class="w-full px-3 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs"></textarea>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('dispose-stock-drawer').classList.add('hidden')"
+                            class="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs transition shadow-sm flex items-center gap-1.5">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>Confirm Write-Off & Post to Ledger</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @endsection

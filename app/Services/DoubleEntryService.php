@@ -571,4 +571,59 @@ class DoubleEntryService
             Log::error("DoubleEntryService postConsumablePurchase Error: " . $e->getMessage());
         }
     }
+
+    /**
+     * Automatically log an inventory disposal / write-off to the ledger.
+     * (Debit Inventory Shrinkage & Disposal Expense [5600], Credit Parts Inventory Asset [1300]).
+     */
+    public static function postInventoryDisposalTransaction($inventory, $movement, $reason = 'Disposal')
+    {
+        try {
+            $reference = 'INV-DISP-' . $movement->id;
+            
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            $disposalCode = \App\Models\Setting::get('account_inventory_disposal', '5600');
+            $inventoryCode = \App\Models\Setting::get('account_inventory', '1300');
+
+            $disposalAccount = Account::where('code', $disposalCode)->first();
+            $inventoryAccount = Account::where('code', $inventoryCode)->first();
+
+            if (!$disposalAccount || !$inventoryAccount) {
+                Log::warning("DoubleEntryService: Inventory Disposal (5600) or Parts Inventory (1300) accounts not found. Skipping post.");
+                return;
+            }
+
+            $totalLoss = abs(intval($movement->quantity)) * floatval($movement->cost_price);
+            if ($totalLoss <= 0) {
+                return;
+            }
+
+            $entry = JournalEntry::create([
+                'entry_date' => date('Y-m-d'),
+                'reference' => $reference,
+                'description' => "Inventory Write-Off / Disposal: " . abs($movement->quantity) . " {$inventory->unit} of '{$inventory->name}' (Reason: {$reason})"
+            ]);
+
+            // Debit Inventory Shrinkage & Disposal Expense (5600)
+            $entry->items()->create([
+                'account_id' => $disposalAccount->id,
+                'debit' => $totalLoss,
+                'credit' => 0.00
+            ]);
+
+            // Credit Parts Inventory Asset (1300)
+            $entry->items()->create([
+                'account_id' => $inventoryAccount->id,
+                'debit' => 0.00,
+                'credit' => $totalLoss
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postInventoryDisposalTransaction Error: " . $e->getMessage());
+        }
+    }
 }

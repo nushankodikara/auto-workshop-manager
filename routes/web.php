@@ -128,6 +128,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
     Route::patch('/inventory/{item}/adjust', [InventoryController::class, 'adjustStock'])->name('inventory.adjust');
     Route::post('/inventory/{item}/batch', [InventoryController::class, 'addBatch'])->name('inventory.add-batch');
+    Route::post('/inventory/{item}/dispose', [InventoryController::class, 'disposeStock'])->name('inventory.dispose');
     Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
 
     // Consumables Supplies

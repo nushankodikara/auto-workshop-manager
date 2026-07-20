@@ -217,6 +217,7 @@
                             ['name' => 'account_transportation_revenue', 'label' => 'Transportation Revenue Account', 'default' => '4200', 'desc' => 'Credits invoiced transportation and towing fees'],
                             ['name' => 'account_transportation_hire_expense', 'label' => 'Transportation Hire Expense Account', 'default' => '5500', 'desc' => 'Debits pass-through costs of hired third-party towing'],
                             ['name' => 'account_employee_advances', 'label' => 'Employee Advances Asset Account', 'default' => '1220', 'desc' => 'Debits on emergency advance payments to employees, credits on payslip deduction recovery'],
+                            ['name' => 'account_inventory_disposal', 'label' => 'Inventory Shrinkage & Disposal Expense', 'default' => '5600', 'desc' => 'Debit on damaged, expired, lost, or written-off inventory stock write-offs'],
                         ];
                     @endphp
 
