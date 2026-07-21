@@ -529,6 +529,31 @@ class FinanceController extends Controller
             }
         }
 
+        // 7. Check Employee Salary Advances
+        $missingAdvances = [];
+        $duplicateAdvances = [];
+        $empAdvances = \App\Models\EmployeeAdvance::with('user')->get();
+        foreach ($empAdvances as $adv) {
+            if ($adv->status === 'cancelled') continue;
+            $ref = "ADVANCE-{$adv->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($entries->count() === 0) {
+                $missingAdvances[] = [
+                    'id' => $adv->id,
+                    'employee' => $adv->user->name ?? 'Staff',
+                    'date' => $adv->advance_date ? $adv->advance_date->format('Y-m-d') : date('Y-m-d'),
+                    'total' => $adv->amount
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicateAdvances[] = [
+                    'id' => $adv->id,
+                    'employee' => $adv->user->name ?? 'Staff',
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
         // 4. Check Orphaned Entries
         $orphanedEntries = [];
         $allEntries = JournalEntry::all();
@@ -567,6 +592,10 @@ class FinanceController extends Controller
                 $type = 'Consumable Purchase';
                 $exists = \App\Models\ConsumablePurchase::where('id', $matches[1])->exists();
                 if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^ADVANCE-(\d+)$/', $ref, $matches)) {
+                $type = 'Employee Advance';
+                $exists = \App\Models\EmployeeAdvance::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
             }
 
             if ($isOrphan) {
@@ -591,6 +620,8 @@ class FinanceController extends Controller
             'duplicatePayments' => $duplicatePayments,
             'missingConsumables' => $missingConsumables,
             'duplicateConsumables' => $duplicateConsumables,
+            'missingAdvances' => $missingAdvances,
+            'duplicateAdvances' => $duplicateAdvances,
             'orphanedEntries' => $orphanedEntries
         ];
     }
@@ -666,6 +697,19 @@ class FinanceController extends Controller
                 $cp = \App\Models\ConsumablePurchase::find($cpId);
                 if ($cp) {
                     \App\Services\DoubleEntryService::postConsumablePurchase($cp);
+                }
+            }
+
+            // 6. Re-sync missing/duplicate employee advances
+            $affectedAdvIds = array_unique(array_merge(
+                array_column($audit['missingAdvances'], 'id'),
+                array_column($audit['duplicateAdvances'], 'id')
+            ));
+            foreach ($affectedAdvIds as $advId) {
+                JournalEntry::where('reference', "ADVANCE-{$advId}")->delete();
+                $adv = \App\Models\EmployeeAdvance::find($advId);
+                if ($adv) {
+                    \App\Services\DoubleEntryService::postEmployeeAdvanceTransaction($adv);
                 }
             }
 

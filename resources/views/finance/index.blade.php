@@ -12,6 +12,10 @@
                   count($auditResults['duplicateSlips']) +
                   count($auditResults['missingPayments']) +
                   count($auditResults['duplicatePayments']) +
+                  count($auditResults['missingConsumables']) +
+                  count($auditResults['duplicateConsumables']) +
+                  count($auditResults['missingAdvances'] ?? []) +
+                  count($auditResults['duplicateAdvances'] ?? []) +
                   count($auditResults['orphanedEntries']);
 @endphp
 <div class="space-y-6">

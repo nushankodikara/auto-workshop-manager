@@ -145,26 +145,26 @@
             </div>
         </div>
 
-        <!-- Additions / Deductions Lists -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800 print:border-black/10">
+        <!-- Additions / Deductions / Company Benefits Lists -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800 print:border-black/10">
             <!-- Allowances / Additions Column -->
             <div class="space-y-3">
                 <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2 print:text-black/50 print:border-black/10">Additions / Allowances</h4>
                 <div class="space-y-2">
                     <div class="flex justify-between text-xs text-slate-600 dark:text-slate-455 print:text-black/70">
                         <span>Prorated Salary:</span>
-                        <span class="font-mono font-semibold">{{ config('app.currency', '$') }}{{ number_format($payrollSlip->prorated_salary, 2) }}</span>
+                        <span class="font-mono font-semibold">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->prorated_salary, 2) }}</span>
                     </div>
                     <div class="flex justify-between text-xs text-slate-600 dark:text-slate-455 print:text-black/70">
                         <span>Overtime Payout:</span>
-                        <span class="font-mono font-semibold">+{{ config('app.currency', '$') }}{{ number_format($payrollSlip->overtime_amount, 2) }}</span>
+                        <span class="font-mono font-semibold">+{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->overtime_amount, 2) }}</span>
                     </div>
                     @php $hasAdditions = false; @endphp
                     @foreach($payrollSlip->items->where('type', 'addition') as $item)
                         @php $hasAdditions = true; @endphp
                         <div class="flex justify-between text-xs text-slate-700 dark:text-slate-300 print:text-black">
                             <span>{{ $item->category_name }}:</span>
-                            <span class="font-mono text-green-600 dark:text-green-400 print:text-black">+{{ config('app.currency', '$') }}{{ number_format($item->amount, 2) }}</span>
+                            <span class="font-mono text-green-600 dark:text-green-400 print:text-black">+{{ config('app.currency', 'Rs.') }}{{ number_format($item->amount, 2) }}</span>
                         </div>
                     @endforeach
                 </div>
@@ -179,11 +179,31 @@
                         @php $hasDeductions = true; @endphp
                         <div class="flex justify-between text-xs text-slate-700 dark:text-slate-300 print:text-black">
                             <span>{{ $item->category_name }}:</span>
-                            <span class="font-mono text-red-650 dark:text-red-400 print:text-black">-{{ config('app.currency', '$') }}{{ number_format($item->amount, 2) }}</span>
+                            <span class="font-mono text-red-650 dark:text-red-400 print:text-black">-{{ config('app.currency', 'Rs.') }}{{ number_format($item->amount, 2) }}</span>
                         </div>
                     @endforeach
                     @if(!$hasDeductions)
                         <div class="text-[10px] text-slate-400 italic">No deductions applied.</div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Company Provided Benefits Column -->
+            <div class="space-y-3">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-slate-200 dark:border-slate-800 pb-2 print:text-black/50 print:border-black/10">Company Provided Benefits</h4>
+                <div class="space-y-2">
+                    @php $hasBenefits = false; @endphp
+                    @foreach($payrollSlip->items->where('type', 'benefit') as $item)
+                        @if($item->amount > 0)
+                            @php $hasBenefits = true; @endphp
+                            <div class="flex justify-between text-xs text-slate-700 dark:text-slate-300 print:text-black">
+                                <span>{{ $item->category_name }}:</span>
+                                <span class="font-mono text-emerald-600 dark:text-emerald-400 font-semibold print:text-black">+{{ config('app.currency', 'Rs.') }}{{ number_format($item->amount, 2) }}</span>
+                            </div>
+                        @endif
+                    @endforeach
+                    @if(!$hasBenefits)
+                        <div class="text-[10px] text-slate-400 italic">No company benefits logged or on probation.</div>
                     @endif
                 </div>
             </div>
@@ -216,12 +236,20 @@
                     <span>Total Deductions:</span>
                     <span class="font-mono text-red-655 dark:text-red-400">-{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->deductions, 2) }}</span>
                 </div>
+                <div class="flex justify-between text-slate-550 dark:text-slate-450">
+                    <span>Company Benefits:</span>
+                    <span class="font-mono text-emerald-600 dark:text-emerald-400">+{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->company_benefits, 2) }}</span>
+                </div>
                 <div class="flex justify-between text-sm font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-slate-800 dark:text-slate-100 print:text-black print:border-black/10">
-                    <span>Net Disbursed Amount:</span>
+                    <span>Net Disbursed Take-Home:</span>
                     <div class="font-mono text-base text-primary inline-flex items-center gap-0.5">
                         <span>{{ config('app.currency', 'Rs.') }}</span>
                         <span>{{ number_format($payrollSlip->net_salary, 2) }}</span>
                     </div>
+                </div>
+                <div class="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-400 pt-1 print:text-black">
+                    <span>Total Value Package:</span>
+                    <span class="font-mono text-emerald-600 dark:text-emerald-400">{{ config('app.currency', 'Rs.') }}{{ number_format($payrollSlip->net_salary + $payrollSlip->company_benefits, 2) }}</span>
                 </div>
             </div>
         </div>

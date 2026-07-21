@@ -135,6 +135,7 @@ class PayrollController extends Controller
         DB::transaction(function () use ($user, $data) {
             $allowanceTotal = 0.00;
             $deductionTotal = 0.00;
+            $benefitTotal = 0.00;
 
             $slip = PayrollSlip::create([
                 'user_id' => $user->id,
@@ -150,6 +151,7 @@ class PayrollController extends Controller
                 'prorated_salary' => $data['prorated_salary'],
                 'allowance' => 0.00, // Temp
                 'deductions' => 0.00, // Temp
+                'company_benefits' => 0.00, // Temp
                 'net_salary' => $data['prorated_salary'] + $data['overtime_amount'],
                 'status' => 'draft'
             ]);
@@ -179,6 +181,8 @@ class PayrollController extends Controller
 
                     if ($type === 'addition') {
                         $allowanceTotal += $amount;
+                    } elseif ($type === 'benefit') {
+                        $benefitTotal += $amount;
                     } else {
                         $deductionTotal += $amount;
                     }
@@ -191,6 +195,7 @@ class PayrollController extends Controller
             $slip->update([
                 'allowance' => $allowanceTotal,
                 'deductions' => $deductionTotal,
+                'company_benefits' => $benefitTotal,
                 'net_salary' => $netSalary
             ]);
         });
@@ -252,6 +257,7 @@ class PayrollController extends Controller
         DB::transaction(function () use ($payrollSlip, $data) {
             $allowanceTotal = 0.00;
             $deductionTotal = 0.00;
+            $benefitTotal = 0.00;
 
             // Delete old items
             $payrollSlip->items()->delete();
@@ -272,6 +278,8 @@ class PayrollController extends Controller
 
                     if ($type === 'addition') {
                         $allowanceTotal += $amount;
+                    } elseif ($type === 'benefit') {
+                        $benefitTotal += $amount;
                     } else {
                         $deductionTotal += $amount;
                     }
@@ -291,6 +299,7 @@ class PayrollController extends Controller
                 'prorated_salary' => $data['prorated_salary'],
                 'allowance' => $allowanceTotal,
                 'deductions' => $deductionTotal,
+                'company_benefits' => $benefitTotal,
                 'net_salary' => $netSalary
             ]);
 

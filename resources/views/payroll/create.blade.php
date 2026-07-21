@@ -187,15 +187,54 @@
             </button>
         </div>
 
-        <!-- 6. Total Summary Details -->
-        <div class="app-card rounded-2xl p-6 bg-slate-50 dark:bg-slate-900/50 shadow-xs border border-slate-250 dark:border-slate-850 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">Estimated Net Payout</span>
-                <span class="text-[10px] text-slate-450 mt-1 block">Recalculates in real time.</span>
+        <!-- 6. Company Provided Benefits (Positive Additions to Package) -->
+        <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-2">
+                <i data-lucide="gift" class="w-4 h-4 text-emerald-500"></i>
+                <span>Company Provided Benefits (Company Contributions & Perquisites)</span>
+            </h3>
+
+            <div id="benefits-container" class="space-y-3">
+                @foreach($categories->where('type', 'benefit') as $cat)
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center benefit-row">
+                        <div class="md:col-span-3">
+                            <input type="text" name="item_name[]" value="{{ $cat->name }}" readonly
+                                   class="w-full px-4 py-2 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-lg text-slate-700 dark:text-slate-200 text-xs focus:outline-none">
+                            <input type="hidden" name="item_type[]" value="benefit">
+                        </div>
+                        <div>
+                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $cat->default_amount ?? '' }}" oninput="recalculateTotal()"
+                                   class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary benefit-amount">
+                        </div>
+                    </div>
+                @endforeach
             </div>
-            <div class="text-2xl font-mono font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
-                <span>{{ config('app.currency', '$') }}</span>
-                <span id="net_salary_display">0.00</span>
+
+            <button type="button" onclick="addRow('benefit', 'benefits-container')"
+                    class="py-1.5 px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700/50 flex items-center gap-1">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Custom Company Benefit</span>
+            </button>
+            <p class="text-[10px] text-slate-500 leading-normal">
+                Note: Company Provided Benefits (such as Company EPF 12%, ETF 3%, Food/Meals, Health Insurance) are funded by the company and added to the employee's total compensation package without reducing take-home pay. Set to 0.00 if employee is on probation.
+            </p>
+        </div>
+
+        <!-- 7. Total Summary Details -->
+        <div class="app-card rounded-2xl p-6 bg-slate-50 dark:bg-slate-900/50 shadow-xs border border-slate-250 dark:border-slate-850 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+            <div>
+                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">Estimated Net Take-Home Payout</span>
+                <div class="text-2xl font-mono font-bold text-primary flex items-center gap-1 mt-1">
+                    <span>{{ config('app.currency', 'Rs.') }}</span>
+                    <span id="net_salary_display">0.00</span>
+                </div>
+            </div>
+            <div class="sm:text-right border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-800 pt-3 sm:pt-0 sm:pl-6">
+                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider block">Total Company Provided Benefits</span>
+                <div class="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400 flex items-center sm:justify-end gap-1 mt-1">
+                    <span>+{{ config('app.currency', 'Rs.') }}</span>
+                    <span id="benefits_display">0.00</span>
+                </div>
             </div>
         </div>
 
@@ -220,9 +259,10 @@
         const container = document.getElementById(containerId);
         const newRow = document.createElement('div');
         newRow.className = `grid grid-cols-1 md:grid-cols-4 gap-4 items-center ${type}-row`;
+        const placeholder = type === 'benefit' ? 'e.g. Food Allowance, Health Cover' : 'e.g. Target Allowance, advance deductions';
         newRow.innerHTML = `
             <div class="md:col-span-3">
-                <input type="text" name="item_name[]" placeholder="e.g., Target Allowance, advance deductions" required
+                <input type="text" name="item_name[]" placeholder="${placeholder}" required
                        class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary">
                 <input type="hidden" name="item_type[]" value="${type}">
             </div>
@@ -275,9 +315,16 @@
             deductionSum += parseFloat(el.value) || 0;
         });
 
+        // Sum benefits
+        let benefitSum = 0;
+        document.querySelectorAll('.benefit-amount').forEach(el => {
+            benefitSum += parseFloat(el.value) || 0;
+        });
+
         // Calculate Net
         const netSalary = proratedSalary + overtimeAmount + allowanceSum - deductionSum;
         document.getElementById('net_salary_display').innerText = netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('benefits_display').innerText = benefitSum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     // Run calculation once on load to populate net salary

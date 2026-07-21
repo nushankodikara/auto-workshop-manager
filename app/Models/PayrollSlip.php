@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['user_id', 'month', 'year', 'basic_salary', 'total_salary', 'allowance', 'deductions', 'net_salary', 'status', 'required_days', 'attended_days', 'overtime_hours', 'overtime_rate', 'overtime_amount', 'prorated_salary'])]
+#[Fillable(['user_id', 'month', 'year', 'basic_salary', 'total_salary', 'allowance', 'deductions', 'company_benefits', 'net_salary', 'status', 'required_days', 'attended_days', 'overtime_hours', 'overtime_rate', 'overtime_amount', 'prorated_salary'])]
 class PayrollSlip extends Model
 {
     protected function casts(): array
@@ -15,6 +15,7 @@ class PayrollSlip extends Model
             'total_salary' => 'decimal:2',
             'allowance' => 'decimal:2',
             'deductions' => 'decimal:2',
+            'company_benefits' => 'decimal:2',
             'net_salary' => 'decimal:2',
             'month' => 'integer',
             'year' => 'integer',

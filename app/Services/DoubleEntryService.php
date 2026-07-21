@@ -348,10 +348,11 @@ class DoubleEntryService
             $overtimeAmount = floatval($payrollSlip->overtime_amount);
             $allowance = floatval($payrollSlip->allowance);
             $deductions = floatval($payrollSlip->deductions);
+            $companyBenefits = floatval($payrollSlip->company_benefits);
             $netSalary = floatval($payrollSlip->net_salary);
             
             $grossSalary = $proratedSalary + $overtimeAmount + $allowance;
-            if ($grossSalary <= 0) {
+            if ($grossSalary <= 0 && $companyBenefits <= 0) {
                 return;
             }
 
@@ -361,45 +362,53 @@ class DoubleEntryService
                 'description' => "Salary slip generated for " . ($payrollSlip->user->name ?? 'Employee') . " (Month: {$payrollSlip->month}/{$payrollSlip->year}, Status: " . strtoupper($payrollSlip->status) . ")"
             ]);
 
-            // Debit Salaries Expense (5100)
-            $entry->items()->create([
-                'account_id' => $salariesExpenseAcc->id,
-                'debit' => $grossSalary,
-                'credit' => 0.00
-            ]);
-
-            // Credit Cash Drawer (1000) or Accounts Payable (2000)
-            $entry->items()->create([
-                'account_id' => $creditAccount->id,
-                'debit' => 0.00,
-                'credit' => $netSalary
-            ]);
-
             // Calculate advance recovery and other deductions
             $advanceRecoveryAmount = floatval($payrollSlip->advances()->where('status', 'deducted')->sum('amount'));
             $otherDeductions = max(0.00, $deductions - $advanceRecoveryAmount);
 
-            // Credit Employee Advances Asset Account (1220) to clear the advance
-            if ($advanceRecoveryAmount > 0) {
-                $advancesCode = \App\Models\Setting::get('account_employee_advances', '1220');
-                $advancesAccount = Account::where('code', $advancesCode)->first();
-                if ($advancesAccount) {
+            // Salary Expense portion remaining (Gross - Advances already expensed during advance payout)
+            $remainingSalariesExpense = max(0.00, $grossSalary - $advanceRecoveryAmount);
+
+            if ($remainingSalariesExpense > 0) {
+                // Debit Salaries Expense (5100)
+                $entry->items()->create([
+                    'account_id' => $salariesExpenseAcc->id,
+                    'debit' => $remainingSalariesExpense,
+                    'credit' => 0.00
+                ]);
+            }
+
+            // Company Provided Benefits Expense (5150)
+            if ($companyBenefits > 0) {
+                $benefitsCode = \App\Models\Setting::get('account_employee_benefits', '5150');
+                $benefitsAcc = Account::where('code', $benefitsCode)->first();
+                if ($benefitsAcc) {
                     $entry->items()->create([
-                        'account_id' => $advancesAccount->id,
-                        'debit' => 0.00,
-                        'credit' => $advanceRecoveryAmount
+                        'account_id' => $benefitsAcc->id,
+                        'debit' => $companyBenefits,
+                        'credit' => 0.00
                     ]);
                 }
             }
 
-            // Credit Accounts Payable (2000) for the other deductions portion
-            if ($otherDeductions > 0) {
+            // Credit Cash Drawer (1000) or Accounts Payable (2000) for Net Disbursed Salary
+            if ($netSalary > 0) {
+                $entry->items()->create([
+                    'account_id' => $creditAccount->id,
+                    'debit' => 0.00,
+                    'credit' => $netSalary
+                ]);
+            }
+
+            // Credit Accounts Payable (2000) for other deductions + company benefits accrual
+            $totalPayableLiabilities = $otherDeductions + ($companyBenefits > 0 ? $companyBenefits : 0.00);
+            if ($totalPayableLiabilities > 0) {
                 $apAccount = Account::where('code', $payableCode)->first();
                 if ($apAccount) {
                     $entry->items()->create([
                         'account_id' => $apAccount->id,
                         'debit' => 0.00,
-                        'credit' => $otherDeductions
+                        'credit' => $totalPayableLiabilities
                     ]);
                 }
             }
@@ -409,7 +418,7 @@ class DoubleEntryService
     }
 
     /**
-     * Post a salary advance payment transaction to the ledger (Debit Advances Asset, Credit Cashbook).
+     * Post a salary advance payment transaction to the ledger (Debit Salaries Expense 5100, Credit Cashbook 1000).
      */
     public static function postEmployeeAdvanceTransaction($advance)
     {
@@ -426,31 +435,31 @@ class DoubleEntryService
                 return;
             }
 
-            $advancesCode = \App\Models\Setting::get('account_employee_advances', '1220');
+            $salariesCode = \App\Models\Setting::get('account_salaries', '5100');
             $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
 
-            $advancesAccount = Account::where('code', $advancesCode)->first();
+            $salariesAccount = Account::where('code', $salariesCode)->first();
             $cashAccount = Account::where('code', $cashCode)->first();
 
-            if (!$advancesAccount || !$cashAccount) {
-                Log::warning("DoubleEntryService: Salary advances or Cashbook accounts not seeded.");
+            if (!$salariesAccount || !$cashAccount) {
+                Log::warning("DoubleEntryService: Salaries or Cashbook accounts not seeded.");
                 return;
             }
 
             $entry = JournalEntry::create([
-                'entry_date' => $advance->advance_date->format('Y-m-d'),
+                'entry_date' => $advance->advance_date ? $advance->advance_date->format('Y-m-d') : date('Y-m-d'),
                 'reference' => $reference,
-                'description' => "Emergency salary advance paid to employee: " . ($advance->user->name ?? 'Staff') . " (Reason: " . ($advance->reason ?: 'Emergency') . ")"
+                'description' => "Salary advance paid out of cash to employee: " . ($advance->user->name ?? 'Staff') . " (Reason: " . ($advance->reason ?: 'General Advance') . ")"
             ]);
 
-            // Debit Advances asset
+            // Debit Salaries Expense (5100) directly for advance payment
             $entry->items()->create([
-                'account_id' => $advancesAccount->id,
+                'account_id' => $salariesAccount->id,
                 'debit' => floatval($advance->amount),
                 'credit' => 0.00
             ]);
 
-            // Credit Cashbook asset
+            // Credit Cashbook asset (1000)
             $entry->items()->create([
                 'account_id' => $cashAccount->id,
                 'debit' => 0.00,
