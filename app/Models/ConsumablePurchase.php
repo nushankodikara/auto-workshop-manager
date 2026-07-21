@@ -11,8 +11,13 @@ class ConsumablePurchase extends Model
     protected static function boot()
     {
         parent::boot();
+
+        static::saved(function ($purchase) {
+            \App\Services\DoubleEntryService::postConsumablePurchase($purchase);
+        });
         
         static::deleted(function ($purchase) {
+            \App\Services\DoubleEntryService::postConsumablePurchase($purchase);
             if ($purchase->journal_entry_id) {
                 JournalEntry::where('id', $purchase->journal_entry_id)->delete();
             }

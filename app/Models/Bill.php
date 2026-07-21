@@ -12,6 +12,10 @@ class Bill extends Model
     {
         parent::boot();
 
+        static::saved(function ($bill) {
+            \App\Services\DoubleEntryService::postBillTransaction($bill);
+        });
+
         static::deleting(function ($bill) {
             JournalEntry::where('reference', $bill->bill_number)
                 ->orWhere('reference', $bill->bill_number . '-PAY')

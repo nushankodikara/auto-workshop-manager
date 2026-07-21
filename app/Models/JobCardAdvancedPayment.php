@@ -12,8 +12,13 @@ class JobCardAdvancedPayment extends Model
     protected static function boot()
     {
         parent::boot();
+
+        static::saved(function ($payment) {
+            \App\Services\DoubleEntryService::postAdvancedPayment($payment);
+        });
         
         static::deleted(function ($payment) {
+            \App\Services\DoubleEntryService::postAdvancedPayment($payment);
             if ($payment->journal_entry_id) {
                 JournalEntry::where('id', $payment->journal_entry_id)->delete();
             }

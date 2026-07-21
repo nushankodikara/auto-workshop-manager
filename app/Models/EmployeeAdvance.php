@@ -16,6 +16,19 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 ])]
 class EmployeeAdvance extends Model
 {
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($advance) {
+            \App\Services\DoubleEntryService::postEmployeeAdvanceTransaction($advance);
+        });
+
+        static::deleted(function ($advance) {
+            \App\Services\DoubleEntryService::postEmployeeAdvanceTransaction($advance);
+        });
+    }
+
     protected function casts(): array
     {
         return [
