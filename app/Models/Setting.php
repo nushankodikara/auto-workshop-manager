@@ -16,4 +16,15 @@ class Setting extends Model
         $setting = self::where('key', $key)->first();
         return $setting ? $setting->value : $default;
     }
+
+    /**
+     * Set a setting by key.
+     */
+    public static function set(string $key, $value)
+    {
+        return self::updateOrCreate(
+            ['key' => $key],
+            ['value' => (string) $value]
+        );
+    }
 }

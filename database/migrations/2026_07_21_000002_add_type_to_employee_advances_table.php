@@ -11,10 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('employee_advances', 'type')) {
-            Schema::table('employee_advances', function (Blueprint $table) {
-                $table->string('type')->default('salary')->after('user_id');
-            });
+        try {
+            if (Schema::hasTable('employee_advances') && !Schema::hasColumn('employee_advances', 'type')) {
+                Schema::table('employee_advances', function (Blueprint $table) {
+                    $table->string('type')->default('salary')->after('user_id');
+                });
+            }
+        } catch (\Throwable $e) {
+            logger()->error("Migration add_type_to_employee_advances_table notice: " . $e->getMessage());
         }
     }
 
@@ -23,10 +27,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasColumn('employee_advances', 'type')) {
-            Schema::table('employee_advances', function (Blueprint $table) {
-                $table->dropColumn('type');
-            });
+        try {
+            if (Schema::hasTable('employee_advances') && Schema::hasColumn('employee_advances', 'type')) {
+                Schema::table('employee_advances', function (Blueprint $table) {
+                    $table->dropColumn('type');
+                });
+            }
+        } catch (\Throwable $e) {
+            // Ignore
         }
     }
 };
