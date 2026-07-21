@@ -94,22 +94,8 @@ class AuditAndFixFinanceLedger extends Command
         $this->info("\n[Step 2] Executing Automatic Reconciler...");
 
         $fc = new FinanceController();
-
-        DB::transaction(function () use ($fc) {
-            $audit = $fc->auditLedger();
-
-            // Re-sync unposted employee advances
-            $advances = EmployeeAdvance::where('status', '!=', 'cancelled')->get();
-            $advCount = 0;
-            foreach ($advances as $adv) {
-                DoubleEntryService::postEmployeeAdvanceTransaction($adv);
-                $advCount++;
-            }
-            $this->info("   ✓ Re-synced {$advCount} Employee Advance ledger entries.");
-
-            // Reconcile rest
-            $fc->reconcile(request());
-        });
+        $fc->reconcile(request());
+        $this->info("   ✓ Reconcile execution complete.");
 
         // 3. Output Trial Balance Summary
         $this->info("\n[Step 3] Verification & Trial Balance Summary:");

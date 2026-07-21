@@ -554,6 +554,37 @@
                     </div>
                 @endif
 
+                <!-- 3b. Missing Employee Advances -->
+                @if(isset($auditResults['missingAdvances']) && count($auditResults['missingAdvances']) > 0)
+                    <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Missing / Un-posted Employee Salary & Benefit Advances ({{ count($auditResults['missingAdvances']) }})</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-100/50 dark:bg-slate-950/20 text-slate-400 font-bold uppercase border-b border-slate-200 dark:border-slate-800">
+                                        <th class="py-3 px-6">Employee</th>
+                                        <th class="py-3 px-6">Date</th>
+                                        <th class="py-3 px-6">Advance Amount</th>
+                                        <th class="py-3 px-6">Ledger Reference</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-800/50">
+                                    @foreach($auditResults['missingAdvances'] as $adv)
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-950/10">
+                                            <td class="py-3.5 px-6 font-semibold text-slate-800 dark:text-slate-200">{{ $adv['employee'] }}</td>
+                                            <td class="py-3.5 px-6 text-slate-500 font-mono">{{ $adv['date'] }}</td>
+                                            <td class="py-3.5 px-6 font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', 'Rs.') }}{{ number_format($adv['total'], 2) }}</td>
+                                            <td class="py-3.5 px-6 text-red-650 font-semibold">ADVANCE-{{ $adv['id'] }} missing</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
                 <!-- 4. Duplicate / Double Entries -->
                 @if(count($auditResults['duplicateBills']) > 0 || count($auditResults['duplicateBatches']) > 0 || count($auditResults['duplicateSlips']) > 0)
                     <div class="app-card rounded-2xl overflow-hidden shadow-xs border border-slate-205 dark:border-slate-800">

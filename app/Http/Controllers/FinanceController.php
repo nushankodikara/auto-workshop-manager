@@ -638,6 +638,45 @@ class FinanceController extends Controller
         $this->checkAccess();
 
         DB::transaction(function () {
+            // 0. Auto-seed any missing core accounts or settings mappings
+            $coreAccounts = [
+                ['code' => '1000', 'name' => 'Main Cashbook / Cash Drawer', 'type' => 'asset'],
+                ['code' => '1100', 'name' => 'Main Commercial Bank Account', 'type' => 'asset'],
+                ['code' => '1200', 'name' => 'Customer Accounts Receivable (AR)', 'type' => 'asset'],
+                ['code' => '1220', 'name' => 'Employee Advances & Emergency Loans', 'type' => 'asset'],
+                ['code' => '1300', 'name' => 'Inventory Parts Stock Asset', 'type' => 'asset'],
+                ['code' => '2000', 'name' => 'Vendor Accounts Payable (AP)', 'type' => 'liability'],
+                ['code' => '2100', 'name' => 'Sales Tax / VAT Payable', 'type' => 'liability'],
+                ['code' => '3000', 'name' => 'Owner Capital & Retained Earnings', 'type' => 'equity'],
+                ['code' => '4000', 'name' => 'Service & Maintenance Revenue', 'type' => 'revenue'],
+                ['code' => '4100', 'name' => 'Parts & Materials Revenue', 'type' => 'revenue'],
+                ['code' => '5000', 'name' => 'Cost of Goods Sold (COGS)', 'type' => 'expense'],
+                ['code' => '5100', 'name' => 'Salaries & Technician Wages', 'type' => 'expense'],
+                ['code' => '5150', 'name' => 'Employee Benefits & Welfare Expense', 'type' => 'expense'],
+                ['code' => '5200', 'name' => 'Workshop Operating Expenses', 'type' => 'expense'],
+            ];
+
+            foreach ($coreAccounts as $acc) {
+                Account::firstOrCreate(['code' => $acc['code']], ['name' => $acc['name'], 'type' => $acc['type']]);
+            }
+
+            $coreSettings = [
+                'account_cashbook' => '1000',
+                'account_ar' => '1200',
+                'account_inventory' => '1300',
+                'account_ap' => '2000',
+                'account_revenue' => '4000',
+                'account_cogs' => '5000',
+                'account_salaries' => '5100',
+                'account_operating_expense' => '5200',
+                'account_employee_advances' => '1220',
+                'account_employee_benefits' => '5150',
+            ];
+
+            foreach ($coreSettings as $key => $code) {
+                Setting::set($key, $code);
+            }
+
             $audit = $this->auditLedger();
 
             // 1. Re-sync missing/duplicate bills
