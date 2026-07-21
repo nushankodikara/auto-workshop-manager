@@ -14,6 +14,10 @@ class FinanceController extends Controller
 {
     private function checkAccess()
     {
+        if (app()->runningInConsole()) {
+            return;
+        }
+
         if (!Auth::user() || !Auth::user()->hasModuleAccess('finance')) {
             abort(403, 'Unauthorized module access.');
         }
@@ -378,7 +382,7 @@ class FinanceController extends Controller
     /**
      * Audit ledger against operational records to find discrepancies.
      */
-    private function auditLedger()
+    public function auditLedger()
     {
         $this->checkAccess();
 
