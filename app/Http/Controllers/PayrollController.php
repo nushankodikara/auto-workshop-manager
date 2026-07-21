@@ -93,9 +93,10 @@ class PayrollController extends Controller
         $baseAllowance = max(0.00, floatval($user->total_salary) - floatval($user->basic_salary));
 
         $categories = PayrollCategory::all();
-        $pendingAdvancesSum = floatval($user->pendingAdvances()->sum('amount'));
+        $pendingSalaryAdvancesSum = floatval($user->pendingAdvances()->where(function($q) { $q->where('type', 'salary')->orWhereNull('type'); })->sum('amount'));
+        $pendingBenefitAdvances = $user->pendingAdvances()->where('type', 'benefit')->get();
 
-        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 'baseAllowance', 'pendingAdvancesSum'));
+        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 'baseAllowance', 'pendingSalaryAdvancesSum', 'pendingBenefitAdvances'));
     }
 
     /**
@@ -700,14 +701,17 @@ class PayrollController extends Controller
     {
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
+            'type' => 'nullable|string|in:salary,benefit',
             'amount' => 'required|numeric|min:1',
             'advance_date' => 'required|date',
             'reason' => 'nullable|string|max:1000'
         ]);
 
         $advance = DB::transaction(function () use ($data) {
+            $type = $data['type'] ?? 'salary';
             $advance = \App\Models\EmployeeAdvance::create([
                 'user_id' => $data['user_id'],
+                'type' => $type,
                 'amount' => floatval($data['amount']),
                 'advance_date' => $data['advance_date'],
                 'reason' => $data['reason'] ?? null,
@@ -719,7 +723,8 @@ class PayrollController extends Controller
             return $advance;
         });
 
-        return back()->with('success', 'Salary advance of ' . config('app.currency', 'Rs.') . number_format($advance->amount, 2) . ' recorded and posted to ledger.');
+        $label = ($advance->type === 'benefit') ? 'Paid benefit advance' : 'Salary advance';
+        return back()->with('success', $label . ' of ' . config('app.currency', 'Rs.') . number_format($advance->amount, 2) . ' recorded and posted to ledger.');
     }
 
     /**

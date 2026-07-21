@@ -26,6 +26,7 @@ class PayrollAdvanceAndBenefitsTest extends TestCase
         // Seed Chart of Accounts
         Account::create(['code' => '1000', 'name' => 'Cash & Bank', 'type' => 'asset']);
         Account::create(['code' => '1200', 'name' => 'Accounts Receivable', 'type' => 'asset']);
+        Account::create(['code' => '1220', 'name' => 'Salary Advances & Emergency Loans', 'type' => 'asset']);
         Account::create(['code' => '2000', 'name' => 'Accounts Payable', 'type' => 'liability']);
         Account::create(['code' => '5100', 'name' => 'Salaries & Technician Wages', 'type' => 'expense']);
         Account::create(['code' => '5150', 'name' => 'Employee Benefits & Welfare Expense', 'type' => 'expense']);
@@ -70,14 +71,14 @@ class PayrollAdvanceAndBenefitsTest extends TestCase
         $this->assertNotNull($advance);
         $this->assertEquals(15000.00, floatval($advance->amount));
 
-        // Check Journal Entry (Debit 5100 Salaries, Credit 1000 Cashbook)
+        // Check Journal Entry (Debit 1220 Advances Asset, Credit 1000 Cashbook)
         $entry = JournalEntry::where('reference', 'ADVANCE-' . $advance->id)->first();
         $this->assertNotNull($entry);
 
-        $salariesAcc = Account::where('code', '5100')->first();
+        $advancesAcc = Account::where('code', '1220')->first();
         $cashAcc = Account::where('code', '1000')->first();
 
-        $debitItem = $entry->items()->where('account_id', $salariesAcc->id)->first();
+        $debitItem = $entry->items()->where('account_id', $advancesAcc->id)->first();
         $creditItem = $entry->items()->where('account_id', $cashAcc->id)->first();
 
         $this->assertEquals(15000.00, floatval($debitItem->debit));
@@ -135,17 +136,56 @@ class PayrollAdvanceAndBenefitsTest extends TestCase
         $slipEntry = JournalEntry::where('reference', 'SLIP-' . $slip->id)->first();
         $this->assertNotNull($slipEntry);
 
-        // Remaining salaries expense debit: Gross 65,000 - 10,000 Advance = 55,000
+        // Full Gross Salaries Expense (5100): 65,000
+        // Salary Advances Asset Credit (1220): 10,000 (clearing the advance)
         $salariesAcc = Account::where('code', '5100')->first();
+        $advancesAcc = Account::where('code', '1220')->first();
         $benefitsAcc = Account::where('code', '5150')->first();
         $cashAcc = Account::where('code', '1000')->first();
 
         $salariesItem = $slipEntry->items()->where('account_id', $salariesAcc->id)->first();
+        $advancesItem = $slipEntry->items()->where('account_id', $advancesAcc->id)->first();
         $benefitsItem = $slipEntry->items()->where('account_id', $benefitsAcc->id)->first();
         $cashItem = $slipEntry->items()->where('account_id', $cashAcc->id)->first();
 
-        $this->assertEquals(55000.00, floatval($salariesItem->debit));
+        $this->assertEquals(65000.00, floatval($salariesItem->debit));
+        $this->assertEquals(10000.00, floatval($advancesItem->credit));
         $this->assertEquals(3000.00, floatval($benefitsItem->debit));
         $this->assertEquals(50200.00, floatval($cashItem->credit));
+    }
+
+    public function test_paid_benefit_advance_disbursement_journal_entry()
+    {
+        $this->actingAs($this->superManager);
+
+        $response = $this->post(route('payroll.advances.store'), [
+            'user_id' => $this->employee->id,
+            'type' => 'benefit',
+            'amount' => 4500.00,
+            'advance_date' => date('Y-m-d'),
+            'reason' => 'Food & Meals advance perquisite'
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        // Check advance record
+        $advance = EmployeeAdvance::where('user_id', $this->employee->id)->where('type', 'benefit')->first();
+        $this->assertNotNull($advance);
+        $this->assertEquals('benefit', $advance->type);
+        $this->assertEquals(4500.00, floatval($advance->amount));
+
+        // Check Journal Entry (Debit 5150 Employee Benefits, Credit 1000 Cashbook)
+        $entry = JournalEntry::where('reference', 'ADVANCE-' . $advance->id)->first();
+        $this->assertNotNull($entry);
+
+        $benefitsAcc = Account::where('code', '5150')->first();
+        $cashAcc = Account::where('code', '1000')->first();
+
+        $debitItem = $entry->items()->where('account_id', $benefitsAcc->id)->first();
+        $creditItem = $entry->items()->where('account_id', $cashAcc->id)->first();
+
+        $this->assertEquals(4500.00, floatval($debitItem->debit));
+        $this->assertEquals(4500.00, floatval($creditItem->credit));
     }
 }

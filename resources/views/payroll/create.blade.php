@@ -195,6 +195,21 @@
             </h3>
 
             <div id="benefits-container" class="space-y-3">
+                @if(isset($pendingBenefitAdvances) && count($pendingBenefitAdvances) > 0)
+                    @foreach($pendingBenefitAdvances as $bAdv)
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center benefit-row">
+                            <div class="md:col-span-3">
+                                <input type="text" name="item_name[]" value="Prepaid Benefit: {{ $bAdv->reason ?: 'Benefit Advance' }} (Paid {{ $bAdv->advance_date ? $bAdv->advance_date->format('Y-m-d') : '' }})" readonly
+                                       class="w-full px-4 py-2 bg-emerald-100/50 dark:bg-emerald-950/40 border border-emerald-500/40 font-semibold rounded-lg text-slate-800 dark:text-slate-200 text-xs focus:outline-none">
+                                <input type="hidden" name="item_type[]" value="benefit">
+                            </div>
+                            <div>
+                                <input type="number" step="0.01" name="item_amount[]" value="{{ number_format($bAdv->amount, 2, '.', '') }}" oninput="recalculateTotal()"
+                                       class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary benefit-amount">
+                            </div>
+                        </div>
+                    @endforeach
+                @endif
                 @foreach($categories->where('type', 'benefit') as $cat)
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center benefit-row">
                         <div class="md:col-span-3">

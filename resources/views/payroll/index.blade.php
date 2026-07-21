@@ -643,15 +643,15 @@
     </div>
 </div>
 
-    <!-- 4. TAB: Salary Advances -->
+    <!-- 4. TAB: Salary & Benefit Advances -->
     <div id="tab-advances" class="space-y-6 tab-content hidden">
         <div class="flex items-center justify-between">
             <div>
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Employee Salary Advances</h3>
-                <p class="text-xs text-slate-500 mt-1">Advances are interest-free cash payments made to employees, automatically deducted from their next payslip.</p>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Employee Salary & Benefit Advances</h3>
+                <p class="text-xs text-slate-500 mt-1">Record cash advances deducted from salary or prepaid company benefits (food, medical, welfare perquisites) disbursed in advance.</p>
             </div>
             <button onclick="document.getElementById('create-advance-drawer').classList.remove('hidden')"
-                    class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm">
+                    class="px-4 py-2 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm cursor-pointer">
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 <span>Record Advance Payment</span>
             </button>
@@ -662,8 +662,9 @@
                 <thead>
                     <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
                         <th class="py-4 px-6">Employee</th>
+                        <th class="py-4 px-6">Classification</th>
                         <th class="py-4 px-6">Date</th>
-                        <th class="py-4 px-6">Reason / Emergency Notes</th>
+                        <th class="py-4 px-6">Reason / Details</th>
                         <th class="py-4 px-6 text-right">Amount</th>
                         <th class="py-4 px-6">Status</th>
                         <th class="py-4 px-6 text-right">Actions</th>
@@ -676,11 +677,18 @@
                                 {{ $adv->user->name }}
                                 <span class="block text-[10px] text-slate-500 mt-0.5 capitalize">{{ $adv->user->role }}</span>
                             </td>
+                            <td class="py-4 px-6 text-xs">
+                                @if(($adv->type ?? 'salary') === 'benefit')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Benefit Advance</span>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">Salary Advance</span>
+                                @endif
+                            </td>
                             <td class="py-4 px-6 font-mono text-xs">
-                                {{ $adv->advance_date->format('Y-m-d') }}
+                                {{ $adv->advance_date ? $adv->advance_date->format('Y-m-d') : '-' }}
                             </td>
                             <td class="py-4 px-6 text-xs max-w-xs truncate" title="{{ $adv->reason }}">
-                                {{ $adv->reason ?: 'Emergency advance payment' }}
+                                {{ $adv->reason ?: 'General advance payment' }}
                             </td>
                             <td class="py-4 px-6 text-right font-mono font-semibold text-slate-800 dark:text-slate-205">
                                 {{ config('app.currency', 'Rs.') }}{{ number_format($adv->amount, 2) }}
@@ -689,7 +697,7 @@
                                 @if($adv->status === 'pending')
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">Pending Recovery</span>
                                 @elseif($adv->status === 'deducted')
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 border border-green-500/20">Recovered (Deducted)</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 border border-green-500/20">Processed</span>
                                 @else
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-650 dark:text-red-400 border border-red-500/20">Cancelled</span>
                                 @endif
@@ -712,7 +720,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-12 text-center text-slate-500">
+                            <td colspan="7" class="py-12 text-center text-slate-500">
                                 No employee advance payments recorded yet.
                             </td>
                         </tr>
@@ -752,6 +760,16 @@
                                     </select>
                                 </div>
 
+                                <!-- Classification / Type -->
+                                <div>
+                                    <label for="adv_type" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Advance Classification</label>
+                                    <select name="type" id="adv_type" required
+                                            class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                        <option value="salary">Salary Advance (Deduction from Net Salary)</option>
+                                        <option value="benefit">Paid Benefit Advance (Prepaid Perquisite / Food / Welfare)</option>
+                                    </select>
+                                </div>
+
                                 <!-- Date -->
                                 <div>
                                     <label for="adv_date" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Payment Date</label>
@@ -768,8 +786,8 @@
 
                                 <!-- Reason -->
                                 <div>
-                                    <label for="adv_reason" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Reason / Emergency Details</label>
-                                    <textarea name="reason" id="adv_reason" rows="4" placeholder="Emergency hospital expenses, personal advance..."
+                                    <label for="adv_reason" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Reason / Details</label>
+                                    <textarea name="reason" id="adv_reason" rows="4" placeholder="e.g., Food & Meals advance, emergency medical advance..."
                                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm"></textarea>
                                 </div>
 
