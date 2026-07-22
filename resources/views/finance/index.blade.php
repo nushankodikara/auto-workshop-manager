@@ -264,10 +264,25 @@
                                 {{ config('app.currency', '$') }}{{ number_format($acc->balance, 2) }}
                             </td>
                             <td class="py-4 px-6 text-right font-sans">
-                                <a href="{{ route('finance.index', ['account_id' => $acc->id]) }}" 
-                                   class="text-xs font-bold text-primary hover:underline">
-                                    View Ledger
-                                </a>
+                                <div class="flex items-center justify-end gap-2.5">
+                                    <a href="{{ route('finance.index', ['account_id' => $acc->id]) }}" 
+                                       class="text-xs font-bold text-slate-500 hover:text-primary transition">
+                                        View Ledger
+                                    </a>
+                                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                                    <button onclick="openEditAccountDrawer({{ json_encode($acc) }})" 
+                                            class="text-xs font-bold text-primary hover:underline cursor-pointer">
+                                        Edit
+                                    </button>
+                                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                                    <form action="{{ route('finance.accounts.destroy', $acc->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this account? This action is permanent and cannot be undone.')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs font-bold text-red-500 hover:underline cursor-pointer">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -981,6 +996,74 @@
     </div>
 </div>
 
+<!-- 3. DRAWER: Edit Account Form -->
+<div id="edit-account-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="document.getElementById('edit-account-drawer').classList.add('hidden')"></div>
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+                <div class="px-6 py-5 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="edit-2" class="w-4 h-4 text-primary"></i>
+                        <span>Edit Ledger Account</span>
+                    </h2>
+                    <button onclick="document.getElementById('edit-account-drawer').classList.add('hidden')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <form id="edit-account-form" action="" method="POST" class="flex-1 flex flex-col justify-between overflow-y-auto">
+                    @csrf
+                    @method('PUT')
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label for="edit_code" class="block text-xs font-semibold text-slate-550 mb-1.5">Account Code *</label>
+                            <input type="text" name="code" id="edit_code" required placeholder="e.g. 1010, 5210"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
+                        </div>
+
+                        <div>
+                            <label for="edit_name" class="block text-xs font-semibold text-slate-550 mb-1.5">Account Name *</label>
+                            <input type="text" name="name" id="edit_name" required placeholder="e.g. Petty Cash, Office Utilities"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                        </div>
+
+                        <div>
+                            <label for="edit_type" class="block text-xs font-semibold text-slate-550 mb-1.5">Account Type *</label>
+                            <select name="type" id="edit_type" required class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                                <option value="asset">Asset (Normal Balance: Debit)</option>
+                                <option value="liability">Liability (Normal Balance: Credit)</option>
+                                <option value="equity">Equity (Normal Balance: Credit)</option>
+                                <option value="revenue">Revenue (Normal Balance: Credit)</option>
+                                <option value="expense">Expense (Normal Balance: Debit)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="edit_description" class="block text-xs font-semibold text-slate-550 mb-1.5">Description (Optional)</label>
+                            <textarea name="description" id="edit_description" rows="3" placeholder="Explain the purpose of this account..."
+                                      class="w-full px-3 py-2 app-input rounded-lg text-slate-850 dark:text-slate-200 focus:outline-none focus:border-primary text-xs"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Footer actions -->
+                    <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
+                        <button type="button" onclick="document.getElementById('edit-account-drawer').classList.add('hidden')"
+                                class="px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span>Save Changes</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Dynamic rows generation script for Journal Entry lines -->
 <script>
     let rowIndex = 2; // Rows 0 and 1 pre-exist
@@ -1062,6 +1145,22 @@
                 submitBtn.disabled = true;
             }
         }
+    }
+
+    // Edit Ledger Accounts Logic
+    function openEditAccountDrawer(account) {
+        // Set action url
+        const form = document.getElementById('edit-account-form');
+        form.action = `/finance/accounts/${account.id}`;
+
+        // Populate fields
+        document.getElementById('edit_code').value = account.code;
+        document.getElementById('edit_name').value = account.name;
+        document.getElementById('edit_type').value = account.type;
+        document.getElementById('edit_description').value = account.description || '';
+
+        // Open drawer
+        document.getElementById('edit-account-drawer').classList.remove('hidden');
     }
 
     // Edit Ledger Entries Logic

@@ -129,6 +129,76 @@ class FinanceController extends Controller
     }
 
     /**
+     * Update an existing account.
+     */
+    public function updateAccount(Request $request, Account $account)
+    {
+        $this->checkAccess();
+
+        $data = $request->validate([
+            'code' => 'required|string|max:20|unique:accounts,code,' . $account->id,
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:asset,liability,equity,revenue,expense',
+            'description' => 'nullable|string'
+        ]);
+
+        $oldCode = $account->code;
+        $newCode = $data['code'];
+
+        $account->update($data);
+
+        // If the code changed, automatically update setting mappings that reference the old code
+        if ($oldCode !== $newCode) {
+            Setting::where('value', $oldCode)->update(['value' => $newCode]);
+        }
+
+        return back()->with('success', 'Account updated successfully.');
+    }
+
+    /**
+     * Delete an existing account.
+     */
+    public function destroyAccount(Account $account)
+    {
+        $this->checkAccess();
+
+        // 1. Check if the account is currently mapped in Settings
+        $mappedKeys = [
+            'account_cashbook',
+            'account_receivable',
+            'account_inventory',
+            'account_payable',
+            'account_service_revenue',
+            'account_parts_revenue',
+            'account_cogs',
+            'account_salaries',
+            'account_consumables',
+            'account_transportation',
+            'account_transportation_revenue',
+            'account_transportation_hire_expense',
+            'account_employee_advances',
+            'account_inventory_disposal'
+        ];
+
+        $isMapped = Setting::whereIn('key', $mappedKeys)
+            ->where('value', $account->code)
+            ->exists();
+
+        if ($isMapped) {
+            return back()->withErrors(['error' => "Cannot delete account '{$account->name}' because it is currently mapped as a default/system account in Settings."]);
+        }
+
+        // 2. Check if the account has any journal items associated with it
+        if ($account->journalItems()->exists()) {
+            return back()->withErrors(['error' => "Cannot delete account '{$account->name}' because it has active transaction records in the ledger."]);
+        }
+
+        $account->delete();
+
+        return back()->with('success', 'Account deleted successfully.');
+    }
+
+    /**
      * Store a manual double entry transaction.
      */
     public function storeJournalEntry(Request $request)

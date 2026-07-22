@@ -200,6 +200,8 @@ Route::middleware('auth')->group(function () {
     // Double-entry accounting ledger & finance (Super Manager Only)
     Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
     Route::post('/finance/accounts', [FinanceController::class, 'storeAccount'])->name('finance.accounts.store');
+    Route::put('/finance/accounts/{account}', [FinanceController::class, 'updateAccount'])->name('finance.accounts.update');
+    Route::delete('/finance/accounts/{account}', [FinanceController::class, 'destroyAccount'])->name('finance.accounts.destroy');
     Route::post('/finance/ledger', [FinanceController::class, 'storeJournalEntry'])->name('finance.ledger.store');
     Route::put('/finance/entries/{journalEntry}', [FinanceController::class, 'updateJournalEntry'])->name('finance.entries.update');
     Route::delete('/finance/entries/{journalEntry}', [FinanceController::class, 'destroyJournalEntry'])->name('finance.entries.destroy');
