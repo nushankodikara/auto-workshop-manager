@@ -323,4 +323,105 @@ class VehicleTest extends TestCase
         $jobCard->refresh();
         $this->assertEquals($vehicle1->id, $jobCard->vehicle_id);
     }
+
+    public function test_invoice_displays_vehicle_mileage_with_proper_fallback()
+    {
+        $this->actingAs($this->superManager);
+
+        // 1. Scenario 1: Job card has mileage explicitly set
+        $vehicle1 = Vehicle::create([
+            'client_id' => $this->client->id,
+            'make' => 'Toyota',
+            'model' => 'Aqua',
+            'year' => 2015,
+            'plate_number' => 'WP-CAD-5555',
+            'vin' => '12345',
+            'mileage' => 45000,
+        ]);
+
+        $jobCard1 = JobCard::create([
+            'vehicle_id' => $vehicle1->id,
+            'shop_id' => $this->shop->id,
+            'notes' => 'Some service',
+            'estimated_cost' => 1000,
+            'mileage' => 42000, // Job card has specific mileage
+        ]);
+
+        $bill1 = \App\Models\Bill::create([
+            'job_card_id' => $jobCard1->id,
+            'bill_number' => 'INV-TEST-0001',
+            'tax' => 0.00,
+            'total_amount' => 1000,
+            'status' => 'paid',
+        ]);
+
+        $response = $this->get(route('billing.show', $jobCard1->id));
+        $response->assertStatus(200);
+        $response->assertSee('Mileage:');
+        $response->assertSee('42,000 km');
+
+        // 2. Scenario 2: Job card mileage is null, falls back to vehicle mileage
+        $vehicle2 = Vehicle::create([
+            'client_id' => $this->client->id,
+            'make' => 'Toyota',
+            'model' => 'Prius',
+            'year' => 2016,
+            'plate_number' => 'WP-CAD-7777',
+            'vin' => '67890',
+            'mileage' => 65000,
+        ]);
+
+        $jobCard2 = JobCard::create([
+            'vehicle_id' => $vehicle2->id,
+            'shop_id' => $this->shop->id,
+            'notes' => 'Another service',
+            'estimated_cost' => 1000,
+            'mileage' => null, // No mileage on job card
+        ]);
+
+        $bill2 = \App\Models\Bill::create([
+            'job_card_id' => $jobCard2->id,
+            'bill_number' => 'INV-TEST-0002',
+            'tax' => 0.00,
+            'total_amount' => 1000,
+            'status' => 'paid',
+        ]);
+
+        $response = $this->get(route('billing.show', $jobCard2->id));
+        $response->assertStatus(200);
+        $response->assertSee('Mileage:');
+        $response->assertSee('65,000 km'); // Falls back to vehicle mileage
+
+        // 3. Scenario 3: Both are null
+        $vehicle3 = Vehicle::create([
+            'client_id' => $this->client->id,
+            'make' => 'Toyota',
+            'model' => 'Axio',
+            'year' => 2017,
+            'plate_number' => 'WP-CAD-8888',
+            'vin' => 'abcde',
+            'mileage' => null,
+        ]);
+
+        $jobCard3 = JobCard::create([
+            'vehicle_id' => $vehicle3->id,
+            'shop_id' => $this->shop->id,
+            'notes' => 'Third service',
+            'estimated_cost' => 1000,
+            'mileage' => null,
+        ]);
+
+        $bill3 = \App\Models\Bill::create([
+            'job_card_id' => $jobCard3->id,
+            'bill_number' => 'INV-TEST-0003',
+            'tax' => 0.00,
+            'total_amount' => 1000,
+            'status' => 'paid',
+        ]);
+
+        $response = $this->get(route('billing.show', $jobCard3->id));
+        $response->assertStatus(200);
+        $response->assertSee('Mileage:');
+        $response->assertSee('N/A');
+    }
 }

@@ -93,6 +93,7 @@
                 <div class="text-xs text-slate-500 dark:text-slate-450 mt-1.5 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Year:</span> {{ $jobCard->vehicle->year }}</div>
                 <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Plate:</span> {{ $jobCard->vehicle->plate_number }}</div>
                 <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70 font-mono"><span class="font-semibold font-sans text-slate-700 dark:text-slate-450 print:text-black">VIN:</span> {{ $jobCard->vehicle->vin ?? 'N/A' }}</div>
+                <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Mileage:</span> {{ $jobCard->mileage ? number_format($jobCard->mileage) . ' km' : ($jobCard->vehicle->mileage ? number_format($jobCard->vehicle->mileage) . ' km' : 'N/A') }}</div>
             </div>
 
             <!-- Invoice Metadata -->
