@@ -424,4 +424,77 @@ class VehicleTest extends TestCase
         $response->assertSee('Mileage:');
         $response->assertSee('N/A');
     }
+
+    public function test_dummy_invoice_generator_access_and_rendering()
+    {
+        // 1. Worker (non-super-manager) should get 403 Forbidden
+        $this->actingAs($this->worker);
+
+        $response = $this->get(route('tests.index'));
+        $response->assertStatus(403);
+
+        $response = $this->get(route('billing.dummy.workspace'));
+        $response->assertStatus(403);
+
+        $response = $this->post(route('billing.dummy.generate'), []);
+        $response->assertStatus(403);
+
+        // 2. Super Manager should get 200 OK for hub and workspace
+        $this->actingAs($this->superManager);
+
+        $response = $this->get(route('tests.index'));
+        $response->assertStatus(200);
+        $response->assertSee('Dummy Invoice Generator');
+
+        $response = $this->get(route('billing.dummy.workspace'));
+        $response->assertStatus(200);
+        $response->assertSee('Shop Name');
+
+        // 3. Super Manager can submit dummy invoice details and view rendered page
+        $dummyData = [
+            'shop_name' => 'Mock shop name',
+            'shop_address' => 'Mock shop address',
+            'customer_name' => 'Mock customer name',
+            'customer_phone' => '0779998888',
+            'customer_email' => 'mockclient@test.com',
+            'customer_address' => 'Mock client address',
+            'vehicle_make' => 'Honda',
+            'vehicle_model' => 'Fit',
+            'vehicle_year' => 2017,
+            'vehicle_plate' => 'WP CAD-9999',
+            'vehicle_vin' => 'VIN-MOCK-DUMMY-123',
+            'vehicle_mileage' => 85000,
+            'invoice_number' => 'INV-DUMMY-9999',
+            'invoice_date' => '2026-07-24',
+            'invoice_status' => 'paid',
+            'discount_percent' => 10,
+            'tax_percent' => 5,
+            'towing_fee' => 1200,
+            'advanced_payments' => 500,
+            // Line items
+            'item_desc' => ['Dummy Part 1', 'Dummy Labor 1'],
+            'item_type' => ['part', 'labor'],
+            'item_qty' => [1, 2],
+            'item_price' => [5000, 2500],
+        ];
+
+        $response = $this->post(route('billing.dummy.generate'), $dummyData);
+        $response->assertStatus(200);
+
+        // Verify the view renders all the submitted details correctly
+        $response->assertSee('Mock shop name');
+        $response->assertSee('Mock shop address');
+        $response->assertSee('Mock customer name');
+        $response->assertSee('0779998888');
+        $response->assertSee('mockclient@test.com');
+        $response->assertSee('Mock client address');
+        $response->assertSee('Fit');
+        $response->assertSee('WP CAD-9999');
+        $response->assertSee('VIN-MOCK-DUMMY-123');
+        $response->assertSee('85,000 km');
+        $response->assertSee('Dummy Invoice #INV-DUMMY-9999');
+        $response->assertSee('Dummy Part 1');
+        $response->assertSee('Dummy Labor 1');
+        $response->assertSee('Back to Generator');
+    }
 }

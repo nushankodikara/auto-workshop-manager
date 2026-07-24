@@ -316,6 +316,12 @@
                         <span>Tracker Telemetry</span>
                     </a>
                 @endif
+                @if(auth()->user()->isSuperManager())
+                    <a href="{{ route('tests.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition {{ request()->routeIs('tests.index') || request()->routeIs('billing.dummy.*') ? 'bg-primary text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' }}">
+                        <i data-lucide="beaker" class="w-4 h-4 shrink-0"></i>
+                        <span>Tests & Utilities</span>
+                    </a>
+                @endif
 
             </nav>
         </div>

@@ -142,6 +142,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/consumables/usage/{usage}', [ConsumablesController::class, 'deleteUsage'])->name('consumables.usage.delete');
 
     // Billing & Invoices
+    Route::get('/tests', [BillingController::class, 'testsIndex'])->name('tests.index');
+    Route::get('/tests/dummy-invoice', [BillingController::class, 'dummyWorkspace'])->name('billing.dummy.workspace');
+    Route::post('/tests/dummy-invoice', [BillingController::class, 'generateDummyInvoice'])->name('billing.dummy.generate');
     Route::get('/job-cards/{jobCard}/billing/workspace', [BillingController::class, 'showWorkspace'])->name('billing.workspace');
     Route::post('/job-cards/{jobCard}/billing', [BillingController::class, 'store'])->name('billing.store');
     Route::get('/job-cards/{jobCard}/billing/invoice', [BillingController::class, 'show'])->name('billing.show');

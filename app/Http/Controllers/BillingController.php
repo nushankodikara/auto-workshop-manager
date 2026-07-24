@@ -311,4 +311,140 @@ class BillingController extends Controller
 
         return back()->with('success', "Invoice status updated to: {$bill->status}");
     }
+
+    private function checkSuperManager()
+    {
+        if (!auth()->user() || !auth()->user()->isSuperManager()) {
+            abort(403, 'Unauthorized access.');
+        }
+    }
+
+    /**
+     * Show Tests & Utilities dashboard.
+     */
+    public function testsIndex()
+    {
+        $this->checkSuperManager();
+        return view('tests.index');
+    }
+
+    /**
+     * Show Dummy Invoice Generator workspace.
+     */
+    public function dummyWorkspace()
+    {
+        $this->checkSuperManager();
+        $shops = \App\Models\Shop::orderBy('name')->get();
+        return view('billing.dummy_workspace', compact('shops'));
+    }
+
+    /**
+     * Generate and render the dummy invoice.
+     */
+    public function generateDummyInvoice(Request $request)
+    {
+        $this->checkSuperManager();
+
+        $data = $request->validate([
+            'shop_name' => 'required|string',
+            'shop_address' => 'required|string',
+            'customer_name' => 'required|string',
+            'customer_phone' => 'required|string',
+            'customer_email' => 'nullable|string',
+            'customer_address' => 'nullable|string',
+            'vehicle_make' => 'required|string',
+            'vehicle_model' => 'required|string',
+            'vehicle_year' => 'required|integer|min:1900|max:2100',
+            'vehicle_plate' => 'required|string',
+            'vehicle_vin' => 'nullable|string',
+            'vehicle_mileage' => 'nullable|integer|min:0',
+            'invoice_number' => 'required|string',
+            'invoice_date' => 'required|date',
+            'invoice_status' => 'required|in:draft,paid',
+            'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'tax_percent' => 'nullable|numeric|min:0',
+            'towing_fee' => 'nullable|numeric|min:0',
+            'advanced_payments' => 'nullable|numeric|min:0',
+            // Line items
+            'item_desc' => 'nullable|array',
+            'item_type' => 'nullable|array',
+            'item_qty' => 'nullable|array',
+            'item_price' => 'nullable|array',
+        ]);
+
+        $clientObj = (object)[
+            'name' => $data['customer_name'],
+            'phone' => $data['customer_phone'],
+            'email' => $data['customer_email'],
+            'address' => $data['customer_address'],
+        ];
+
+        $vehicleObj = (object)[
+            'make' => $data['vehicle_make'],
+            'model' => $data['vehicle_model'],
+            'year' => $data['vehicle_year'],
+            'plate_number' => $data['vehicle_plate'],
+            'vin' => $data['vehicle_vin'],
+            'mileage' => $data['vehicle_mileage'],
+            'client' => $clientObj,
+        ];
+
+        $shopObj = (object)[
+            'name' => $data['shop_name'],
+            'address' => $data['shop_address'],
+        ];
+
+        $billItems = collect();
+        if (!empty($data['item_desc'])) {
+            foreach ($data['item_desc'] as $key => $desc) {
+                if (empty($desc)) continue;
+                $qty = floatval($data['item_qty'][$key] ?? 1);
+                $unitPrice = floatval($data['item_price'][$key] ?? 0);
+                $billItems->push((object)[
+                    'description' => $desc,
+                    'type' => $data['item_type'][$key] ?? 'labor',
+                    'quantity' => $qty,
+                    'unit_price' => $unitPrice,
+                    'total_price' => $qty * $unitPrice,
+                ]);
+            }
+        }
+
+        $subtotal = $billItems->sum('total_price');
+        $transSum = floatval($data['towing_fee'] ?? 0);
+        $discountPercent = floatval($data['discount_percent'] ?? 0);
+        $taxPercent = floatval($data['tax_percent'] ?? 0);
+        $advancedPaymentsSum = floatval($data['advanced_payments'] ?? 0);
+
+        $discountAmount = $subtotal * ($discountPercent / 100);
+        $totalBeforeTax = $subtotal + $transSum - $discountAmount;
+        $taxAmount = $totalBeforeTax * ($taxPercent / 100);
+        $totalAmount = $totalBeforeTax + $taxAmount;
+
+        $billObj = (object)[
+            'bill_number' => $data['invoice_number'],
+            'status' => $data['invoice_status'],
+            'created_at' => \Carbon\Carbon::parse($data['invoice_date']),
+            'items' => $billItems,
+            'discount_percent' => $discountPercent,
+            'tax' => $taxPercent,
+            'total_amount' => $totalAmount,
+        ];
+
+        $jobCardObj = (object)[
+            'id' => 0,
+            'vehicle' => $vehicleObj,
+            'shop' => $shopObj,
+            'bill' => $billObj,
+            'mileage' => $data['vehicle_mileage'],
+            'transportations' => collect(),
+            'transportation_fee' => $transSum,
+            'advanced_payments_sum' => $advancedPaymentsSum,
+        ];
+
+        $isDummy = true;
+        $jobCard = $jobCardObj;
+
+        return view('billing.invoice', compact('jobCard', 'isDummy'));
+    }
 }

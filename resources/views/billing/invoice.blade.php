@@ -8,44 +8,62 @@
     <!-- Actions bar (hidden during print) -->
     <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 print:hidden">
         <div class="flex items-center gap-3">
-            <a href="{{ route('job-cards.show', $jobCard->id) }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-                <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
-                <span>Back to Job Card</span>
-            </a>
-            <span class="text-slate-400">|</span>
-            <span class="text-slate-650 dark:text-slate-350 font-semibold text-sm">Invoice #{{ $jobCard->bill->bill_number }}</span>
+            @if(isset($isDummy) && $isDummy)
+                <a href="{{ route('billing.dummy.workspace') }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>Back to Generator</span>
+                </a>
+                <span class="text-slate-400">|</span>
+                <span class="text-slate-650 dark:text-slate-350 font-semibold text-sm">Dummy Invoice #{{ $jobCard->bill->bill_number }}</span>
+            @else
+                <a href="{{ route('job-cards.show', $jobCard->id) }}" class="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>Back to Job Card</span>
+                </a>
+                <span class="text-slate-400">|</span>
+                <span class="text-slate-650 dark:text-slate-350 font-semibold text-sm">Invoice #{{ $jobCard->bill->bill_number }}</span>
+            @endif
         </div>
 
         <div class="flex items-center gap-3">
-            <!-- Edit Invoice (Only show for super-manager) -->
-            @if(auth()->user()->isSuperManager())
-                <a href="{{ route('billing.workspace', $jobCard->id) }}" 
-                   class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="edit" class="w-3.5 h-3.5"></i>
-                    <span>Edit Invoice & Calculations</span>
-                </a>
-            @endif
+            @if(isset($isDummy) && $isDummy)
+                <!-- Print Button -->
+                <button onclick="window.print()" 
+                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer font-sans">
+                    <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                    <span>Print / Save PDF</span>
+                </button>
+            @else
+                <!-- Edit Invoice (Only show for super-manager) -->
+                @if(auth()->user()->isSuperManager())
+                    <a href="{{ route('billing.workspace', $jobCard->id) }}" 
+                       class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="edit" class="w-3.5 h-3.5"></i>
+                        <span>Edit Invoice & Calculations</span>
+                    </a>
+                @endif
 
-            <!-- Mark as Paid form (Only show if draft) -->
-            @if($jobCard->bill->status === 'draft')
-                <form action="{{ route('billing.update-status', $jobCard->bill->id) }}" method="POST" class="inline">
-                    @csrf
-                    @method('PATCH')
-                    <input type="hidden" name="status" value="paid">
-                    <button type="submit" 
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
-                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
-                        <span>Mark as Paid</span>
-                    </button>
-                </form>
-            @endif
+                <!-- Mark as Paid form (Only show if draft) -->
+                @if($jobCard->bill->status === 'draft')
+                    <form action="{{ route('billing.update-status', $jobCard->bill->id) }}" method="POST" class="inline">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="status" value="paid">
+                        <button type="submit" 
+                                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                            <span>Mark as Paid</span>
+                        </button>
+                    </form>
+                @endif
 
-            <!-- Print Button -->
-            <button onclick="window.print()" 
-                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
-                <span>Print / Save PDF</span>
-            </button>
+                <!-- Print Button -->
+                <button onclick="window.print()" 
+                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                    <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                    <span>Print / Save PDF</span>
+                </button>
+            @endif
         </div>
     </div>
 
