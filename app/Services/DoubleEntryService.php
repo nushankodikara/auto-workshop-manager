@@ -15,6 +15,9 @@ class DoubleEntryService
     public static function postBillTransaction($bill)
     {
         try {
+            // Force reload items relation to avoid caching issues on newly created bills
+            $bill->load('items');
+
             // 1. Delete existing entries for this bill to avoid duplication on edit/re-save
             $oldEntries = JournalEntry::where('reference', 'like', $bill->bill_number . '%')->get();
             foreach ($oldEntries as $old) {
