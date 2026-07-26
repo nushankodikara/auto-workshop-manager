@@ -111,4 +111,60 @@ class BackupRestoreTest extends TestCase
         $this->assertDatabaseHas('shops', ['name' => 'Original Shop']);
         $this->assertDatabaseMissing('shops', ['name' => 'New Shop']);
     }
+
+    /**
+     * Test backup is skipped based on frequency policy.
+     */
+    public function test_backup_skips_based_on_frequency_policy()
+    {
+        // Setup daily frequency
+        \App\Models\Setting::updateOrCreate(['key' => 'backup_frequency'], ['value' => 'daily']);
+
+        // Assert directory starts empty
+        $this->assertEmpty(File::glob($this->testBackupDir . '/backup_*.sqlite'));
+
+        // Run backup 1: should succeed
+        $exitCode1 = Artisan::call('db:backup');
+        $this->assertEquals(0, $exitCode1);
+        $this->assertCount(1, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+
+        // Run backup 2 immediately: should skip (exit code still 0, but count remains 1)
+        $exitCode2 = Artisan::call('db:backup');
+        $this->assertEquals(0, $exitCode2);
+        $this->assertCount(1, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+    }
+
+    /**
+     * Test old backups are pruned based on retention days.
+     */
+    public function test_backup_cleanup_respects_retention_days()
+    {
+        // Set retention to 5 days
+        \App\Models\Setting::updateOrCreate(['key' => 'backup_retention_days'], ['value' => '5']);
+
+        // 1. Create a "very old" file
+        $oldFile = $this->testBackupDir . '/backup_2026-06-01_12-00-00.sqlite';
+        File::put($oldFile, '');
+        touch($oldFile, time() - (10 * 24 * 3600)); // 10 days old
+
+        // 2. Create 3 relatively fresh backup files to meet the keepCount limit
+        for ($i = 0; $i < 3; $i++) {
+            $freshFile = $this->testBackupDir . "/backup_2026-07-26_12-0{$i}-00.sqlite";
+            File::put($freshFile, '');
+            touch($freshFile, time() - (1 * 24 * 3600)); // 1 day old
+        }
+
+        // We have 4 files in total
+        $this->assertCount(4, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+
+        // Run backup: this will create a new backup (now 5 files) and trigger cleanup
+        $exitCode = Artisan::call('db:backup');
+        $this->assertEquals(0, $exitCode);
+
+        // The old file should be deleted (since it is >5 days and we have enough fresh backups to satisfy keepCount=3)
+        $this->assertFalse(File::exists($oldFile));
+        
+        // Total backups should be 4 now (3 fresh ones + the new one created by the command)
+        $this->assertCount(4, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+    }
 }

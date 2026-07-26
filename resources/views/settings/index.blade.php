@@ -195,6 +195,32 @@
             </div>
 
             <div class="border-t border-slate-200 dark:border-slate-800/80 pt-4 mt-6">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-3">
+                    <i data-lucide="shield" class="w-4 h-4 text-primary"></i>
+                    <span>Backup Schedule & Retention Policy</span>
+                </h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="backup_frequency" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Backup Frequency</label>
+                        <select name="backup_frequency" id="backup_frequency" 
+                                class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            <option value="hourly" {{ \App\Models\Setting::get('backup_frequency', 'hourly') === 'hourly' ? 'selected' : '' }}>Hourly (Default, cron-driven)</option>
+                            <option value="daily" {{ \App\Models\Setting::get('backup_frequency', 'hourly') === 'daily' ? 'selected' : '' }}>Daily</option>
+                            <option value="weekly" {{ \App\Models\Setting::get('backup_frequency', 'hourly') === 'weekly' ? 'selected' : '' }}>Weekly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="backup_retention_days" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Delete Backups Older Than (Days)</label>
+                        <input type="number" name="backup_retention_days" id="backup_retention_days" min="1" required 
+                               value="{{ \App\Models\Setting::get('backup_retention_days', '30') }}" 
+                               placeholder="30"
+                               class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 dark:border-slate-800/80 pt-4 mt-6">
                 <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1">
                     <i data-lucide="book-open" class="w-4 h-4 text-primary"></i>
                     <span>Operational Ledger Accounts Mapping</span>

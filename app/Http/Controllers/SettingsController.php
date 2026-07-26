@@ -199,6 +199,8 @@ class SettingsController extends Controller
         $data = $request->validate([
             'job_card_prefix' => 'required|string|max:50',
             'total_shares' => 'nullable|integer|min:1',
+            'backup_frequency' => 'required|string|in:hourly,daily,weekly',
+            'backup_retention_days' => 'required|integer|min:1',
             's3_key' => 'nullable|string|max:255',
             's3_secret' => 'nullable|string|max:255',
             's3_region' => 'nullable|string|max:50',

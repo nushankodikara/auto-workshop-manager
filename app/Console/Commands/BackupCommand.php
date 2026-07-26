@@ -43,6 +43,13 @@ class BackupCommand extends Command
             File::makeDirectory($backupDir, 0777, true, true);
         }
 
+        // 2.5 Check Backup Frequency
+        $frequency = \App\Models\Setting::get('backup_frequency', 'hourly');
+        if ($this->shouldSkipBackup($backupDir, $frequency)) {
+            $this->info("Backup skipped based on frequency policy ({$frequency}).");
+            return Command::SUCCESS;
+        }
+
         // 3. Create backup filename
         $timestamp = date('Y-m-d_H-i-s');
         $backupFilename = "backup_{$timestamp}.sqlite";
@@ -59,7 +66,7 @@ class BackupCommand extends Command
             $this->info("Backup successfully created: {$backupFilename}");
             $this->info("Saved to: {$backupPath}");
             
-            // 5. Cleanup older backups (keep last 30 backups)
+            // 5. Cleanup older backups
             $this->cleanupOldBackups($backupDir);
 
             // 6. Optionally upload to S3 if configured
@@ -90,23 +97,64 @@ class BackupCommand extends Command
     }
 
     /**
-     * Remove backups older than 30 files to prevent disk bloating.
+     * Determine if backup should be skipped based on frequency.
+     */
+    protected function shouldSkipBackup(string $backupDir, string $frequency): bool
+    {
+        if ($frequency === 'hourly') {
+            return false;
+        }
+
+        $files = File::glob($backupDir . '/backup_*.sqlite');
+        if (empty($files)) {
+            return false; // No backups exist yet
+        }
+
+        // Get the latest backup file's modified time
+        $latestTime = 0;
+        foreach ($files as $file) {
+            $mtime = filemtime($file);
+            if ($mtime > $latestTime) {
+                $latestTime = $mtime;
+            }
+        }
+
+        $elapsedSeconds = time() - $latestTime;
+
+        if ($frequency === 'daily') {
+            return $elapsedSeconds < (24 * 3600 - 60); // 24 hours (minus 1 min buffer)
+        }
+
+        if ($frequency === 'weekly') {
+            return $elapsedSeconds < (7 * 24 * 3600 - 60); // 7 days (minus 1 min buffer)
+        }
+
+        return false;
+    }
+
+    /**
+     * Remove backups older than the configured retention days.
      */
     protected function cleanupOldBackups(string $backupDir)
     {
         $files = File::glob($backupDir . '/backup_*.sqlite');
-        
-        if (count($files) > 30) {
-            // Sort by modified time ascending (oldest first)
-            usort($files, function ($a, $b) {
-                return filemtime($a) - filemtime($b);
-            });
+        $retentionDays = intval(\App\Models\Setting::get('backup_retention_days', '30'));
+        $cutoffTime = time() - ($retentionDays * 24 * 3600);
 
-            // Delete oldest files until we have 30 left
-            $toDelete = count($files) - 30;
-            for ($i = 0; $i < $toDelete; $i++) {
-                File::delete($files[$i]);
-                $this->line("Deleted old backup: " . basename($files[$i]));
+        // Sort files by modified time ascending (oldest first)
+        usort($files, function ($a, $b) {
+            return filemtime($a) - filemtime($b);
+        });
+
+        // We want to delete old files, but make sure we keep at least the last 3 backups
+        $keepCount = 3;
+        $totalFiles = count($files);
+
+        for ($i = 0; $i < $totalFiles - $keepCount; $i++) {
+            $file = $files[$i];
+            if (filemtime($file) < $cutoffTime) {
+                File::delete($file);
+                $this->line("Deleted backup older than {$retentionDays} days: " . basename($file));
             }
         }
     }
