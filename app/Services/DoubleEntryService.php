@@ -54,19 +54,33 @@ class DoubleEntryService
             $client = $jobCard->vehicle->client;
             $customerMobile = $client->phone ?? '0000000000';
 
-            // Calculate parts and service totals
-            $partsTotal = 0.00;
-            $partsCostTotal = 0.00;
+            // Calculate parts, misc parts, outsourcing and service totals
+            $inventoryPartsTotal = 0.00;
+            $inventoryPartsCostTotal = 0.00;
+            $miscPartsTotal = 0.00;
+            $miscPartsCostTotal = 0.00;
+            $outsourcingCostTotal = 0.00;
             $serviceTotal = 0.00; // labor + outsourcing
 
             foreach ($bill->items as $item) {
                 if ($item->type === 'part') {
-                    $partsTotal += floatval($item->total_price);
-                    $partsCostTotal += floatval($item->cost_price) * floatval($item->quantity);
+                    if ($item->inventory_id !== null) {
+                        $inventoryPartsTotal += floatval($item->total_price);
+                        $inventoryPartsCostTotal += floatval($item->cost_price) * floatval($item->quantity);
+                    } else {
+                        $miscPartsTotal += floatval($item->total_price);
+                        $miscPartsCostTotal += floatval($item->cost_price) * floatval($item->quantity);
+                    }
                 } else {
                     $serviceTotal += floatval($item->total_price);
+                    if ($item->type === 'outsourcing') {
+                        $outsourcingCostTotal += floatval($item->cost_price) * floatval($item->quantity);
+                    }
                 }
             }
+
+            $partsTotal = $inventoryPartsTotal + $miscPartsTotal;
+            $partsCostTotal = $inventoryPartsCostTotal + $miscPartsCostTotal;
 
             // Calculate transportation totals based on log lines (with fallback to legacy fields)
             $providedTotal = floatval($jobCard->transportations()->where('type', 'provided')->sum('amount'));
@@ -155,29 +169,43 @@ class DoubleEntryService
                 ]);
             }
 
-            // 2. Cost of Goods Sold Entry (COGS debit, Inventory credit)
-            if ($partsCostTotal > 0) {
+            // 2. Cost of Goods Sold & Outsourcing Expense Entry (COGS debit, Inventory/Cash credit)
+            $totalCogsExpense = $partsCostTotal + $outsourcingCostTotal;
+            if ($totalCogsExpense > 0) {
                 $cogsEntry = JournalEntry::create([
                     'entry_date' => date('Y-m-d'),
                     'reference' => $bill->bill_number . '-COGS',
-                    'description' => "Cost of Goods Sold for Bill {$bill->bill_number} (Client: {$client->name})"
+                    'description' => "Cost of Goods Sold & Specialist Services for Bill {$bill->bill_number} (Client: {$client->name})"
                 ]);
 
                 // Debit COGS
                 $cogsEntry->items()->create([
                     'account_id' => $cogsAccount->id,
-                    'debit' => $partsCostTotal,
+                    'debit' => $totalCogsExpense,
                     'credit' => 0.00,
                     'customer_mobile' => $customerMobile
                 ]);
 
-                // Credit Parts Inventory
-                $cogsEntry->items()->create([
-                    'account_id' => $inventoryAccount->id,
-                    'debit' => 0.00,
-                    'credit' => $partsCostTotal,
-                    'customer_mobile' => $customerMobile
-                ]);
+                // Credit Parts Inventory for stock parts
+                if ($inventoryPartsCostTotal > 0) {
+                    $cogsEntry->items()->create([
+                        'account_id' => $inventoryAccount->id,
+                        'debit' => 0.00,
+                        'credit' => $inventoryPartsCostTotal,
+                        'customer_mobile' => $customerMobile
+                    ]);
+                }
+
+                // Credit Cash Drawer / Cashbook for misc (dealer-direct) parts & outsourcing
+                $cashOutflowTotal = $miscPartsCostTotal + $outsourcingCostTotal;
+                if ($cashOutflowTotal > 0) {
+                    $cogsEntry->items()->create([
+                        'account_id' => $cashAccount->id,
+                        'debit' => 0.00,
+                        'credit' => $cashOutflowTotal,
+                        'customer_mobile' => $customerMobile
+                    ]);
+                }
             }
 
             // 3. Payment Entry (Cash/Bank debit, Accounts Receivable credit)

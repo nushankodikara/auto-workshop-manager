@@ -240,11 +240,6 @@ class DashboardController extends Controller
         $paidBasicSalaries = $totalPayroll;
         $paidAllowances = 0.00;
 
-        // Combined Total Expenditure = Stock Purchases + all other expenses
-        $otherExpenses = max(0, $expenseTotal - $totalPayroll);
-        $totalExpenditure = $totalStockPurchases + $totalPayroll + $otherExpenses;
-        $netProfit = $totalIncome - $totalExpenditure;
-
         // Trading profitability (linked to paid bills in timeframe)
         $billItemsQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($startDate, $endDate) {
             $q->where('status', 'paid');
@@ -255,6 +250,15 @@ class DashboardController extends Controller
                 $q->whereDate('created_at', '<=', $endDate);
             }
         });
+
+        // Compute miscellaneous parts cost (not in inventory) and outsourcing cost to include in total expenditure
+        $miscPartsCOGS = (clone $billItemsQuery)->where('type', 'part')->whereNull('inventory_id')->sum(DB::raw('quantity * cost_price'));
+        $outsourcingCOGS = (clone $billItemsQuery)->where('type', 'outsourcing')->sum('cost_price');
+
+        // Combined Total Expenditure = Stock Purchases + all other expenses + misc parts COGS + outsourcing COGS
+        $otherExpenses = max(0, $expenseTotal - $totalPayroll);
+        $totalExpenditure = $totalStockPurchases + $totalPayroll + $otherExpenses + floatval($miscPartsCOGS) + floatval($outsourcingCOGS);
+        $netProfit = $totalIncome - $totalExpenditure;
 
         // Parts
         $partsRevenue = (clone $billItemsQuery)->where('type', 'part')->sum('total_price');

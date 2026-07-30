@@ -761,6 +761,14 @@ class FinanceController extends Controller
                 }
             }
 
+            // 1.5. Retroactively update bills with misc parts or outsourcing to correct their ledger entries
+            $billsToUpgrade = \App\Models\Bill::whereHas('jobCard', function ($q) {
+                $q->whereHas('miscParts')->orWhereHas('outsourcingItems');
+            })->get();
+            foreach ($billsToUpgrade as $bill) {
+                \App\Services\DoubleEntryService::postBillTransaction($bill);
+            }
+
             // 2. Re-sync missing/duplicate batches
             $affectedBatchIds = array_unique(array_merge(
                 array_column($audit['missingBatches'], 'id'),
