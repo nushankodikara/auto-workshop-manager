@@ -210,6 +210,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/finance/entries/{journalEntry}', [FinanceController::class, 'destroyJournalEntry'])->name('finance.entries.destroy');
     Route::get('/finance/export/accounts', [FinanceController::class, 'exportAccountsCsv'])->name('finance.export.accounts');
     Route::get('/finance/export/ledger', [FinanceController::class, 'exportLedgerCsv'])->name('finance.export.ledger');
+    Route::get('/finance/export/ledger-matrix', [FinanceController::class, 'exportLedgerMatrixCsv'])->name('finance.export.ledger-matrix');
     Route::get('/finance/export/customers', [FinanceController::class, 'exportCustomerBooksCsv'])->name('finance.export.customers');
     Route::post('/finance/reconcile', [FinanceController::class, 'reconcile'])->name('finance.reconcile');
 

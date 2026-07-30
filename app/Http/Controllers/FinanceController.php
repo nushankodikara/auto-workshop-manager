@@ -406,6 +406,78 @@ class FinanceController extends Controller
     }
 
     /**
+     * Export general ledger to CSV in a transaction matrix layout (Cashbook at the end, + or - signs).
+     */
+    public function exportLedgerMatrixCsv()
+    {
+        $this->checkAccess();
+
+        // 1. Get accounts sorted strictly by code
+        $orderedAccounts = Account::orderBy('code', 'asc')->get();
+
+        // 2. Prepare Headers
+        $csvHeaders = ['Date', 'Reference', 'Description'];
+        foreach ($orderedAccounts as $acc) {
+            $csvHeaders[] = "{$acc->code} - {$acc->name}";
+        }
+
+        // 3. Fetch Entries
+        $entries = JournalEntry::with('items.account')->orderBy('entry_date', 'asc')->orderBy('id', 'asc')->get();
+        $fileName = 'general_ledger_matrix_' . date('Ymd_His') . '.csv';
+
+        $responseHeaders = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use ($orderedAccounts, $csvHeaders, $entries) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $csvHeaders);
+
+            foreach ($entries as $entry) {
+                // Sum by account_id
+                $accValues = [];
+                foreach ($entry->items as $item) {
+                    $accId = $item->account_id;
+                    $net = floatval($item->debit) - floatval($item->credit);
+                    if (!isset($accValues[$accId])) {
+                        $accValues[$accId] = 0.00;
+                    }
+                    $accValues[$accId] += $net;
+                }
+
+                $row = [
+                    $entry->entry_date->format('Y-m-d'),
+                    $entry->reference ?? '',
+                    $entry->description
+                ];
+
+                foreach ($orderedAccounts as $acc) {
+                    $accId = $acc->id;
+                    $val = isset($accValues[$accId]) ? $accValues[$accId] : 0.00;
+
+                    if ($val > 0.001) {
+                        $row[] = '+' . number_format($val, 2, '.', '');
+                    } elseif ($val < -0.001) {
+                        $row[] = number_format($val, 2, '.', ''); // includes minus sign automatically
+                    } else {
+                        $row[] = '';
+                    }
+                }
+
+                fputcsv($file, $row);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $responseHeaders);
+    }
+
+    /**
      * Export customer balances to CSV.
      */
     public function exportCustomerBooksCsv()

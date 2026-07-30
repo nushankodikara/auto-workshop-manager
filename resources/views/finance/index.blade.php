@@ -413,6 +413,22 @@
                 </a>
             </div>
 
+            <!-- Ledger Matrix export -->
+            <div class="app-card rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="grid" class="w-5 h-5 text-primary"></i>
+                    <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200">Transaction Matrix Books</h4>
+                </div>
+                <p class="text-xs text-slate-500 leading-normal">
+                    Download full books arranged vertically by date with positive/negative values for each account.
+                </p>
+                <a href="{{ route('finance.export.ledger-matrix') }}" 
+                   class="inline-flex w-full justify-center items-center gap-1.5 px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-250 rounded-lg text-xs font-bold transition">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>Export Ledger Matrix (CSV)</span>
+                </a>
+            </div>
+
             <!-- Customers AR export -->
             <div class="app-card rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
                 <div class="flex items-center gap-2">

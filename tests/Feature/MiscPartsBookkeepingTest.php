@@ -156,4 +156,47 @@ class MiscPartsBookkeepingTest extends TestCase
         })->first();
         $this->assertNull($inventoryCreditItem);
     }
+
+    /**
+     * Test the general ledger matrix CSV export response.
+     */
+    public function test_ledger_matrix_export_includes_accounts_and_records()
+    {
+        $jobCard = JobCard::create([
+            'shop_id' => $this->shop->id,
+            'vehicle_id' => $this->vehicle->id,
+            'card_number' => 'TDC-777777',
+            'status' => 'received-vehicle'
+        ]);
+
+        $this->actingAs($this->superManager)->post(route('job-cards.add-misc-part', $jobCard->id), [
+            'name' => 'OEM Fuel Injector (Misc)',
+            'cost_price' => 12000.00,
+            'selling_price' => 18000.00
+        ]);
+
+        $this->actingAs($this->superManager)->post(route('billing.store', $jobCard->id), [
+            'discount_percent' => 0.00,
+            'tax' => 0.00,
+            'status' => 'paid',
+            'payment_method' => 'cash'
+        ]);
+
+        $response = $this->actingAs($this->superManager)->get(route('finance.export.ledger-matrix'));
+        
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        
+        $content = $response->streamedContent();
+        
+        // Header contains Date, Reference, Description, etc.
+        $this->assertStringContainsString('Date,Reference,Description', $content);
+        
+        // Header ends with Cash Drawer (code 1000)
+        $this->assertStringContainsString('1000 - Cash Drawer', $content);
+        
+        // Assert some values like +18000.00 and -12000.00 are recorded
+        $this->assertStringContainsString('+18000.00', $content);
+        $this->assertStringContainsString('-12000.00', $content);
+    }
 }
