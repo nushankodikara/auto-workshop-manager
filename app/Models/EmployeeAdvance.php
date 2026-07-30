@@ -25,7 +25,8 @@ class EmployeeAdvance extends Model
         });
 
         static::deleted(function ($advance) {
-            \App\Services\DoubleEntryService::postEmployeeAdvanceTransaction($advance);
+            $reference = 'ADVANCE-' . $advance->id;
+            JournalEntry::where('reference', $reference)->delete();
         });
     }
 

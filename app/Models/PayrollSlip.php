@@ -15,6 +15,8 @@ class PayrollSlip extends Model
         static::saved(function ($slip) {
             if ($slip->status === 'paid') {
                 \App\Services\DoubleEntryService::postPayrollSlipTransaction($slip);
+            } else {
+                JournalEntry::where('reference', 'SLIP-' . $slip->id)->delete();
             }
         });
 

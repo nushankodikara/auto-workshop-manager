@@ -17,7 +17,8 @@ class ConsumablePurchase extends Model
         });
         
         static::deleted(function ($purchase) {
-            \App\Services\DoubleEntryService::postConsumablePurchase($purchase);
+            $reference = 'CONS-PURCH-' . $purchase->id;
+            JournalEntry::where('reference', $reference)->delete();
             if ($purchase->journal_entry_id) {
                 JournalEntry::where('id', $purchase->journal_entry_id)->delete();
             }

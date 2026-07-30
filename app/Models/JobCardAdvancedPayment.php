@@ -18,7 +18,8 @@ class JobCardAdvancedPayment extends Model
         });
         
         static::deleted(function ($payment) {
-            \App\Services\DoubleEntryService::postAdvancedPayment($payment);
+            $reference = 'ADV-PAY-' . $payment->id;
+            JournalEntry::where('reference', $reference)->delete();
             if ($payment->journal_entry_id) {
                 JournalEntry::where('id', $payment->journal_entry_id)->delete();
             }
