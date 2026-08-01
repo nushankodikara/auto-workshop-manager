@@ -133,4 +133,121 @@ class KanbanBoardTest extends TestCase
         // Should contain TDC-1001 (completed in range)
         $this->assertContains('TDC-1001', $totalJobCards);
     }
+
+    /**
+     * Test that unpaid cards in non-active status (blocked, testing, ready) are filtered out when the unpaid parameter is set.
+     */
+    public function test_kanban_board_excludes_unpaid_cards_when_filter_active()
+    {
+        // 1. Unpaid card in waiting-to-pickup status (Should be hidden when unpaid filter is active)
+        $unpaidReady = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'waiting-to-pickup',
+            'card_number' => 'TDC-9001'
+        ]);
+        $unpaidReady->created_at = now();
+        $unpaidReady->completed_at = now();
+        $unpaidReady->save();
+
+        $bill1 = \App\Models\Bill::create([
+            'job_card_id' => $unpaidReady->id,
+            'bill_number' => 'INV-9001',
+            'total_amount' => 1000,
+            'status' => 'draft' // Unpaid
+        ]);
+
+        // 2. Paid card in waiting-to-pickup status (Should be visible)
+        $paidReady = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'waiting-to-pickup',
+            'card_number' => 'TDC-9002'
+        ]);
+        $paidReady->created_at = now();
+        $paidReady->completed_at = now();
+        $paidReady->save();
+
+        $bill2 = \App\Models\Bill::create([
+            'job_card_id' => $paidReady->id,
+            'bill_number' => 'INV-9002',
+            'total_amount' => 1000,
+            'status' => 'paid' // Paid
+        ]);
+
+        // 3. Unpaid card in received-vehicle status (Should remain visible because it is in active status)
+        $unpaidReceived = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'received-vehicle',
+            'card_number' => 'TDC-9003'
+        ]);
+        $unpaidReceived->created_at = now();
+        $unpaidReceived->save();
+
+        $bill3 = \App\Models\Bill::create([
+            'job_card_id' => $unpaidReceived->id,
+            'bill_number' => 'INV-9003',
+            'total_amount' => 500,
+            'status' => 'draft' // Unpaid
+        ]);
+
+        // 4. Job Card with no bill generated yet in waiting-to-pickup status (Should remain visible because no bill exists)
+        $noBillReady = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'waiting-to-pickup',
+            'card_number' => 'TDC-9004'
+        ]);
+        $noBillReady->created_at = now();
+        $noBillReady->completed_at = now();
+        $noBillReady->save();
+
+        // Hit the board with unpaid filter active
+        $response = $this->actingAs($this->superManager)->get(route('job-cards.board', [
+            'unpaid' => '1'
+        ]));
+        $response->assertStatus(200);
+
+        $boardData = $response->viewData('boardData');
+        $totalJobCards = collect($boardData)->flatMap(fn($collection) => $collection)->pluck('card_number');
+
+        // assertions
+        $this->assertNotContains('TDC-9001', $totalJobCards); // Excluded (unpaid & ready)
+        $this->assertContains('TDC-9002', $totalJobCards);    // Kept (paid & ready)
+        $this->assertContains('TDC-9003', $totalJobCards);    // Kept (unpaid & received)
+        $this->assertContains('TDC-9004', $totalJobCards);    // Kept (no bill exists)
+    }
+
+    /**
+     * Test that all cards are displayed when the unpaid filter is not active.
+     */
+    public function test_kanban_board_includes_unpaid_cards_when_filter_inactive()
+    {
+        $unpaidReady = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'waiting-to-pickup',
+            'card_number' => 'TDC-9011'
+        ]);
+        $unpaidReady->created_at = now();
+        $unpaidReady->completed_at = now();
+        $unpaidReady->save();
+
+        $bill = \App\Models\Bill::create([
+            'job_card_id' => $unpaidReady->id,
+            'bill_number' => 'INV-9011',
+            'total_amount' => 1000,
+            'status' => 'draft'
+        ]);
+
+        // Hit board without active filter
+        $response = $this->actingAs($this->superManager)->get(route('job-cards.board'));
+        $response->assertStatus(200);
+
+        $boardData = $response->viewData('boardData');
+        $totalJobCards = collect($boardData)->flatMap(fn($collection) => $collection)->pluck('card_number');
+
+        $this->assertContains('TDC-9011', $totalJobCards); // Included
+    }
 }

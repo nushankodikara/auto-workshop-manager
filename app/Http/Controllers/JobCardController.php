@@ -37,11 +37,12 @@ class JobCardController extends Controller
     {
         $startDate = $request->input('start_date', date('Y-m-d'));
         $endDate = $request->input('end_date', date('Y-m-d'));
+        $unpaid = $request->boolean('unpaid');
 
         $start = \Carbon\Carbon::parse($startDate)->startOfDay();
         $end = \Carbon\Carbon::parse($endDate)->endOfDay();
 
-        $jobCards = JobCard::with([
+        $query = JobCard::with([
             'vehicle.client',
             'shop',
             'workers',
@@ -67,8 +68,19 @@ class JobCardController extends Controller
                               });
                       });
                 });
-            })
-            ->get();
+            });
+
+        if ($unpaid) {
+            $query->where(function ($q) {
+                $q->whereIn('status', ['received-vehicle', 'on-going'])
+                  ->orWhereDoesntHave('bill')
+                  ->orWhereHas('bill', function ($billQuery) {
+                      $billQuery->where('status', 'paid');
+                  });
+            });
+        }
+
+        $jobCards = $query->get();
         
         // Group by status
         $boardData = [
@@ -84,7 +96,7 @@ class JobCardController extends Controller
         $workers = User::where('role', 'worker')->where('is_archived', false)->get();
         $managers = User::whereIn('role', ['super-manager', 'manager'])->where('is_archived', false)->get();
 
-        return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers', 'startDate', 'endDate'));
+        return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers', 'startDate', 'endDate', 'unpaid'));
     }
 
     /**

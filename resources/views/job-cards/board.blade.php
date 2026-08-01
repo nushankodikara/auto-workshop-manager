@@ -48,10 +48,20 @@
                         Last 7 Days
                     </button>
                 </div>
+
+                <!-- Unpaid Filter Checkbox -->
+                <div class="flex items-center gap-2 pt-4 pl-2">
+                    <label class="flex items-center gap-2 font-semibold text-slate-550 dark:text-slate-400 cursor-pointer">
+                        <input type="checkbox" name="unpaid" id="unpaid" value="1" {{ $unpaid ? 'checked' : '' }}
+                               class="h-4 w-4 rounded text-primary focus:ring-primary border-slate-350 dark:border-slate-800 cursor-pointer"
+                               onchange="this.form.submit()">
+                        <span>Hide Unpaid</span>
+                    </label>
+                </div>
             </div>
 
             <div class="flex gap-2">
-                @if($startDate !== date('Y-m-d') || $endDate !== date('Y-m-d'))
+                @if($startDate !== date('Y-m-d') || $endDate !== date('Y-m-d') || $unpaid)
                     <a href="{{ route('job-cards.board') }}" 
                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs flex items-center justify-center transition">
                         Reset
