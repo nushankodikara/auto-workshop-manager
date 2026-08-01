@@ -55,7 +55,7 @@
                         <input type="checkbox" name="unpaid" id="unpaid" value="1" {{ $unpaid ? 'checked' : '' }}
                                class="h-4 w-4 rounded text-primary focus:ring-primary border-slate-350 dark:border-slate-800 cursor-pointer"
                                onchange="this.form.submit()">
-                        <span>Hide Unpaid</span>
+                        <span>Show Unpaid</span>
                     </label>
                 </div>
             </div>

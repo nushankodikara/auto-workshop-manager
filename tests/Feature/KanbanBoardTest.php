@@ -135,19 +135,19 @@ class KanbanBoardTest extends TestCase
     }
 
     /**
-     * Test that unpaid cards in non-active status (blocked, testing, ready) are filtered out when the unpaid parameter is set.
+     * Test that only unpaid cards from all time in non-active status (blocked, testing, ready) are shown when the unpaid filter is active.
      */
-    public function test_kanban_board_excludes_unpaid_cards_when_filter_active()
+    public function test_kanban_board_shows_only_unpaid_cards_from_all_time_when_filter_active()
     {
-        // 1. Unpaid card in waiting-to-pickup status (Should be hidden when unpaid filter is active)
+        // 1. Unpaid card in waiting-to-pickup status, created 10 days ago (Should be visible because it's unpaid and all-time)
         $unpaidReady = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
             'shop_id' => $this->shop->id,
             'status' => 'waiting-to-pickup',
             'card_number' => 'TDC-9001'
         ]);
-        $unpaidReady->created_at = now();
-        $unpaidReady->completed_at = now();
+        $unpaidReady->created_at = now()->subDays(10);
+        $unpaidReady->completed_at = now()->subDays(10);
         $unpaidReady->save();
 
         $bill1 = \App\Models\Bill::create([
@@ -157,7 +157,7 @@ class KanbanBoardTest extends TestCase
             'status' => 'draft' // Unpaid
         ]);
 
-        // 2. Paid card in waiting-to-pickup status (Should be visible)
+        // 2. Paid card in waiting-to-pickup status (Should be hidden because it is paid)
         $paidReady = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
             'shop_id' => $this->shop->id,
@@ -175,7 +175,7 @@ class KanbanBoardTest extends TestCase
             'status' => 'paid' // Paid
         ]);
 
-        // 3. Unpaid card in received-vehicle status (Should remain visible because it is in active status)
+        // 3. Unpaid card in received-vehicle status (Should be hidden because it is in active status)
         $unpaidReceived = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
             'shop_id' => $this->shop->id,
@@ -192,7 +192,7 @@ class KanbanBoardTest extends TestCase
             'status' => 'draft' // Unpaid
         ]);
 
-        // 4. Job Card with no bill generated yet in waiting-to-pickup status (Should remain visible because no bill exists)
+        // 4. Job Card with no bill generated yet in waiting-to-pickup status (Should be hidden because bill does not exist)
         $noBillReady = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
             'shop_id' => $this->shop->id,
@@ -203,9 +203,11 @@ class KanbanBoardTest extends TestCase
         $noBillReady->completed_at = now();
         $noBillReady->save();
 
-        // Hit the board with unpaid filter active
+        // Hit the board with unpaid filter active (ignoring date range)
         $response = $this->actingAs($this->superManager)->get(route('job-cards.board', [
-            'unpaid' => '1'
+            'unpaid' => '1',
+            'start_date' => now()->format('Y-m-d'),
+            'end_date' => now()->format('Y-m-d')
         ]));
         $response->assertStatus(200);
 
@@ -213,16 +215,16 @@ class KanbanBoardTest extends TestCase
         $totalJobCards = collect($boardData)->flatMap(fn($collection) => $collection)->pluck('card_number');
 
         // assertions
-        $this->assertNotContains('TDC-9001', $totalJobCards); // Excluded (unpaid & ready)
-        $this->assertContains('TDC-9002', $totalJobCards);    // Kept (paid & ready)
-        $this->assertContains('TDC-9003', $totalJobCards);    // Kept (unpaid & received)
-        $this->assertContains('TDC-9004', $totalJobCards);    // Kept (no bill exists)
+        $this->assertContains('TDC-9001', $totalJobCards);    // Kept (unpaid, ready, created 10 days ago)
+        $this->assertNotContains('TDC-9002', $totalJobCards); // Excluded (paid & ready)
+        $this->assertNotContains('TDC-9003', $totalJobCards); // Excluded (active status)
+        $this->assertNotContains('TDC-9004', $totalJobCards); // Excluded (no bill exists)
     }
 
     /**
      * Test that all cards are displayed when the unpaid filter is not active.
      */
-    public function test_kanban_board_includes_unpaid_cards_when_filter_inactive()
+    public function test_kanban_board_includes_all_cards_when_filter_inactive()
     {
         $unpaidReady = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
