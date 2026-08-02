@@ -16,6 +16,10 @@
                   count($auditResults['duplicateConsumables']) +
                   count($auditResults['missingAdvances'] ?? []) +
                   count($auditResults['duplicateAdvances'] ?? []) +
+                  count($auditResults['missingMiscParts'] ?? []) +
+                  count($auditResults['duplicateMiscParts'] ?? []) +
+                  count($auditResults['missingOutsourcing'] ?? []) +
+                  count($auditResults['duplicateOutsourcing'] ?? []) +
                   count($auditResults['orphanedEntries']);
 @endphp
 <div class="space-y-6">

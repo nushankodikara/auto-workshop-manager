@@ -10,6 +10,19 @@ class JobCardOutsourcing extends Model
 {
     protected $table = 'job_card_outsourcing';
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($item) {
+            \App\Services\DoubleEntryService::postOutsourcingTransaction($item);
+        });
+
+        static::deleted(function ($item) {
+            \App\Models\JournalEntry::where('reference', 'OUTSOURCING-' . $item->id)->delete();
+        });
+    }
+
     protected function casts(): array
     {
         return [

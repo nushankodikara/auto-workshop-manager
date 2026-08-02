@@ -8,6 +8,19 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable(['job_card_id', 'name', 'cost_price', 'selling_price'])]
 class JobCardMiscPart extends Model
 {
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($part) {
+            \App\Services\DoubleEntryService::postMiscPartTransaction($part);
+        });
+
+        static::deleted(function ($part) {
+            \App\Models\JournalEntry::where('reference', 'MISC-PART-' . $part->id)->delete();
+        });
+    }
+
     protected function casts(): array
     {
         return [

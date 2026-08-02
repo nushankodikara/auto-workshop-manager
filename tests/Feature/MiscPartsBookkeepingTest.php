@@ -91,12 +91,30 @@ class MiscPartsBookkeepingTest extends TestCase
             'selling_price' => 18000.00
         ]);
         $response->assertRedirect();
-        $this->assertDatabaseHas('job_card_misc_parts', [
-            'job_card_id' => $jobCard->id,
-            'name' => 'OEM Fuel Injector (Misc)',
-            'cost_price' => 12000.00,
-            'selling_price' => 18000.00
-        ]);
+        
+        $miscPart = \App\Models\JobCardMiscPart::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($miscPart);
+        
+        // Assert ledger entry was created immediately upon addition
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'MISC-PART-' . $miscPart->id]);
+        $miscPartEntry = JournalEntry::where('reference', 'MISC-PART-' . $miscPart->id)->first();
+        $this->assertNotNull($miscPartEntry);
+
+        // Debit COGS (5000) for Rs. 12,000
+        $cogsDebitItem = $miscPartEntry->items()->whereHas('account', function ($q) {
+            $q->where('code', '5000');
+        })->first();
+        $this->assertNotNull($cogsDebitItem);
+        $this->assertEquals(12000.00, $cogsDebitItem->debit);
+        $this->assertEquals(0.00, $cogsDebitItem->credit);
+
+        // Credit Cash Drawer (1000) for Rs. 12,000
+        $cashCreditItem = $miscPartEntry->items()->whereHas('account', function ($q) {
+            $q->where('code', '1000');
+        })->first();
+        $this->assertNotNull($cashCreditItem);
+        $this->assertEquals(0.00, $cashCreditItem->debit);
+        $this->assertEquals(12000.00, $cashCreditItem->credit);
 
         // 2. Add an outsourced service via the job card controller action route
         $responseOutsourcing = $this->actingAs($this->superManager)->post(route('job-cards.add-outsourcing', $jobCard->id), [
@@ -106,12 +124,28 @@ class MiscPartsBookkeepingTest extends TestCase
             'outsourcing_company_id' => null
         ]);
         $responseOutsourcing->assertRedirect();
-        $this->assertDatabaseHas('job_card_outsourcing', [
-            'job_card_id' => $jobCard->id,
-            'description' => 'Crankshaft Grinding & Balancing',
-            'cost_price' => 8000.00,
-            'selling_price' => 12000.00
-        ]);
+        
+        $outsourcing = \App\Models\JobCardOutsourcing::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($outsourcing);
+
+        // Assert ledger entry was created immediately upon addition
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'OUTSOURCING-' . $outsourcing->id]);
+        $outsourcingEntry = JournalEntry::where('reference', 'OUTSOURCING-' . $outsourcing->id)->first();
+        $this->assertNotNull($outsourcingEntry);
+
+        // Debit COGS (5000) for Rs. 8,000
+        $cogsDebitOut = $outsourcingEntry->items()->whereHas('account', function ($q) {
+            $q->where('code', '5000');
+        })->first();
+        $this->assertNotNull($cogsDebitOut);
+        $this->assertEquals(8000.00, $cogsDebitOut->debit);
+
+        // Credit Cash Drawer (1000) for Rs. 8,000
+        $cashCreditOut = $outsourcingEntry->items()->whereHas('account', function ($q) {
+            $q->where('code', '1000');
+        })->first();
+        $this->assertNotNull($cashCreditOut);
+        $this->assertEquals(8000.00, $cashCreditOut->credit);
 
         // 3. Generate paid bill invoice via controller (this triggers DoubleEntryService::postBillTransaction)
         $billResponse = $this->actingAs($this->superManager)->post(route('billing.store', $jobCard->id), [
@@ -126,35 +160,58 @@ class MiscPartsBookkeepingTest extends TestCase
         $this->assertNotNull($bill);
         $this->assertEquals('paid', $bill->status);
 
-        // Verify journal entry entries are balanced and created
+        // Verify journal entries are created for bill (Invoice and Payment)
         $this->assertDatabaseHas('journal_entries', ['reference' => $bill->bill_number]);
-        $this->assertDatabaseHas('journal_entries', ['reference' => $bill->bill_number . '-COGS']);
         $this->assertDatabaseHas('journal_entries', ['reference' => $bill->bill_number . '-PAY']);
-
-        // Check the COGS entry detail
-        $cogsEntry = JournalEntry::where('reference', $bill->bill_number . '-COGS')->first();
         
-        // Debit: COGS (5000) for Rs. 20,000 (12,000 misc parts cost + 8,000 outsourcing cost)
-        $cogsDebitItem = $cogsEntry->items()->whereHas('account', function ($q) {
-            $q->where('code', '5000');
-        })->first();
-        $this->assertNotNull($cogsDebitItem);
-        $this->assertEquals(20000.00, $cogsDebitItem->debit);
-        $this->assertEquals(0.00, $cogsDebitItem->credit);
+        // Confirm the bill's COGS entry was NOT created (since all costs are from immediate cost entries and there are no inventory parts)
+        $this->assertDatabaseMissing('journal_entries', ['reference' => $bill->bill_number . '-COGS']);
+    }
 
-        // Credit: Cash Drawer / Cashbook (1000) for Rs. 20,000 (12,000 parts + 8,000 outsourcing)
-        $cashCreditItem = $cogsEntry->items()->whereHas('account', function ($q) {
-            $q->where('code', '1000');
-        })->first();
-        $this->assertNotNull($cashCreditItem);
-        $this->assertEquals(0.00, $cashCreditItem->debit);
-        $this->assertEquals(20000.00, $cashCreditItem->credit);
+    /**
+     * Test that removing misc parts or outsourcing lines deletes their ledger entries.
+     */
+    public function test_misc_part_and_outsourcing_removal_removes_ledger_entry()
+    {
+        $jobCard = JobCard::create([
+            'shop_id' => $this->shop->id,
+            'vehicle_id' => $this->vehicle->id,
+            'card_number' => 'TDC-888888',
+            'status' => 'received-vehicle'
+        ]);
 
-        // Confirm Parts Inventory (1300) was NOT credited (decreased)
-        $inventoryCreditItem = $cogsEntry->items()->whereHas('account', function ($q) {
-            $q->where('code', '1300');
-        })->first();
-        $this->assertNull($inventoryCreditItem);
+        // Add misc part
+        $this->actingAs($this->superManager)->post(route('job-cards.add-misc-part', $jobCard->id), [
+            'name' => 'Legacy Part',
+            'cost_price' => 5000.00,
+            'selling_price' => 7500.00
+        ]);
+        $miscPart = \App\Models\JobCardMiscPart::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($miscPart);
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'MISC-PART-' . $miscPart->id]);
+
+        // Delete misc part
+        $responseDelMisc = $this->actingAs($this->superManager)->delete(route('job-cards.delete-misc-part', $miscPart->id));
+        $responseDelMisc->assertRedirect();
+        $this->assertDatabaseMissing('job_card_misc_parts', ['id' => $miscPart->id]);
+        $this->assertDatabaseMissing('journal_entries', ['reference' => 'MISC-PART-' . $miscPart->id]);
+
+        // Add outsourcing
+        $this->actingAs($this->superManager)->post(route('job-cards.add-outsourcing', $jobCard->id), [
+            'description' => 'Legacy Service',
+            'cost_price' => 4000.00,
+            'selling_price' => 6000.00,
+            'outsourcing_company_id' => null
+        ]);
+        $outsourcing = \App\Models\JobCardOutsourcing::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($outsourcing);
+        $this->assertDatabaseHas('journal_entries', ['reference' => 'OUTSOURCING-' . $outsourcing->id]);
+
+        // Delete outsourcing
+        $responseDelOut = $this->actingAs($this->superManager)->delete(route('job-cards.delete-outsourcing', $outsourcing->id));
+        $responseDelOut->assertRedirect();
+        $this->assertDatabaseMissing('job_card_outsourcing', ['id' => $outsourcing->id]);
+        $this->assertDatabaseMissing('journal_entries', ['reference' => 'OUTSOURCING-' . $outsourcing->id]);
     }
 
     /**
@@ -169,7 +226,7 @@ class MiscPartsBookkeepingTest extends TestCase
             'status' => 'received-vehicle'
         ]);
 
-        $this->actingAs($this->superManager)->post(route('job-cards.add-misc-part', $jobCard->id), [
+        $responseMisc = $this->actingAs($this->superManager)->post(route('job-cards.add-misc-part', $jobCard->id), [
             'name' => 'OEM Fuel Injector (Misc)',
             'cost_price' => 12000.00,
             'selling_price' => 18000.00

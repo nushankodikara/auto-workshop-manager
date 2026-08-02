@@ -24,6 +24,11 @@ class DoubleEntryService
                 $old->delete();
             }
 
+            // Invoices (Revenues/Earning) and payment entries are only posted to the ledger when paid
+            if ($bill->status !== 'paid') {
+                return;
+            }
+
             // Get standard accounts
             $arCode = \App\Models\Setting::get('account_receivable', '1200');
             $partsRevCode = \App\Models\Setting::get('account_parts_revenue', '4105');
@@ -169,13 +174,14 @@ class DoubleEntryService
                 ]);
             }
 
-            // 2. Cost of Goods Sold & Outsourcing Expense Entry (COGS debit, Inventory/Cash credit)
-            $totalCogsExpense = $partsCostTotal + $outsourcingCostTotal;
+            // 2. Cost of Goods Sold Entry (COGS debit, Inventory credit)
+            // Note: misc parts and outsourcing cost prices are excluded because they are posted immediately on addition to the Job Card.
+            $totalCogsExpense = $inventoryPartsCostTotal;
             if ($totalCogsExpense > 0) {
                 $cogsEntry = JournalEntry::create([
                     'entry_date' => date('Y-m-d'),
                     'reference' => $bill->bill_number . '-COGS',
-                    'description' => "Cost of Goods Sold & Specialist Services for Bill {$bill->bill_number} (Client: {$client->name})"
+                    'description' => "Cost of Goods Sold for Bill {$bill->bill_number} (Client: {$client->name})"
                 ]);
 
                 // Debit COGS
@@ -195,97 +201,84 @@ class DoubleEntryService
                         'customer_mobile' => $customerMobile
                     ]);
                 }
-
-                // Credit Cash Drawer / Cashbook for misc (dealer-direct) parts & outsourcing
-                $cashOutflowTotal = $miscPartsCostTotal + $outsourcingCostTotal;
-                if ($cashOutflowTotal > 0) {
-                    $cogsEntry->items()->create([
-                        'account_id' => $cashAccount->id,
-                        'debit' => 0.00,
-                        'credit' => $cashOutflowTotal,
-                        'customer_mobile' => $customerMobile
-                    ]);
-                }
             }
 
             // 3. Payment Entry (Cash/Bank debit, Accounts Receivable credit)
-            if ($bill->status === 'paid') {
-                $advancedPaymentsTotal = (double)$jobCard->advancedPayments()->sum('amount');
-                $finalPaymentAmount = $invoiceTotal - $advancedPaymentsTotal;
+            $advancedPaymentsTotal = (double)$jobCard->advancedPayments()->sum('amount');
+            $finalPaymentAmount = $invoiceTotal - $advancedPaymentsTotal;
 
-                $totalCollected = $invoiceTotal;
-                $transCollected = min($transportationTotal, $totalCollected);
+            $totalCollected = $invoiceTotal;
+            $transCollected = min($transportationTotal, $totalCollected);
 
-                $paymentEntry = JournalEntry::create([
+            $paymentEntry = JournalEntry::create([
+                'entry_date' => date('Y-m-d'),
+                'reference' => $bill->bill_number . '-PAY',
+                'description' => "Final payment received and cash allocations for Bill {$bill->bill_number} (Client: {$client->name})"
+            ]);
+
+            // Debit Transportation Account for the total collected transportation fee portion
+            if ($transCollected > 0) {
+                $paymentEntry->items()->create([
+                    'account_id' => $transAccount->id,
+                    'debit' => $transCollected,
+                    'credit' => 0.00,
+                    'customer_mobile' => $customerMobile
+                ]);
+            }
+
+            // Calculate Net Cash/Bank change from this final settlement
+            $netCashBankChange = $finalPaymentAmount - $transCollected;
+
+            if ($netCashBankChange > 0) {
+                $paymentEntry->items()->create([
+                    'account_id' => $cashAccount->id,
+                    'debit' => $netCashBankChange,
+                    'credit' => 0.00,
+                    'customer_mobile' => $customerMobile
+                ]);
+            } elseif ($netCashBankChange < 0) {
+                // Credit Cash/Bank - to move cash collected in advances to Transportation Account
+                $paymentEntry->items()->create([
+                    'account_id' => $cashAccount->id,
+                    'debit' => 0.00,
+                    'credit' => abs($netCashBankChange),
+                    'customer_mobile' => $customerMobile
+                ]);
+            }
+
+            // Credit Accounts Receivable for the final payment amount
+            if ($finalPaymentAmount > 0) {
+                $paymentEntry->items()->create([
+                    'account_id' => $arAccount->id,
+                    'debit' => 0.00,
+                    'credit' => $finalPaymentAmount,
+                    'customer_mobile' => $customerMobile
+                ]);
+            }
+
+            // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
+            if ($hireTotal > 0) {
+                $hireEntry = JournalEntry::create([
                     'entry_date' => date('Y-m-d'),
-                    'reference' => $bill->bill_number . '-PAY',
-                    'description' => "Final payment received and cash allocations for Bill {$bill->bill_number} (Client: {$client->name})"
+                    'reference' => $bill->bill_number . '-HIRE',
+                    'description' => "Transportation hire third-party payout for Job Card {$jobCard->card_number}"
                 ]);
 
-                // Debit Transportation Account for the total collected transportation fee portion
-                if ($transCollected > 0) {
-                    $paymentEntry->items()->create([
-                        'account_id' => $transAccount->id,
-                        'debit' => $transCollected,
-                        'credit' => 0.00,
-                        'customer_mobile' => $customerMobile
-                    ]);
-                }
+                // Debit Transportation Hire Expense
+                $hireEntry->items()->create([
+                    'account_id' => $transHireAccount->id,
+                    'debit' => $hireTotal,
+                    'credit' => 0.00,
+                    'customer_mobile' => $customerMobile
+                ]);
 
-                // Calculate Net Cash/Bank change from this final settlement
-                $netCashBankChange = $finalPaymentAmount - $transCollected;
-
-                if ($netCashBankChange > 0) {
-                    $paymentEntry->items()->create([
-                        'account_id' => $cashAccount->id,
-                        'debit' => $netCashBankChange,
-                        'credit' => 0.00,
-                        'customer_mobile' => $customerMobile
-                    ]);
-                } elseif ($netCashBankChange < 0) {
-                    // Credit Cash/Bank - to move cash collected in advances to Transportation Account
-                    $paymentEntry->items()->create([
-                        'account_id' => $cashAccount->id,
-                        'debit' => 0.00,
-                        'credit' => abs($netCashBankChange),
-                        'customer_mobile' => $customerMobile
-                    ]);
-                }
-
-                // Credit Accounts Receivable for the final payment amount
-                if ($finalPaymentAmount > 0) {
-                    $paymentEntry->items()->create([
-                        'account_id' => $arAccount->id,
-                        'debit' => 0.00,
-                        'credit' => $finalPaymentAmount,
-                        'customer_mobile' => $customerMobile
-                    ]);
-                }
-
-                // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
-                if ($hireTotal > 0) {
-                    $hireEntry = JournalEntry::create([
-                        'entry_date' => date('Y-m-d'),
-                        'reference' => $bill->bill_number . '-HIRE',
-                        'description' => "Transportation hire third-party payout for Job Card {$jobCard->card_number}"
-                    ]);
-
-                    // Debit Transportation Hire Expense
-                    $hireEntry->items()->create([
-                        'account_id' => $transHireAccount->id,
-                        'debit' => $hireTotal,
-                        'credit' => 0.00,
-                        'customer_mobile' => $customerMobile
-                    ]);
-
-                    // Credit Transportation Account
-                    $hireEntry->items()->create([
-                        'account_id' => $transAccount->id,
-                        'debit' => 0.00,
-                        'credit' => $hireTotal,
-                        'customer_mobile' => $customerMobile
-                    ]);
-                }
+                // Credit Transportation Account
+                $hireEntry->items()->create([
+                    'account_id' => $transAccount->id,
+                    'debit' => 0.00,
+                    'credit' => $hireTotal,
+                    'customer_mobile' => $customerMobile
+                ]);
             }
         } catch (\Exception $e) {
             Log::error("DoubleEntryService Error: " . $e->getMessage());
@@ -683,6 +676,126 @@ class DoubleEntryService
 
         } catch (\Exception $e) {
             Log::error("DoubleEntryService postInventoryDisposalTransaction Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Automatically log a misc part cost to the ledger (Debit COGS, Credit Cash Drawer).
+     */
+    public static function postMiscPartTransaction($part)
+    {
+        try {
+            $reference = 'MISC-PART-' . $part->id;
+
+            // Delete existing
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            $cogsCode = \App\Models\Setting::get('account_cogs', '5000');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+
+            $cogsAccount = Account::where('code', $cogsCode)->first();
+            $cashAccount = Account::where('code', $cashCode)->first();
+
+            if (!$cogsAccount || !$cashAccount) {
+                Log::warning("DoubleEntryService: COGS or Cashbook accounts not seeded for misc part transaction.");
+                return;
+            }
+
+            $totalCost = floatval($part->cost_price);
+            if ($totalCost <= 0) {
+                return;
+            }
+
+            $jobCard = $part->jobCard;
+            $client = $jobCard->vehicle->client ?? null;
+            $customerMobile = $client->phone ?? null;
+
+            $entry = JournalEntry::create([
+                'entry_date' => $part->created_at ? $part->created_at->format('Y-m-d') : date('Y-m-d'),
+                'reference' => $reference,
+                'description' => "Misc part cost: {$part->name} (Job Card: " . ($jobCard->card_number ?? 'Unknown') . ")"
+            ]);
+
+            // Debit COGS (5000)
+            $entry->items()->create([
+                'account_id' => $cogsAccount->id,
+                'debit' => $totalCost,
+                'credit' => 0.00,
+                'customer_mobile' => $customerMobile
+            ]);
+
+            // Credit Cash Drawer (1000)
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => 0.00,
+                'credit' => $totalCost,
+                'customer_mobile' => $customerMobile
+            ]);
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postMiscPartTransaction Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Automatically log an outsourcing item cost to the ledger (Debit COGS, Credit Cash Drawer).
+     */
+    public static function postOutsourcingTransaction($item)
+    {
+        try {
+            $reference = 'OUTSOURCING-' . $item->id;
+
+            // Delete existing
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            $cogsCode = \App\Models\Setting::get('account_cogs', '5000');
+            $cashCode = \App\Models\Setting::get('account_cashbook', '1000');
+
+            $cogsAccount = Account::where('code', $cogsCode)->first();
+            $cashAccount = Account::where('code', $cashCode)->first();
+
+            if (!$cogsAccount || !$cashAccount) {
+                Log::warning("DoubleEntryService: COGS or Cashbook accounts not seeded for outsourcing transaction.");
+                return;
+            }
+
+            $totalCost = floatval($item->cost_price);
+            if ($totalCost <= 0) {
+                return;
+            }
+
+            $jobCard = $item->jobCard;
+            $client = $jobCard->vehicle->client ?? null;
+            $customerMobile = $client->phone ?? null;
+
+            $entry = JournalEntry::create([
+                'entry_date' => $item->created_at ? $item->created_at->format('Y-m-d') : date('Y-m-d'),
+                'reference' => $reference,
+                'description' => "Outsourcing cost: {$item->description} (Job Card: " . ($jobCard->card_number ?? 'Unknown') . ")"
+            ]);
+
+            // Debit COGS (5000)
+            $entry->items()->create([
+                'account_id' => $cogsAccount->id,
+                'debit' => $totalCost,
+                'credit' => 0.00,
+                'customer_mobile' => $customerMobile
+            ]);
+
+            // Credit Cash Drawer (1000)
+            $entry->items()->create([
+                'account_id' => $cashAccount->id,
+                'debit' => 0.00,
+                'credit' => $totalCost,
+                'customer_mobile' => $customerMobile
+            ]);
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postOutsourcingTransaction Error: " . $e->getMessage());
         }
     }
 }

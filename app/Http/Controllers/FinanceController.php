@@ -537,44 +537,56 @@ class FinanceController extends Controller
             $payEntries = JournalEntry::where('reference', $bill->bill_number . '-PAY')->get();
             $cogsEntries = JournalEntry::where('reference', $bill->bill_number . '-COGS')->get();
 
-            // Total parts cost for COGS check
-            $partsCostTotal = 0.00;
+            // Total parts cost for COGS check (only inventory parts cost is in COGS now)
+            $inventoryPartsCostTotal = 0.00;
             foreach ($bill->items as $item) {
-                if ($item->type === 'part') {
-                    $partsCostTotal += floatval($item->cost_price) * floatval($item->quantity);
+                if ($item->type === 'part' && $item->inventory_id !== null) {
+                    $inventoryPartsCostTotal += floatval($item->cost_price) * floatval($item->quantity);
                 }
             }
 
             $hasInvoiceEntry = $entries->count() > 0;
             $hasPayEntry = $payEntries->count() > 0;
-            $needsPayEntry = $bill->status === 'paid';
             $hasCogsEntry = $cogsEntries->count() > 0;
-            $needsCogsEntry = $partsCostTotal > 0;
 
-            if (!$hasInvoiceEntry || ($needsPayEntry && !$hasPayEntry) || ($needsCogsEntry && !$hasCogsEntry)) {
-                $reasons = [];
-                if (!$hasInvoiceEntry) $reasons[] = 'Invoice entry missing';
-                if ($needsPayEntry && !$hasPayEntry) $reasons[] = 'Payment entry missing';
-                if ($needsCogsEntry && !$hasCogsEntry) $reasons[] = 'COGS entry missing';
+            if ($bill->status === 'paid') {
+                $needsCogsEntry = $inventoryPartsCostTotal > 0;
 
-                $missingBills[] = [
-                    'id' => $bill->id,
-                    'bill_number' => $bill->bill_number,
-                    'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
-                    'date' => $bill->created_at->format('Y-m-d'),
-                    'total' => $bill->total_amount,
-                    'status' => $bill->status,
-                    'reasons' => $reasons
-                ];
-            }
+                if (!$hasInvoiceEntry || !$hasPayEntry || ($needsCogsEntry && !$hasCogsEntry)) {
+                    $reasons = [];
+                    if (!$hasInvoiceEntry) $reasons[] = 'Invoice entry missing';
+                    if (!$hasPayEntry) $reasons[] = 'Payment entry missing';
+                    if ($needsCogsEntry && !$hasCogsEntry) $reasons[] = 'COGS entry missing';
 
-            if ($entries->count() > 1 || $payEntries->count() > 1 || $cogsEntries->count() > 1) {
-                $duplicateBills[] = [
-                    'id' => $bill->id,
-                    'bill_number' => $bill->bill_number,
-                    'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
-                    'count' => max($entries->count(), $payEntries->count(), $cogsEntries->count())
-                ];
+                    $missingBills[] = [
+                        'id' => $bill->id,
+                        'bill_number' => $bill->bill_number,
+                        'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
+                        'date' => $bill->created_at->format('Y-m-d'),
+                        'total' => $bill->total_amount,
+                        'status' => $bill->status,
+                        'reasons' => $reasons
+                    ];
+                }
+
+                if ($entries->count() > 1 || $payEntries->count() > 1 || $cogsEntries->count() > 1) {
+                    $duplicateBills[] = [
+                        'id' => $bill->id,
+                        'bill_number' => $bill->bill_number,
+                        'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
+                        'count' => max($entries->count(), $payEntries->count(), $cogsEntries->count())
+                    ];
+                }
+            } else {
+                // Draft bills should have NO entries in the ledger
+                if ($hasInvoiceEntry || $hasPayEntry || $hasCogsEntry) {
+                    $duplicateBills[] = [
+                        'id' => $bill->id,
+                        'bill_number' => $bill->bill_number,
+                        'client' => $bill->jobCard->vehicle->client->name ?? 'Unknown',
+                        'count' => max($entries->count(), $payEntries->count(), $cogsEntries->count()) ?: 1
+                    ];
+                }
             }
         }
 
@@ -700,6 +712,54 @@ class FinanceController extends Controller
             }
         }
 
+        // 8. Check Job Card Misc Parts Costs
+        $missingMiscParts = [];
+        $duplicateMiscParts = [];
+        $miscParts = \App\Models\JobCardMiscPart::all();
+        foreach ($miscParts as $part) {
+            $ref = "MISC-PART-{$part->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($entries->count() === 0) {
+                $missingMiscParts[] = [
+                    'id' => $part->id,
+                    'name' => $part->name,
+                    'date' => $part->created_at ? $part->created_at->format('Y-m-d') : date('Y-m-d'),
+                    'total' => $part->cost_price
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicateMiscParts[] = [
+                    'id' => $part->id,
+                    'name' => $part->name,
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
+        // 9. Check Job Card Outsourcing Costs
+        $missingOutsourcing = [];
+        $duplicateOutsourcing = [];
+        $outsourcingItems = \App\Models\JobCardOutsourcing::all();
+        foreach ($outsourcingItems as $item) {
+            $ref = "OUTSOURCING-{$item->id}";
+            $entries = JournalEntry::where('reference', $ref)->get();
+
+            if ($entries->count() === 0) {
+                $missingOutsourcing[] = [
+                    'id' => $item->id,
+                    'description' => $item->description,
+                    'date' => $item->created_at ? $item->created_at->format('Y-m-d') : date('Y-m-d'),
+                    'total' => $item->cost_price
+                ];
+            } elseif ($entries->count() > 1) {
+                $duplicateOutsourcing[] = [
+                    'id' => $item->id,
+                    'description' => $item->description,
+                    'count' => $entries->count()
+                ];
+            }
+        }
+
         // 4. Check Orphaned Entries
         $orphanedEntries = [];
         $allEntries = JournalEntry::all();
@@ -742,6 +802,14 @@ class FinanceController extends Controller
                 $type = 'Employee Advance';
                 $exists = \App\Models\EmployeeAdvance::where('id', $matches[1])->exists();
                 if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^MISC-PART-(\d+)$/', $ref, $matches)) {
+                $type = 'Misc Part Cost';
+                $exists = \App\Models\JobCardMiscPart::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
+            } elseif (preg_match('/^OUTSOURCING-(\d+)$/', $ref, $matches)) {
+                $type = 'Outsourcing Cost';
+                $exists = \App\Models\JobCardOutsourcing::where('id', $matches[1])->exists();
+                if (!$exists) $isOrphan = true;
             }
 
             if ($isOrphan) {
@@ -768,6 +836,10 @@ class FinanceController extends Controller
             'duplicateConsumables' => $duplicateConsumables,
             'missingAdvances' => $missingAdvances,
             'duplicateAdvances' => $duplicateAdvances,
+            'missingMiscParts' => $missingMiscParts,
+            'duplicateMiscParts' => $duplicateMiscParts,
+            'missingOutsourcing' => $missingOutsourcing,
+            'duplicateOutsourcing' => $duplicateOutsourcing,
             'orphanedEntries' => $orphanedEntries
         ];
     }
@@ -805,9 +877,13 @@ class FinanceController extends Controller
             $coreSettings = [
                 'account_cashbook' => '1000',
                 'account_ar' => '1200',
+                'account_receivable' => '1200',
                 'account_inventory' => '1300',
                 'account_ap' => '2000',
+                'account_payable' => '2000',
                 'account_revenue' => '4000',
+                'account_service_revenue' => '4000',
+                'account_parts_revenue' => '4100',
                 'account_cogs' => '5000',
                 'account_salaries' => '5100',
                 'account_operating_expense' => '5200',
@@ -906,7 +982,33 @@ class FinanceController extends Controller
                 }
             }
 
-            // 6. Delete orphaned entries
+            // 6.5. Re-sync missing/duplicate misc parts
+            $affectedMiscPartIds = array_unique(array_merge(
+                array_column($audit['missingMiscParts'] ?? [], 'id'),
+                array_column($audit['duplicateMiscParts'] ?? [], 'id')
+            ));
+            foreach ($affectedMiscPartIds as $mpId) {
+                JournalEntry::where('reference', "MISC-PART-{$mpId}")->delete();
+                $mp = \App\Models\JobCardMiscPart::find($mpId);
+                if ($mp) {
+                    \App\Services\DoubleEntryService::postMiscPartTransaction($mp);
+                }
+            }
+
+            // 6.6. Re-sync missing/duplicate outsourcing items
+            $affectedOutsourcingIds = array_unique(array_merge(
+                array_column($audit['missingOutsourcing'] ?? [], 'id'),
+                array_column($audit['duplicateOutsourcing'] ?? [], 'id')
+            ));
+            foreach ($affectedOutsourcingIds as $osiId) {
+                JournalEntry::where('reference', "OUTSOURCING-{$osiId}")->delete();
+                $osi = \App\Models\JobCardOutsourcing::find($osiId);
+                if ($osi) {
+                    \App\Services\DoubleEntryService::postOutsourcingTransaction($osi);
+                }
+            }
+
+            // 6.7. Delete orphaned entries
             foreach ($audit['orphanedEntries'] as $orphan) {
                 JournalEntry::where('id', $orphan['id'])->delete();
             }
