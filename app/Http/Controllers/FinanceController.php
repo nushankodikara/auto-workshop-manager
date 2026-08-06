@@ -1059,6 +1059,19 @@ class FinanceController extends Controller
             return (floatval($managementSalaries) + 80000) / $daysInMonth;
         };
 
+        // Tools Accounts & Cashbook Setup
+        $toolsExpenseCode = \App\Models\Setting::get('account_consumables', '5400');
+        $toolsExpenseAccount = \App\Models\Account::where('code', $toolsExpenseCode)
+            ->orWhere(function($q) { $q->where('type', 'expense')->where('name', 'like', '%Tools%'); })
+            ->first();
+
+        $toolsAssetAccount = \App\Models\Account::where('code', '1400')
+            ->orWhere(function($q) { $q->where('type', 'asset')->where('name', 'like', '%Tools%'); })
+            ->first();
+
+        $cashbookCode = \App\Models\Setting::get('account_cashbook', '1000');
+        $cashbookAccount = \App\Models\Account::where('code', $cashbookCode)->first();
+
         // Get Job Cards
         $jobCards = \App\Models\JobCard::where(function($query) use ($start, $end) {
             $query->whereBetween('completed_at', [$start, $end])
@@ -1078,7 +1091,7 @@ class FinanceController extends Controller
         ];
 
         if ($format === 'daily') {
-            $callback = function() use ($start, $end, $jobCards, $weightedAvgCosts, $getDailyOverhead) {
+            $callback = function() use ($start, $end, $jobCards, $weightedAvgCosts, $getDailyOverhead, $toolsExpenseAccount, $toolsAssetAccount, $cashbookAccount) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, [
                     'Date', 
@@ -1089,9 +1102,13 @@ class FinanceController extends Controller
                     'Total Parts Cost', 
                     'Labour Cost', 
                     'Consumables Cost', 
+                    'Tools Cost (Expense)',
+                    'Tools (Assets) Purchased',
                     'Other Costs (Overheads)', 
                     'Total Income', 
-                    'Profit'
+                    'Gross Profit',
+                    'Net Profit',
+                    'Cash Book Balance'
                 ]);
 
                 $currentDate = $start->copy();
@@ -1105,7 +1122,29 @@ class FinanceController extends Controller
 
                     $dateUsages = \App\Models\ConsumableUsage::whereDate('recorded_at', $dateStr)->get();
                     
-                    if ($dateJobCards->isEmpty() && $dateUsages->isEmpty()) {
+                    // Sum tool expenses debited to 5400 on this date, excluding consumable purchase costs on this date
+                    $dateToolsExpenseDebits = 0.00;
+                    if ($toolsExpenseAccount) {
+                        $dateToolsExpenseDebits = floatval(\App\Models\JournalItem::where('account_id', $toolsExpenseAccount->id)
+                            ->whereHas('entry', function($q) use ($dateStr) {
+                                $q->whereDate('entry_date', $dateStr);
+                            })
+                            ->sum('debit'));
+                    }
+                    $dateConsumablePurchases = floatval(\App\Models\ConsumablePurchase::whereDate('purchased_at', $dateStr)->sum('cost_price'));
+                    $dailyToolsExpense = max(0.00, $dateToolsExpenseDebits - $dateConsumablePurchases);
+
+                    // Sum tool asset capital purchases on this date
+                    $dailyToolsAssets = 0.00;
+                    if ($toolsAssetAccount) {
+                        $dailyToolsAssets = floatval(\App\Models\JournalItem::where('account_id', $toolsAssetAccount->id)
+                            ->whereHas('entry', function($q) use ($dateStr) {
+                                $q->whereDate('entry_date', $dateStr);
+                            })
+                            ->sum('debit'));
+                    }
+
+                    if ($dateJobCards->isEmpty() && $dateUsages->isEmpty() && $dailyToolsExpense <= 0 && $dailyToolsAssets <= 0) {
                         $currentDate->addDay();
                         continue;
                     }
@@ -1170,7 +1209,19 @@ class FinanceController extends Controller
                         }
                     }
 
-                    $profit = $totalIncome - $totalPartsCost - $labourCost - $consumablesCost - $otherCosts;
+                    // Profits
+                    $grossProfit = $totalIncome - $totalPartsCost - $labourCost - $consumablesCost;
+                    $netProfit = $grossProfit - $dailyToolsExpense - $otherCosts;
+
+                    // Running cashbook balance
+                    $cashbookBalance = 0.00;
+                    if ($cashbookAccount) {
+                        $cashbookBalance = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
+                            ->whereHas('entry', function($q) use ($dateStr) {
+                                $q->whereDate('entry_date', '<=', $dateStr);
+                            })
+                            ->sum(DB::raw('debit - credit')));
+                    }
 
                     fputcsv($file, [
                         $dateStr,
@@ -1181,9 +1232,13 @@ class FinanceController extends Controller
                         number_format($totalPartsCost, 2, '.', ''),
                         number_format($labourCost, 2, '.', ''),
                         number_format($consumablesCost, 2, '.', ''),
+                        number_format($dailyToolsExpense, 2, '.', ''),
+                        number_format($dailyToolsAssets, 2, '.', ''),
                         number_format($otherCosts, 2, '.', ''),
                         number_format($totalIncome, 2, '.', ''),
-                        number_format($profit, 2, '.', '')
+                        number_format($grossProfit, 2, '.', ''),
+                        number_format($netProfit, 2, '.', ''),
+                        number_format($cashbookBalance, 2, '.', '')
                     ]);
 
                     $currentDate->addDay();
@@ -1192,7 +1247,7 @@ class FinanceController extends Controller
                 fclose($file);
             };
         } else {
-            $callback = function() use ($jobCards, $weightedAvgCosts, $getDailyOverhead) {
+            $callback = function() use ($jobCards, $weightedAvgCosts, $getDailyOverhead, $toolsExpenseAccount, $toolsAssetAccount, $cashbookAccount) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, [
                     'Date',
@@ -1206,9 +1261,13 @@ class FinanceController extends Controller
                     'Total Parts Cost',
                     'Labour Cost',
                     'Consumables Cost (Prorated)',
+                    'Tools Cost (Prorated)',
+                    'Tools Assets (Prorated)',
                     'Other Costs (Prorated)',
                     'Total Income',
-                    'Profit'
+                    'Gross Profit',
+                    'Net Profit',
+                    'Cash Book Balance'
                 ]);
 
                 foreach ($jobCards as $jc) {
@@ -1227,7 +1286,31 @@ class FinanceController extends Controller
                         return $otherDate === $jcDateStr;
                     })->count();
 
+                    // Tools Cost (Expense) daily metrics
+                    $dateToolsExpenseDebits = 0.00;
+                    if ($toolsExpenseAccount) {
+                        $dateToolsExpenseDebits = floatval(\App\Models\JournalItem::where('account_id', $toolsExpenseAccount->id)
+                            ->whereHas('entry', function($q) use ($jcDateStr) {
+                                $q->whereDate('entry_date', $jcDateStr);
+                            })
+                            ->sum('debit'));
+                    }
+                    $dateConsumablePurchases = floatval(\App\Models\ConsumablePurchase::whereDate('purchased_at', $jcDateStr)->sum('cost_price'));
+                    $dailyToolsExpense = max(0.00, $dateToolsExpenseDebits - $dateConsumablePurchases);
+
+                    // Tools Assets daily metrics
+                    $dailyToolsAssets = 0.00;
+                    if ($toolsAssetAccount) {
+                        $dailyToolsAssets = floatval(\App\Models\JournalItem::where('account_id', $toolsAssetAccount->id)
+                            ->whereHas('entry', function($q) use ($jcDateStr) {
+                                $q->whereDate('entry_date', $jcDateStr);
+                            })
+                            ->sum('debit'));
+                    }
+
                     $proratedConsumables = $dailyJcCount > 0 ? ($dailyConsumablesCost / $dailyJcCount) : 0.00;
+                    $proratedToolsExpense = $dailyJcCount > 0 ? ($dailyToolsExpense / $dailyJcCount) : 0.00;
+                    $proratedToolsAssets = $dailyJcCount > 0 ? ($dailyToolsAssets / $dailyJcCount) : 0.00;
                     $dailyOverhead = $getDailyOverhead($jcDateStr);
                     $proratedOverhead = $dailyJcCount > 0 ? ($dailyOverhead / $dailyJcCount) : 0.00;
 
@@ -1261,7 +1344,18 @@ class FinanceController extends Controller
                     }
 
                     $totalIncome = $jc->bill ? floatval($jc->bill->total_amount) : 0.00;
-                    $profit = $totalIncome - $totalPartsCost - $labourCost - $proratedConsumables - $proratedOverhead;
+                    $grossProfit = $totalIncome - $totalPartsCost - $labourCost - $proratedConsumables;
+                    $netProfit = $grossProfit - $proratedToolsExpense - $proratedOverhead;
+
+                    // Running cashbook balance
+                    $cashbookBalance = 0.00;
+                    if ($cashbookAccount) {
+                        $cashbookBalance = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
+                            ->whereHas('entry', function($q) use ($jcDateStr) {
+                                $q->whereDate('entry_date', '<=', $jcDateStr);
+                            })
+                            ->sum(DB::raw('debit - credit')));
+                    }
 
                     fputcsv($file, [
                         $jcDateStr,
@@ -1275,9 +1369,13 @@ class FinanceController extends Controller
                         number_format($totalPartsCost, 2, '.', ''),
                         number_format($labourCost, 2, '.', ''),
                         number_format($proratedConsumables, 2, '.', ''),
+                        number_format($proratedToolsExpense, 2, '.', ''),
+                        number_format($proratedToolsAssets, 2, '.', ''),
                         number_format($proratedOverhead, 2, '.', ''),
                         number_format($totalIncome, 2, '.', ''),
-                        number_format($profit, 2, '.', '')
+                        number_format($grossProfit, 2, '.', ''),
+                        number_format($netProfit, 2, '.', ''),
+                        number_format($cashbookBalance, 2, '.', '')
                     ]);
                 }
 

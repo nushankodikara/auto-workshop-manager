@@ -13,6 +13,9 @@ use App\Models\Consumable;
 use App\Models\ConsumablePurchase;
 use App\Models\ConsumableUsage;
 use App\Models\Attendance;
+use App\Models\Account;
+use App\Models\JournalEntry;
+use App\Models\JournalItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -85,6 +88,19 @@ class SummaryReportExportTest extends TestCase
      */
     public function test_daily_aggregated_summary_report()
     {
+        $toolsExpenseAcc = Account::firstOrCreate(
+            ['code' => '5400'],
+            ['name' => 'Tools & Consumables', 'type' => 'expense']
+        );
+        $toolsAssetAcc = Account::firstOrCreate(
+            ['code' => '1400'],
+            ['name' => 'Tools ( Assets )', 'type' => 'asset']
+        );
+        $cashAcc = Account::firstOrCreate(
+            ['code' => '1000'],
+            ['name' => 'Cash Drawer', 'type' => 'asset']
+        );
+
         // 1. Create a job card with a bill
         $jobCard = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
@@ -125,6 +141,38 @@ class SummaryReportExportTest extends TestCase
             'recorded_at' => now()->format('Y-m-d')
         ]);
 
+        // Seed Tools Expense: Debit 5400, Credit 1000 (1500.00)
+        $entry1 = JournalEntry::create([
+            'entry_date' => now()->format('Y-m-d'),
+            'description' => 'Screwdriver set purchase'
+        ]);
+        $entry1->items()->create([
+            'account_id' => $toolsExpenseAcc->id,
+            'debit' => 1500.00,
+            'credit' => 0.00
+        ]);
+        $entry1->items()->create([
+            'account_id' => $cashAcc->id,
+            'debit' => 0.00,
+            'credit' => 1500.00
+        ]);
+
+        // Seed Tools Asset: Debit 1400, Credit 1000 (8000.00)
+        $entry2 = JournalEntry::create([
+            'entry_date' => now()->format('Y-m-d'),
+            'description' => 'Hydraulic lift purchase'
+        ]);
+        $entry2->items()->create([
+            'account_id' => $toolsAssetAcc->id,
+            'debit' => 8000.00,
+            'credit' => 0.00
+        ]);
+        $entry2->items()->create([
+            'account_id' => $cashAcc->id,
+            'debit' => 0.00,
+            'credit' => 8000.00
+        ]);
+
         // 3. Request daily summary CSV
         $response = $this->actingAs($this->superManager)->get(route('finance.export.summary', [
             'start_date' => now()->format('Y-m-d'),
@@ -142,10 +190,20 @@ class SummaryReportExportTest extends TestCase
         $this->assertStringContainsString('Parts Cost (Inventory)', $content);
         $this->assertStringContainsString('Labour Cost', $content);
         $this->assertStringContainsString('Consumables Cost', $content);
-        $this->assertStringContainsString('Profit', $content);
+        $this->assertStringContainsString('Tools Cost (Expense)', $content);
+        $this->assertStringContainsString('Tools (Assets) Purchased', $content);
+        $this->assertStringContainsString('Gross Profit', $content);
+        $this->assertStringContainsString('Net Profit', $content);
+        $this->assertStringContainsString('Cash Book Balance', $content);
+
         $this->assertStringContainsString('WP CAD-4567', $content);
         $this->assertStringContainsString('Brake pad replacement', $content);
         $this->assertStringContainsString('15000.00', $content); // Total Income
+        $this->assertStringContainsString('1500.00', $content); // Tools Cost (Expense)
+        $this->assertStringContainsString('8000.00', $content); // Tools Assets
+        $this->assertStringContainsString('14000.00', $content); // Gross Profit
+        $this->assertStringContainsString('6048.39', $content); // Net Profit (14000 - 1500 - 6451.61)
+        $this->assertStringContainsString('500.00', $content); // Cash Book Balance (15000 - 5000 - 1500 - 8000)
     }
 
     /**
@@ -187,6 +245,11 @@ class SummaryReportExportTest extends TestCase
         $this->assertStringContainsString('Client Name', $content);
         $this->assertStringContainsString('Repair Description', $content);
         $this->assertStringContainsString('Consumables Cost (Prorated)', $content);
+        $this->assertStringContainsString('Tools Cost (Prorated)', $content);
+        $this->assertStringContainsString('Tools Assets (Prorated)', $content);
+        $this->assertStringContainsString('Gross Profit', $content);
+        $this->assertStringContainsString('Net Profit', $content);
+        $this->assertStringContainsString('Cash Book Balance', $content);
         $this->assertStringContainsString('WP CAD-4567', $content);
         $this->assertStringContainsString('8500.00', $content);
     }
