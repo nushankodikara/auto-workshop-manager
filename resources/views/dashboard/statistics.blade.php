@@ -48,13 +48,13 @@
     <div id="dashboard-overview" class="tab-content space-y-8">
         
         <!-- High Level Cash Flow Metrics Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
 
             <!-- Card 1: Total Cash Income -->
             <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
                             <i data-lucide="arrow-up-right" class="w-4 h-4 text-green-500"></i>
                             <span>Total Income</span>
                         </span>
@@ -72,7 +72,7 @@
             <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
                             <i data-lucide="arrow-down-left" class="w-4 h-4 text-red-500"></i>
                             <span>Total Expenditure</span>
                         </span>
@@ -90,7 +90,7 @@
             <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
                             <i data-lucide="trending-up" class="w-4 h-4 text-primary"></i>
                             <span>Net Profit</span>
                         </span>
@@ -101,6 +101,30 @@
                 </div>
                 <p class="text-xs text-slate-505 dark:text-slate-400 leading-normal">
                     Net cash flow after subtracting expenditures from total income.
+                </p>
+            </div>
+
+            <!-- Card 4: Daily Break-Even Target -->
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-primary/10 bg-primary/[0.01]">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
+                            <i data-lucide="target" class="w-4 h-4 text-primary"></i>
+                            <span>Daily Break-Even Target</span>
+                        </span>
+                        <h3 class="text-3xl font-bold mt-3 text-slate-800 dark:text-slate-100 font-mono">
+                            {{ config('app.currency', 'Rs.') }} {{ number_format($dailyBreakEvenTarget, 2) }}
+                        </h3>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-505 dark:text-slate-400 leading-normal">
+                    @if($remainingBreakEven <= 0)
+                        <span class="text-emerald-505 font-bold flex items-center gap-1">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Target Met (Broken Even)
+                        </span>
+                    @else
+                        Need {{ config('app.currency', 'Rs.') }}{{ number_format($remainingBreakEven, 2) }} more by 30th of {{ $breakEvenMonthName }}. Days left: {{ $daysLeft }}.
+                    @endif
                 </p>
             </div>
 

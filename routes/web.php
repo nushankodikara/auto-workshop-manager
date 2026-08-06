@@ -212,6 +212,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/finance/export/ledger', [FinanceController::class, 'exportLedgerCsv'])->name('finance.export.ledger');
     Route::get('/finance/export/ledger-matrix', [FinanceController::class, 'exportLedgerMatrixCsv'])->name('finance.export.ledger-matrix');
     Route::get('/finance/export/customers', [FinanceController::class, 'exportCustomerBooksCsv'])->name('finance.export.customers');
+    Route::get('/finance/export/summary', [FinanceController::class, 'exportSummaryCsv'])->name('finance.export.summary');
     Route::post('/finance/reconcile', [FinanceController::class, 'reconcile'])->name('finance.reconcile');
 
     // System Settings & Database Backups (Super Manager Only)

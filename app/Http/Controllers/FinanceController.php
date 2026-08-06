@@ -14,7 +14,7 @@ class FinanceController extends Controller
 {
     private function checkAccess()
     {
-        if (app()->runningInConsole()) {
+        if (app()->runningInConsole() && !app()->runningUnitTests()) {
             return;
         }
 
@@ -1016,4 +1016,276 @@ class FinanceController extends Controller
 
         return back()->with('success', 'Ledger reconciliation completed successfully! All missing entries posted, duplicates resolved, and orphaned records cleaned.');
     }
+
+    /**
+     * Export consolidated operations summary report to CSV.
+     */
+    public function exportSummaryCsv(Request $request)
+    {
+        $this->checkAccess();
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $format = $request->input('format', 'daily');
+
+        $start = $startDate ? \Carbon\Carbon::parse($startDate)->startOfDay() : null;
+        $end = $endDate ? \Carbon\Carbon::parse($endDate)->endOfDay() : null;
+
+        if (!$start) {
+            $earliestJob = \App\Models\JobCard::orderBy('created_at', 'asc')->first();
+            $start = $earliestJob ? $earliestJob->created_at->startOfDay() : now()->subDays(30)->startOfDay();
+        }
+        if (!$end) {
+            $end = now()->endOfDay();
+        }
+
+        // Weighted Average Consumables Cost
+        $weightedAvgCosts = [];
+        $consumables = \App\Models\Consumable::all();
+        foreach ($consumables as $item) {
+            $totalQty = floatval($item->purchases()->sum('quantity'));
+            $totalCost = floatval($item->purchases()->sum('cost_price'));
+            $weightedAvgCosts[$item->id] = $totalQty > 0 ? ($totalCost / $totalQty) : 0.00;
+        }
+
+        // Management Salaries
+        $managementSalaries = \App\Models\User::where('role', '!=', 'worker')
+            ->where('is_archived', false)
+            ->sum('basic_salary');
+
+        $getDailyOverhead = function($dateStr) use ($managementSalaries) {
+            $dt = \Carbon\Carbon::parse($dateStr);
+            $daysInMonth = $dt->daysInMonth;
+            return (floatval($managementSalaries) + 80000) / $daysInMonth;
+        };
+
+        // Get Job Cards
+        $jobCards = \App\Models\JobCard::where(function($query) use ($start, $end) {
+            $query->whereBetween('completed_at', [$start, $end])
+                  ->orWhere(function($q) use ($start, $end) {
+                      $q->whereNull('completed_at')
+                        ->whereBetween('created_at', [$start, $end]);
+                  });
+        })->with(['vehicle.client', 'bill', 'stockMovements', 'miscParts', 'assignments.user', 'services'])->get();
+
+        $fileName = 'operations_summary_' . $format . '_' . date('Ymd_His') . '.csv';
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        if ($format === 'daily') {
+            $callback = function() use ($start, $end, $jobCards, $weightedAvgCosts, $getDailyOverhead) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, [
+                    'Date', 
+                    'Vehicles Serviced', 
+                    'Repair Description', 
+                    'Parts Cost (Inventory)', 
+                    'Parts Cost (Misc)', 
+                    'Total Parts Cost', 
+                    'Labour Cost', 
+                    'Consumables Cost', 
+                    'Other Costs (Overheads)', 
+                    'Total Income', 
+                    'Profit'
+                ]);
+
+                $currentDate = $start->copy();
+                while ($currentDate <= $end) {
+                    $dateStr = $currentDate->format('Y-m-d');
+                    
+                    $dateJobCards = $jobCards->filter(function($jc) use ($dateStr) {
+                        $jcDate = $jc->completed_at ? $jc->completed_at->format('Y-m-d') : $jc->created_at->format('Y-m-d');
+                        return $jcDate === $dateStr;
+                    });
+
+                    $dateUsages = \App\Models\ConsumableUsage::whereDate('recorded_at', $dateStr)->get();
+                    
+                    if ($dateJobCards->isEmpty() && $dateUsages->isEmpty()) {
+                        $currentDate->addDay();
+                        continue;
+                    }
+
+                    $vehicles = $dateJobCards->map(function($jc) {
+                        return $jc->vehicle->plate_number ?? 'Unknown';
+                    })->unique()->implode(', ');
+
+                    $repairs = [];
+                    foreach ($dateJobCards as $jc) {
+                        $servicesStr = $jc->services->pluck('name')->implode(', ');
+                        $notes = $jc->notes ? " ({$jc->notes})" : "";
+                        $repairs[] = ($servicesStr ? $servicesStr : "General Repair") . $notes;
+                    }
+                    $repairsStr = implode('; ', $repairs);
+
+                    // Parts Cost
+                    $partsCostInventory = 0;
+                    $partsCostMisc = 0;
+                    foreach ($dateJobCards as $jc) {
+                        $partsCostInventory += floatval($jc->stockMovements
+                            ->where('type', 'out')
+                            ->sum(function($mov) {
+                                return abs($mov->quantity) * floatval($mov->cost_price);
+                            }));
+                        $partsCostMisc += floatval($jc->miscParts->sum('cost_price'));
+                    }
+                    $totalPartsCost = $partsCostInventory + $partsCostMisc;
+
+                    // Labour Cost
+                    $labourCost = 0;
+                    foreach ($dateJobCards as $jc) {
+                        foreach ($jc->assignments as $assignment) {
+                            $worker = $assignment->user;
+                            if ($worker) {
+                                $activeHours = floatval($assignment->active_hours);
+                                $otHours = floatval($assignment->overtime_hours);
+                                $reqDays = max(1, (int)($worker->required_days ?? 26));
+                                $dailyWage = floatval($worker->basic_salary) / $reqDays;
+                                $regularHourlyRate = $dailyWage / 9.5;
+                                
+                                $labourCost += ($activeHours * $regularHourlyRate) + ($otHours * floatval($worker->overtime_rate));
+                            }
+                        }
+                    }
+
+                    // Consumables Cost
+                    $consumablesCost = 0;
+                    foreach ($dateUsages as $usage) {
+                        $avgCost = $weightedAvgCosts[$usage->consumable_id] ?? 0.00;
+                        $consumablesCost += floatval($usage->quantity_consumed) * $avgCost;
+                    }
+
+                    // Other Overhead
+                    $otherCosts = $getDailyOverhead($dateStr);
+
+                    // Income
+                    $totalIncome = 0;
+                    foreach ($dateJobCards as $jc) {
+                        if ($jc->bill) {
+                            $totalIncome += floatval($jc->bill->total_amount);
+                        }
+                    }
+
+                    $profit = $totalIncome - $totalPartsCost - $labourCost - $consumablesCost - $otherCosts;
+
+                    fputcsv($file, [
+                        $dateStr,
+                        $vehicles,
+                        $repairsStr,
+                        number_format($partsCostInventory, 2, '.', ''),
+                        number_format($partsCostMisc, 2, '.', ''),
+                        number_format($totalPartsCost, 2, '.', ''),
+                        number_format($labourCost, 2, '.', ''),
+                        number_format($consumablesCost, 2, '.', ''),
+                        number_format($otherCosts, 2, '.', ''),
+                        number_format($totalIncome, 2, '.', ''),
+                        number_format($profit, 2, '.', '')
+                    ]);
+
+                    $currentDate->addDay();
+                }
+
+                fclose($file);
+            };
+        } else {
+            $callback = function() use ($jobCards, $weightedAvgCosts, $getDailyOverhead) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, [
+                    'Date',
+                    'Job Card No',
+                    'Vehicle No',
+                    'Client Name',
+                    'Client Mobile',
+                    'Repair Description',
+                    'Parts Cost (Inventory)',
+                    'Parts Cost (Misc)',
+                    'Total Parts Cost',
+                    'Labour Cost',
+                    'Consumables Cost (Prorated)',
+                    'Other Costs (Prorated)',
+                    'Total Income',
+                    'Profit'
+                ]);
+
+                foreach ($jobCards as $jc) {
+                    $jcDateStr = $jc->completed_at ? $jc->completed_at->format('Y-m-d') : $jc->created_at->format('Y-m-d');
+                    
+                    // Daily metrics for proration
+                    $dateUsages = \App\Models\ConsumableUsage::whereDate('recorded_at', $jcDateStr)->get();
+                    $dailyConsumablesCost = 0;
+                    foreach ($dateUsages as $usage) {
+                        $avgCost = $weightedAvgCosts[$usage->consumable_id] ?? 0.00;
+                        $dailyConsumablesCost += floatval($usage->quantity_consumed) * $avgCost;
+                    }
+
+                    $dailyJcCount = $jobCards->filter(function($otherJc) use ($jcDateStr) {
+                        $otherDate = $otherJc->completed_at ? $otherJc->completed_at->format('Y-m-d') : $otherJc->created_at->format('Y-m-d');
+                        return $otherDate === $jcDateStr;
+                    })->count();
+
+                    $proratedConsumables = $dailyJcCount > 0 ? ($dailyConsumablesCost / $dailyJcCount) : 0.00;
+                    $dailyOverhead = $getDailyOverhead($jcDateStr);
+                    $proratedOverhead = $dailyJcCount > 0 ? ($dailyOverhead / $dailyJcCount) : 0.00;
+
+                    // Repair description
+                    $servicesStr = $jc->services->pluck('name')->implode(', ');
+                    $notes = $jc->notes ? " ({$jc->notes})" : "";
+                    $repairsStr = ($servicesStr ? $servicesStr : "General Repair") . $notes;
+
+                    // Parts Cost
+                    $partsCostInventory = floatval($jc->stockMovements
+                        ->where('type', 'out')
+                        ->sum(function($mov) {
+                            return abs($mov->quantity) * floatval($mov->cost_price);
+                        }));
+                    $partsCostMisc = floatval($jc->miscParts->sum('cost_price'));
+                    $totalPartsCost = $partsCostInventory + $partsCostMisc;
+
+                    // Labour Cost
+                    $labourCost = 0;
+                    foreach ($jc->assignments as $assignment) {
+                        $worker = $assignment->user;
+                        if ($worker) {
+                            $activeHours = floatval($assignment->active_hours);
+                            $otHours = floatval($assignment->overtime_hours);
+                            $reqDays = max(1, (int)($worker->required_days ?? 26));
+                            $dailyWage = floatval($worker->basic_salary) / $reqDays;
+                            $regularHourlyRate = $dailyWage / 9.5;
+                            
+                            $labourCost += ($activeHours * $regularHourlyRate) + ($otHours * floatval($worker->overtime_rate));
+                        }
+                    }
+
+                    $totalIncome = $jc->bill ? floatval($jc->bill->total_amount) : 0.00;
+                    $profit = $totalIncome - $totalPartsCost - $labourCost - $proratedConsumables - $proratedOverhead;
+
+                    fputcsv($file, [
+                        $jcDateStr,
+                        $jc->card_number,
+                        $jc->vehicle->plate_number ?? 'Unknown',
+                        $jc->vehicle->client->name ?? 'Unknown',
+                        $jc->vehicle->client->phone ?? 'Unknown',
+                        $repairsStr,
+                        number_format($partsCostInventory, 2, '.', ''),
+                        number_format($partsCostMisc, 2, '.', ''),
+                        number_format($totalPartsCost, 2, '.', ''),
+                        number_format($labourCost, 2, '.', ''),
+                        number_format($proratedConsumables, 2, '.', ''),
+                        number_format($proratedOverhead, 2, '.', ''),
+                        number_format($totalIncome, 2, '.', ''),
+                        number_format($profit, 2, '.', '')
+                    ]);
+                }
+
+                fclose($file);
+            };
+        }
+
+        return response()->stream($callback, 200, $headers);
+    }
 }
+

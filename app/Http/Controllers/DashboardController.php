@@ -493,6 +493,81 @@ class DashboardController extends Controller
             ];
         });
 
+        // Break-Even Target Calculation for the current month until the 30th
+        $currentYear = intval(date('Y'));
+        $currentMonth = intval(date('m'));
+        $currentDay = intval(date('d'));
+        
+        // 1. Management salaries for the current month
+        $managementSalaries = \App\Models\User::where('role', '!=', 'worker')
+            ->where('is_archived', false)
+            ->sum('basic_salary');
+
+        // 2. Fixed utilities
+        $monthlyUtilities = 80000.00;
+
+        // 3. Parts COGS for current month so far (both inventory and misc parts)
+        $augustBillItemsQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($currentYear, $currentMonth) {
+            $q->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth);
+        });
+        $augustPartsCOGS = floatval((clone $augustBillItemsQuery)->where('type', 'part')->sum(DB::raw('quantity * cost_price')));
+        $augustOutsourcingCOGS = floatval((clone $augustBillItemsQuery)->where('type', 'outsourcing')->sum('cost_price'));
+
+        // 4. Labor Cost (technician wages based on attendance in current month so far)
+        $workers = \App\Models\User::where('role', 'worker')->get();
+        $workerIds = $workers->pluck('id');
+        $workersMap = $workers->keyBy('id');
+        $augustAttendances = \App\Models\Attendance::whereIn('user_id', $workerIds)
+            ->whereYear('date', $currentYear)
+            ->whereMonth('date', $currentMonth)
+            ->get();
+        
+        $augustLabourCOGS = 0.00;
+        foreach ($augustAttendances as $att) {
+            $worker = $workersMap->get($att->user_id);
+            if ($worker && $worker->basic_salary > 0) {
+                $reqDays = max(1, (int)($worker->required_days ?? 26));
+                $dailyWage = floatval($worker->basic_salary) / $reqDays;
+                if ($att->status === 'present') {
+                    $augustLabourCOGS += $dailyWage;
+                } elseif ($att->status === 'half_day') {
+                    $augustLabourCOGS += $dailyWage * 0.5;
+                }
+            }
+        }
+
+        // 5. Consumables Cost in current month so far (weighted average cost)
+        $weightedAvgCosts = [];
+        $consumables = \App\Models\Consumable::all();
+        foreach ($consumables as $item) {
+            $totalQty = floatval($item->purchases()->sum('quantity'));
+            $totalCost = floatval($item->purchases()->sum('cost_price'));
+            $weightedAvgCosts[$item->id] = $totalQty > 0 ? ($totalCost / $totalQty) : 0.00;
+        }
+
+        $augustUsages = \App\Models\ConsumableUsage::whereYear('recorded_at', $currentYear)
+            ->whereMonth('recorded_at', $currentMonth)
+            ->get();
+        
+        $augustConsumablesCost = 0.00;
+        foreach ($augustUsages as $usage) {
+            $avgCost = $weightedAvgCosts[$usage->consumable_id] ?? 0.00;
+            $augustConsumablesCost += floatval($usage->quantity_consumed) * $avgCost;
+        }
+
+        // Total Costs for the Month so far + fixed overheads
+        $totalAugustCosts = floatval($managementSalaries) + $monthlyUtilities + $augustPartsCOGS + $augustOutsourcingCOGS + $augustLabourCOGS + $augustConsumablesCost;
+
+        // Total Income for current month so far (include all generated bills: both paid and draft)
+        $totalAugustIncome = floatval(\App\Models\Bill::whereYear('created_at', $currentYear)
+            ->whereMonth('created_at', $currentMonth)
+            ->sum('total_amount'));
+
+        $remainingBreakEven = max(0.00, $totalAugustCosts - $totalAugustIncome);
+        $daysLeft = max(1, 30 - $currentDay + 1);
+        $dailyBreakEvenTarget = $remainingBreakEven / $daysLeft;
+        $breakEvenMonthName = date('F');
+
         return view('dashboard.statistics', compact(
             'startDate', 'endDate',
             'totalIncome', 'totalStockPurchases', 'paidBasicSalaries', 'paidAllowances', 'totalPayroll',
@@ -501,7 +576,8 @@ class DashboardController extends Controller
             'laborRevenue', 'laborCOGS', 'laborProfit', 'laborMargin',
             'outsourcingRevenue', 'outsourcingCOGS', 'outsourcingProfit', 'outsourcingMargin',
             'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin',
-            'dailyTimeline', 'expendituresByAccount'
+            'dailyTimeline', 'expendituresByAccount',
+            'remainingBreakEven', 'daysLeft', 'dailyBreakEvenTarget', 'totalAugustCosts', 'totalAugustIncome', 'breakEvenMonthName'
         ));
     }
 }

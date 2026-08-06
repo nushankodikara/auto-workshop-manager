@@ -448,6 +448,44 @@
                     <span>Export Balances (CSV)</span>
                 </a>
             </div>
+
+            <!-- Operations Summary Report export -->
+            <div class="app-card rounded-2xl p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-primary"></i>
+                    <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200">Operations Summary</h4>
+                </div>
+                <p class="text-xs text-slate-500 leading-normal">
+                    Download a consolidated summary report of operations (income, parts, labour, consumables, overheads, and profit).
+                </p>
+                <form action="{{ route('finance.export.summary') }}" method="GET" class="space-y-3 pt-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="summary_start_date" class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Start Date</label>
+                            <input type="date" id="summary_start_date" name="start_date" 
+                                   class="w-full px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-sans">
+                        </div>
+                        <div>
+                            <label for="summary_end_date" class="block text-[10px] uppercase font-bold text-slate-400 mb-1">End Date</label>
+                            <input type="date" id="summary_end_date" name="end_date" 
+                                   class="w-full px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-sans">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="summary_format" class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Report Format</label>
+                        <select id="summary_format" name="format" 
+                                class="w-full px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-sans">
+                            <option value="daily">Daily Aggregated Summary</option>
+                            <option value="job_card">Job Card Detailed Summary</option>
+                        </select>
+                    </div>
+                    <button type="submit" 
+                            class="inline-flex w-full justify-center items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-sm">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export Summary (CSV)</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
