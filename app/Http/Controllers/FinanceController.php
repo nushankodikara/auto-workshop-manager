@@ -1100,15 +1100,18 @@ class FinanceController extends Controller
                     'Parts Cost (Inventory)', 
                     'Parts Cost (Misc)', 
                     'Total Parts Cost', 
-                    'Labour Cost', 
+                    'Labour Cost (Job Card)', 
                     'Consumables Cost', 
                     'Tools Cost (Expense)',
                     'Tools (Assets) Purchased',
                     'Other Costs (Overheads)', 
+                    'Daily Worker Salary (Accrued)',
                     'Total Income', 
                     'Gross Profit',
-                    'Net Profit',
-                    'Cash Book Balance'
+                    'Net Profit (Job Card Labour)',
+                    'Net Profit (Daily Payroll)',
+                    'Cash Book Balance (Actual)',
+                    'Cash Book Balance (Daily Payroll)'
                 ]);
 
                 $currentDate = $start->copy();
@@ -1122,6 +1125,25 @@ class FinanceController extends Controller
 
                     $dateUsages = \App\Models\ConsumableUsage::whereDate('recorded_at', $dateStr)->get();
                     
+                    // Daily worker salary accrued
+                    $dateAttendances = \App\Models\Attendance::whereDate('date', $dateStr)->with('user')->get();
+                    $dailyWorkerSalary = 0.00;
+                    foreach ($dateAttendances as $att) {
+                        $user = $att->user;
+                        if ($user && $user->role === 'worker') {
+                            $inc = 0.00;
+                            if ($att->status === 'present') {
+                                $inc = 1.00;
+                            } elseif ($att->status === 'half_day') {
+                                $inc = 0.50;
+                            }
+                            $reqDays = max(1, (int)($user->required_days ?? 26));
+                            $dailyBasic = ($inc * floatval($user->basic_salary)) / $reqDays;
+                            $dailyOt = floatval($att->overtime_hours) * floatval($user->overtime_rate);
+                            $dailyWorkerSalary += ($dailyBasic + $dailyOt);
+                        }
+                    }
+
                     // Sum tool expenses debited to 5400 on this date, excluding consumable purchase costs on this date
                     $dateToolsExpenseDebits = 0.00;
                     if ($toolsExpenseAccount) {
@@ -1144,7 +1166,7 @@ class FinanceController extends Controller
                             ->sum('debit'));
                     }
 
-                    if ($dateJobCards->isEmpty() && $dateUsages->isEmpty() && $dailyToolsExpense <= 0 && $dailyToolsAssets <= 0) {
+                    if ($dateJobCards->isEmpty() && $dateUsages->isEmpty() && $dailyToolsExpense <= 0 && $dailyToolsAssets <= 0 && $dailyWorkerSalary <= 0) {
                         $currentDate->addDay();
                         continue;
                     }
@@ -1174,7 +1196,7 @@ class FinanceController extends Controller
                     }
                     $totalPartsCost = $partsCostInventory + $partsCostMisc;
 
-                    // Labour Cost
+                    // Labour Cost (Job Card)
                     $labourCost = 0;
                     foreach ($dateJobCards as $jc) {
                         foreach ($jc->assignments as $assignment) {
@@ -1211,17 +1233,51 @@ class FinanceController extends Controller
 
                     // Profits
                     $grossProfit = $totalIncome - $totalPartsCost - $labourCost - $consumablesCost;
-                    $netProfit = $grossProfit - $dailyToolsExpense - $otherCosts;
+                    $netProfitJobCard = $grossProfit - $dailyToolsExpense - $otherCosts;
+                    $netProfitDailyPayroll = $totalIncome - $totalPartsCost - $consumablesCost - $dailyToolsExpense - $otherCosts - $dailyWorkerSalary;
 
-                    // Running cashbook balance
-                    $cashbookBalance = 0.00;
+                    // Running cashbook balance (Actual)
+                    $cashbookBalanceActual = 0.00;
                     if ($cashbookAccount) {
-                        $cashbookBalance = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
+                        $cashbookBalanceActual = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
                             ->whereHas('entry', function($q) use ($dateStr) {
                                 $q->whereDate('entry_date', '<=', $dateStr);
                             })
                             ->sum(DB::raw('debit - credit')));
                     }
+
+                    // Running cashbook balance (Daily Payroll Mindset)
+                    $rawCashBalance = 0.00;
+                    if ($cashbookAccount) {
+                        $rawCashBalance = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
+                            ->whereHas('entry', function($q) use ($dateStr) {
+                                $q->whereDate('entry_date', '<=', $dateStr)
+                                  ->where(function($sub) {
+                                      $sub->whereNull('reference')
+                                          ->orWhere('reference', 'not like', 'SLIP-%');
+                                  });
+                            })
+                            ->sum(DB::raw('debit - credit')));
+                    }
+
+                    $cumulativeAccruedSalary = 0.00;
+                    $allAttendancesUpToDate = \App\Models\Attendance::whereDate('date', '<=', $dateStr)->with('user')->get();
+                    foreach ($allAttendancesUpToDate as $att) {
+                        $user = $att->user;
+                        if ($user && $user->role === 'worker') {
+                            $inc = 0.00;
+                            if ($att->status === 'present') {
+                                $inc = 1.00;
+                            } elseif ($att->status === 'half_day') {
+                                $inc = 0.50;
+                            }
+                            $reqDays = max(1, (int)($user->required_days ?? 26));
+                            $dailyBasic = ($inc * floatval($user->basic_salary)) / $reqDays;
+                            $dailyOt = floatval($att->overtime_hours) * floatval($user->overtime_rate);
+                            $cumulativeAccruedSalary += ($dailyBasic + $dailyOt);
+                        }
+                    }
+                    $cashbookBalanceDailyPayroll = $rawCashBalance - $cumulativeAccruedSalary;
 
                     fputcsv($file, [
                         $dateStr,
@@ -1235,10 +1291,13 @@ class FinanceController extends Controller
                         number_format($dailyToolsExpense, 2, '.', ''),
                         number_format($dailyToolsAssets, 2, '.', ''),
                         number_format($otherCosts, 2, '.', ''),
+                        number_format($dailyWorkerSalary, 2, '.', ''),
                         number_format($totalIncome, 2, '.', ''),
                         number_format($grossProfit, 2, '.', ''),
-                        number_format($netProfit, 2, '.', ''),
-                        number_format($cashbookBalance, 2, '.', '')
+                        number_format($netProfitJobCard, 2, '.', ''),
+                        number_format($netProfitDailyPayroll, 2, '.', ''),
+                        number_format($cashbookBalanceActual, 2, '.', ''),
+                        number_format($cashbookBalanceDailyPayroll, 2, '.', '')
                     ]);
 
                     $currentDate->addDay();
@@ -1259,15 +1318,18 @@ class FinanceController extends Controller
                     'Parts Cost (Inventory)',
                     'Parts Cost (Misc)',
                     'Total Parts Cost',
-                    'Labour Cost',
+                    'Labour Cost (Job Card)',
                     'Consumables Cost (Prorated)',
                     'Tools Cost (Prorated)',
                     'Tools Assets (Prorated)',
                     'Other Costs (Prorated)',
+                    'Worker Salary (Prorated)',
                     'Total Income',
                     'Gross Profit',
-                    'Net Profit',
-                    'Cash Book Balance'
+                    'Net Profit (Job Card Labour)',
+                    'Net Profit (Daily Payroll)',
+                    'Cash Book Balance (Actual)',
+                    'Cash Book Balance (Daily Payroll)'
                 ]);
 
                 foreach ($jobCards as $jc) {
@@ -1285,6 +1347,25 @@ class FinanceController extends Controller
                         $otherDate = $otherJc->completed_at ? $otherJc->completed_at->format('Y-m-d') : $otherJc->created_at->format('Y-m-d');
                         return $otherDate === $jcDateStr;
                     })->count();
+
+                    // Daily worker salary accrued
+                    $dateAttendances = \App\Models\Attendance::whereDate('date', $jcDateStr)->with('user')->get();
+                    $dailyWorkerSalary = 0.00;
+                    foreach ($dateAttendances as $att) {
+                        $user = $att->user;
+                        if ($user && $user->role === 'worker') {
+                            $inc = 0.00;
+                            if ($att->status === 'present') {
+                                $inc = 1.00;
+                            } elseif ($att->status === 'half_day') {
+                                $inc = 0.50;
+                            }
+                            $reqDays = max(1, (int)($user->required_days ?? 26));
+                            $dailyBasic = ($inc * floatval($user->basic_salary)) / $reqDays;
+                            $dailyOt = floatval($att->overtime_hours) * floatval($user->overtime_rate);
+                            $dailyWorkerSalary += ($dailyBasic + $dailyOt);
+                        }
+                    }
 
                     // Tools Cost (Expense) daily metrics
                     $dateToolsExpenseDebits = 0.00;
@@ -1313,6 +1394,7 @@ class FinanceController extends Controller
                     $proratedToolsAssets = $dailyJcCount > 0 ? ($dailyToolsAssets / $dailyJcCount) : 0.00;
                     $dailyOverhead = $getDailyOverhead($jcDateStr);
                     $proratedOverhead = $dailyJcCount > 0 ? ($dailyOverhead / $dailyJcCount) : 0.00;
+                    $proratedWorkerSalary = $dailyJcCount > 0 ? ($dailyWorkerSalary / $dailyJcCount) : 0.00;
 
                     // Repair description
                     $servicesStr = $jc->services->pluck('name')->implode(', ');
@@ -1328,7 +1410,7 @@ class FinanceController extends Controller
                     $partsCostMisc = floatval($jc->miscParts->sum('cost_price'));
                     $totalPartsCost = $partsCostInventory + $partsCostMisc;
 
-                    // Labour Cost
+                    // Labour Cost (Job Card)
                     $labourCost = 0;
                     foreach ($jc->assignments as $assignment) {
                         $worker = $assignment->user;
@@ -1345,17 +1427,51 @@ class FinanceController extends Controller
 
                     $totalIncome = $jc->bill ? floatval($jc->bill->total_amount) : 0.00;
                     $grossProfit = $totalIncome - $totalPartsCost - $labourCost - $proratedConsumables;
-                    $netProfit = $grossProfit - $proratedToolsExpense - $proratedOverhead;
+                    $netProfitJobCard = $grossProfit - $proratedToolsExpense - $proratedOverhead;
+                    $netProfitDailyPayroll = $totalIncome - $totalPartsCost - $proratedConsumables - $proratedToolsExpense - $proratedOverhead - $proratedWorkerSalary;
 
-                    // Running cashbook balance
-                    $cashbookBalance = 0.00;
+                    // Running cashbook balance (Actual)
+                    $cashbookBalanceActual = 0.00;
                     if ($cashbookAccount) {
-                        $cashbookBalance = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
+                        $cashbookBalanceActual = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
                             ->whereHas('entry', function($q) use ($jcDateStr) {
                                 $q->whereDate('entry_date', '<=', $jcDateStr);
                             })
                             ->sum(DB::raw('debit - credit')));
                     }
+
+                    // Running cashbook balance (Daily Payroll Mindset)
+                    $rawCashBalance = 0.00;
+                    if ($cashbookAccount) {
+                        $rawCashBalance = floatval(\App\Models\JournalItem::where('account_id', $cashbookAccount->id)
+                            ->whereHas('entry', function($q) use ($jcDateStr) {
+                                $q->whereDate('entry_date', '<=', $jcDateStr)
+                                  ->where(function($sub) {
+                                      $sub->whereNull('reference')
+                                          ->orWhere('reference', 'not like', 'SLIP-%');
+                                  });
+                            })
+                            ->sum(DB::raw('debit - credit')));
+                    }
+
+                    $cumulativeAccruedSalary = 0.00;
+                    $allAttendancesUpToDate = \App\Models\Attendance::whereDate('date', '<=', $jcDateStr)->with('user')->get();
+                    foreach ($allAttendancesUpToDate as $att) {
+                        $user = $att->user;
+                        if ($user && $user->role === 'worker') {
+                            $inc = 0.00;
+                            if ($att->status === 'present') {
+                                $inc = 1.00;
+                            } elseif ($att->status === 'half_day') {
+                                $inc = 0.50;
+                            }
+                            $reqDays = max(1, (int)($user->required_days ?? 26));
+                            $dailyBasic = ($inc * floatval($user->basic_salary)) / $reqDays;
+                            $dailyOt = floatval($att->overtime_hours) * floatval($user->overtime_rate);
+                            $cumulativeAccruedSalary += ($dailyBasic + $dailyOt);
+                        }
+                    }
+                    $cashbookBalanceDailyPayroll = $rawCashBalance - $cumulativeAccruedSalary;
 
                     fputcsv($file, [
                         $jcDateStr,
@@ -1372,10 +1488,13 @@ class FinanceController extends Controller
                         number_format($proratedToolsExpense, 2, '.', ''),
                         number_format($proratedToolsAssets, 2, '.', ''),
                         number_format($proratedOverhead, 2, '.', ''),
+                        number_format($proratedWorkerSalary, 2, '.', ''),
                         number_format($totalIncome, 2, '.', ''),
                         number_format($grossProfit, 2, '.', ''),
-                        number_format($netProfit, 2, '.', ''),
-                        number_format($cashbookBalance, 2, '.', '')
+                        number_format($netProfitJobCard, 2, '.', ''),
+                        number_format($netProfitDailyPayroll, 2, '.', ''),
+                        number_format($cashbookBalanceActual, 2, '.', ''),
+                        number_format($cashbookBalanceDailyPayroll, 2, '.', '')
                     ]);
                 }
 

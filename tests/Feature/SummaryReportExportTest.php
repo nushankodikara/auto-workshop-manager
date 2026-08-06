@@ -16,6 +16,7 @@ use App\Models\Attendance;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\JournalItem;
+use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,6 +33,16 @@ class SummaryReportExportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Seed settings for double entry accounts mapping
+        Setting::set('account_parts_revenue', '4100');
+        Setting::set('account_service_revenue', '4000');
+        Setting::set('account_cashbook', '1000');
+        Setting::set('account_cogs', '5000');
+        Setting::set('account_inventory', '1300');
+        Setting::set('account_transportation', '1030');
+        Setting::set('account_transportation_revenue', '4200');
+        Setting::set('account_transportation_hire_expense', '5500');
 
         $this->superManager = User::factory()->create([
             'role' => 'super-manager',
@@ -120,6 +131,18 @@ class SummaryReportExportTest extends TestCase
             'total_amount' => 15000.00
         ]);
 
+        BillItem::create([
+            'bill_id' => $bill->id,
+            'type' => 'labor',
+            'description' => 'Brake pad replacement labour',
+            'quantity' => 1,
+            'cost_price' => 0,
+            'unit_price' => 15000.00,
+            'total_price' => 15000.00
+        ]);
+
+        \App\Services\DoubleEntryService::postBillTransaction($bill);
+
         // 2. Log consumable usage
         $consumable = Consumable::create([
             'name' => 'Engine Oil',
@@ -173,6 +196,14 @@ class SummaryReportExportTest extends TestCase
             'credit' => 8000.00
         ]);
 
+        // Seed worker attendance to test daily worker salary cost
+        Attendance::create([
+            'user_id' => $this->worker->id,
+            'date' => now()->format('Y-m-d'),
+            'status' => 'present',
+            'overtime_hours' => 2.00 // Overtime cost = 2.00 * 300 = 600.00. Basic = 50000 / 20 = 2500. Total = 3100.00
+        ]);
+
         // 3. Request daily summary CSV
         $response = $this->actingAs($this->superManager)->get(route('finance.export.summary', [
             'start_date' => now()->format('Y-m-d'),
@@ -188,22 +219,28 @@ class SummaryReportExportTest extends TestCase
         $this->assertStringContainsString('Vehicles Serviced', $content);
         $this->assertStringContainsString('Repair Description', $content);
         $this->assertStringContainsString('Parts Cost (Inventory)', $content);
-        $this->assertStringContainsString('Labour Cost', $content);
+        $this->assertStringContainsString('Labour Cost (Job Card)', $content);
         $this->assertStringContainsString('Consumables Cost', $content);
         $this->assertStringContainsString('Tools Cost (Expense)', $content);
         $this->assertStringContainsString('Tools (Assets) Purchased', $content);
+        $this->assertStringContainsString('Daily Worker Salary (Accrued)', $content);
         $this->assertStringContainsString('Gross Profit', $content);
-        $this->assertStringContainsString('Net Profit', $content);
-        $this->assertStringContainsString('Cash Book Balance', $content);
+        $this->assertStringContainsString('Net Profit (Job Card Labour)', $content);
+        $this->assertStringContainsString('Net Profit (Daily Payroll)', $content);
+        $this->assertStringContainsString('Cash Book Balance (Actual)', $content);
+        $this->assertStringContainsString('Cash Book Balance (Daily Payroll)', $content);
 
         $this->assertStringContainsString('WP CAD-4567', $content);
         $this->assertStringContainsString('Brake pad replacement', $content);
         $this->assertStringContainsString('15000.00', $content); // Total Income
         $this->assertStringContainsString('1500.00', $content); // Tools Cost (Expense)
         $this->assertStringContainsString('8000.00', $content); // Tools Assets
+        $this->assertStringContainsString('3100.00', $content); // Daily Worker Salary (Accrued)
         $this->assertStringContainsString('14000.00', $content); // Gross Profit
-        $this->assertStringContainsString('6048.39', $content); // Net Profit (14000 - 1500 - 6451.61)
-        $this->assertStringContainsString('500.00', $content); // Cash Book Balance (15000 - 5000 - 1500 - 8000)
+        $this->assertStringContainsString('6048.39', $content); // Net Profit (Job Card Labour)
+        $this->assertStringContainsString('2948.39', $content); // Net Profit (Daily Payroll) (14000 - 1500 - 6451.61 - 3100)
+        $this->assertStringContainsString('500.00', $content); // Cash Book Balance (Actual)
+        $this->assertStringContainsString('-2600.00', $content); // Cash Book Balance (Daily Payroll) (500 - 3100)
     }
 
     /**
@@ -247,9 +284,12 @@ class SummaryReportExportTest extends TestCase
         $this->assertStringContainsString('Consumables Cost (Prorated)', $content);
         $this->assertStringContainsString('Tools Cost (Prorated)', $content);
         $this->assertStringContainsString('Tools Assets (Prorated)', $content);
+        $this->assertStringContainsString('Worker Salary (Prorated)', $content);
         $this->assertStringContainsString('Gross Profit', $content);
-        $this->assertStringContainsString('Net Profit', $content);
-        $this->assertStringContainsString('Cash Book Balance', $content);
+        $this->assertStringContainsString('Net Profit (Job Card Labour)', $content);
+        $this->assertStringContainsString('Net Profit (Daily Payroll)', $content);
+        $this->assertStringContainsString('Cash Book Balance (Actual)', $content);
+        $this->assertStringContainsString('Cash Book Balance (Daily Payroll)', $content);
         $this->assertStringContainsString('WP CAD-4567', $content);
         $this->assertStringContainsString('8500.00', $content);
     }
