@@ -53,10 +53,13 @@ class JobCardController extends Controller
                 'stockMovements.purchaseBatch'
             ])
                 ->whereNotIn('status', ['received-vehicle', 'on-going'])
-                ->whereHas('bill', function ($billQuery) {
-                    $billQuery->where('status', '!=', 'paid');
-                })
-                ->get();
+                ->get()
+                ->filter(function ($jc) {
+                    if ($jc->bill) {
+                        return $jc->bill->status !== 'paid';
+                    }
+                    return $jc->ticket_sum > 0;
+                });
         } else {
             $jobCards = JobCard::with([
                 'vehicle.client',

@@ -206,16 +206,23 @@
 
                         <!-- Vehicle selection -->
                         <div>
-                            <label for="vehicle_id" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Select Vehicle</label>
-                            <select name="vehicle_id" id="vehicle_id" required
-                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
-                                <option value="">-- Choose registered vehicle --</option>
-                                @foreach($vehicles as $veh)
-                                    <option value="{{ $veh->id }}">
-                                        {{ $veh->plate_number }} ({{ $veh->make }} {{ $veh->model }} - {{ $veh->client->name }})
-                                    </option>
-                                @endforeach
-                            </select>
+                            <label for="vehicle_search" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Select Vehicle</label>
+                            <div class="relative">
+                                <input type="text" id="vehicle_search" placeholder="Type to search vehicle..." required autocomplete="off"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                                <input type="hidden" name="vehicle_id" id="vehicle_id_hidden" required>
+                                
+                                <div id="vehicle_dropdown" class="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg hidden">
+                                    @foreach($vehicles as $veh)
+                                        <div class="px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm text-slate-700 dark:text-slate-350 transition border-b border-slate-100 dark:border-slate-800 last:border-b-0" 
+                                             data-value="{{ $veh->id }}" 
+                                             data-text="{{ $veh->plate_number }} ({{ $veh->make }} {{ $veh->model }} - {{ $veh->client->name }})">
+                                            <span class="font-semibold text-slate-900 dark:text-slate-100">{{ $veh->plate_number }}</span> 
+                                            <span class="text-xs text-slate-500 dark:text-slate-400">({{ $veh->make }} {{ $veh->model }} - {{ $veh->client->name }})</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
                             <span class="text-[11px] text-slate-500 mt-1 block leading-normal">Vehicles must be registered under a client profile first.</span>
                         </div>
 
@@ -292,4 +299,74 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('vehicle_search');
+    const dropdown = document.getElementById('vehicle_dropdown');
+    const hiddenInput = document.getElementById('vehicle_id_hidden');
+    
+    if (searchInput && dropdown && hiddenInput) {
+        const options = Array.from(dropdown.querySelectorAll('[data-value]'));
+
+        // Show dropdown on focus
+        searchInput.addEventListener('focus', () => {
+            dropdown.classList.remove('hidden');
+        });
+
+        // Hide dropdown on click outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Filter options on input
+        searchInput.addEventListener('input', () => {
+            const val = searchInput.value.toLowerCase();
+            hiddenInput.value = ''; // clear value if typing
+            let matchCount = 0;
+            options.forEach(opt => {
+                const text = opt.getAttribute('data-text').toLowerCase();
+                if (text.includes(val)) {
+                    opt.classList.remove('hidden');
+                    matchCount++;
+                } else {
+                    opt.classList.add('hidden');
+                }
+            });
+            
+            if (matchCount === 0) {
+                dropdown.classList.add('hidden');
+            } else {
+                dropdown.classList.remove('hidden');
+            }
+        });
+
+        // Select option on click
+        options.forEach(opt => {
+            opt.addEventListener('click', () => {
+                const value = opt.getAttribute('data-value');
+                const text = opt.getAttribute('data-text');
+                hiddenInput.value = value;
+                searchInput.value = text;
+                dropdown.classList.add('hidden');
+            });
+        });
+        
+        // Prevent form submission if vehicle is not selected from list
+        const form = searchInput.closest('form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                if (!hiddenInput.value) {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.classList.add('border-red-500');
+                    alert('Please select a registered vehicle from the search dropdown.');
+                }
+            });
+        }
+    }
+});
+</script>
 @endsection

@@ -192,7 +192,7 @@ class KanbanBoardTest extends TestCase
             'status' => 'draft' // Unpaid
         ]);
 
-        // 4. Job Card with no bill generated yet in waiting-to-pickup status (Should be hidden because bill does not exist)
+        // 4. Job Card with no bill generated yet in waiting-to-pickup status (Should be hidden because bill does not exist and ticket_sum is 0)
         $noBillReady = JobCard::create([
             'vehicle_id' => $this->vehicle->id,
             'shop_id' => $this->shop->id,
@@ -202,6 +202,18 @@ class KanbanBoardTest extends TestCase
         $noBillReady->created_at = now();
         $noBillReady->completed_at = now();
         $noBillReady->save();
+
+        // 5. Job Card with no bill but estimated_cost > 0 (Should be visible because ticket_sum > 0)
+        $noBillWithCostReady = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'waiting-to-pickup',
+            'card_number' => 'TDC-9005',
+            'estimated_cost' => 1000.00
+        ]);
+        $noBillWithCostReady->created_at = now();
+        $noBillWithCostReady->completed_at = now();
+        $noBillWithCostReady->save();
 
         // Hit the board with unpaid filter active (ignoring date range)
         $response = $this->actingAs($this->superManager)->get(route('job-cards.board', [
@@ -218,7 +230,8 @@ class KanbanBoardTest extends TestCase
         $this->assertContains('TDC-9001', $totalJobCards);    // Kept (unpaid, ready, created 10 days ago)
         $this->assertNotContains('TDC-9002', $totalJobCards); // Excluded (paid & ready)
         $this->assertNotContains('TDC-9003', $totalJobCards); // Excluded (active status)
-        $this->assertNotContains('TDC-9004', $totalJobCards); // Excluded (no bill exists)
+        $this->assertNotContains('TDC-9004', $totalJobCards); // Excluded (no bill exists and total cost is 0)
+        $this->assertContains('TDC-9005', $totalJobCards);    // Kept (unpaid, no bill but cost > 0)
     }
 
     /**
