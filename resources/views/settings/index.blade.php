@@ -437,6 +437,17 @@
                                                     Restore Database
                                                 </button>
                                             </form>
+
+                                            <!-- Delete form -->
+                                            <form action="{{ route('settings.backup.delete', $bkp['name']) }}" method="POST" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" 
+                                                        onclick="return confirm('Are you sure you want to permanently delete this backup?')"
+                                                        class="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-600 dark:text-red-400 font-semibold rounded transition text-[10px] cursor-pointer">
+                                                    Delete
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

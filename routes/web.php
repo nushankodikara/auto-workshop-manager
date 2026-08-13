@@ -175,6 +175,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/payroll/attendance', [PayrollController::class, 'attendanceStore'])->name('payroll.attendance.store');
     Route::get('/payroll/attendance/user/{user}', [PayrollController::class, 'employeeAttendanceIndex'])->name('payroll.attendance.employee');
     Route::post('/payroll/attendance/user/{user}', [PayrollController::class, 'employeeAttendanceStore'])->name('payroll.attendance.employee.store');
+    Route::get('/payroll/attendance/print', [PayrollController::class, 'printAttendanceSummary'])->name('payroll.attendance.print');
 
     // Employee CRUD
     Route::post('/employees', [PayrollController::class, 'employeeStore'])->name('employees.store');
@@ -220,6 +221,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/backup', [App\Http\Controllers\SettingsController::class, 'backup'])->name('settings.backup');
     Route::post('/settings/restore', [App\Http\Controllers\SettingsController::class, 'restore'])->name('settings.restore');
     Route::get('/settings/backup/download/{filename}', [App\Http\Controllers\SettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::delete('/settings/backup/{filename}', [App\Http\Controllers\SettingsController::class, 'deleteBackup'])->name('settings.backup.delete');
     Route::post('/settings/backup/upload-restore', [App\Http\Controllers\SettingsController::class, 'uploadRestore'])->name('settings.backup.upload-restore');
     Route::post('/settings/logo', [App\Http\Controllers\SettingsController::class, 'uploadLogo'])->name('settings.logo');
     Route::delete('/settings/logo', [App\Http\Controllers\SettingsController::class, 'deleteLogo'])->name('settings.logo.delete');

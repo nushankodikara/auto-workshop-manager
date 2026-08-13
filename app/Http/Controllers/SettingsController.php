@@ -99,6 +99,24 @@ class SettingsController extends Controller
     }
 
     /**
+     * Delete a database backup file.
+     */
+    public function deleteBackup($filename)
+    {
+        $this->checkAccess();
+
+        $backupDir = env('BACKUP_DIR', base_path('backups'));
+        $filePath = $backupDir . '/' . basename($filename);
+
+        if (File::exists($filePath)) {
+            File::delete($filePath);
+            return back()->with('success', 'Backup file deleted successfully.');
+        }
+
+        return back()->withErrors(['error' => 'Backup file not found.']);
+    }
+
+    /**
      * Upload backup sqlite database and trigger restore.
      */
     public function uploadRestore(Request $request)

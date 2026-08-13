@@ -568,6 +568,99 @@ class DashboardController extends Controller
         $dailyBreakEvenTarget = $remainingBreakEven / $daysLeft;
         $breakEvenMonthName = date('F');
 
+        // Fetch Job Cards for the new view
+        $jobCardsQuery = \App\Models\JobCard::with(['vehicle.client', 'bill', 'stockMovements', 'miscParts', 'assignments.user', 'services', 'outsourcingItems']);
+        if ($startDate) {
+            $jobCardsQuery->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $jobCardsQuery->whereDate('created_at', '<=', $endDate);
+        }
+        $rawJobCards = $jobCardsQuery->orderBy('created_at', 'desc')->get();
+
+        // Group by day
+        $jobCardsByDay = $rawJobCards->groupBy(function($jc) {
+            return $jc->created_at->format('Y-m-d');
+        });
+
+        // Precalculate weighted average costs for consumables (needed for proration)
+        $weightedAvgCostsForProration = [];
+        $consumablesList = \App\Models\Consumable::all();
+        foreach ($consumablesList as $item) {
+            $totalQty = floatval($item->purchases()->sum('quantity'));
+            $totalCost = floatval($item->purchases()->sum('cost_price'));
+            $weightedAvgCostsForProration[$item->id] = $totalQty > 0 ? ($totalCost / $totalQty) : 0.00;
+        }
+
+        // Map and format job cards by day
+        $formattedJobCardsByDay = [];
+        foreach ($jobCardsByDay as $dateStr => $dayJobCards) {
+            // Calculate daily consumables cost for this day
+            $dateUsages = \App\Models\ConsumableUsage::whereDate('recorded_at', $dateStr)->get();
+            $dailyConsumablesCost = 0.00;
+            foreach ($dateUsages as $usage) {
+                $avgCost = $weightedAvgCostsForProration[$usage->consumable_id] ?? 0.00;
+                $dailyConsumablesCost += floatval($usage->quantity_consumed) * $avgCost;
+            }
+            $jcCount = count($dayJobCards);
+            $proratedConsumables = $jcCount > 0 ? ($dailyConsumablesCost / $jcCount) : 0.00;
+
+            $formattedJobs = [];
+            foreach ($dayJobCards as $jc) {
+                // Income
+                $income = $jc->bill ? floatval($jc->bill->total_amount) : 0.00;
+
+                // Outgoing parts (inventory)
+                $partsCostInventory = floatval($jc->stockMovements
+                    ->where('type', 'out')
+                    ->sum(function($mov) {
+                        return abs($mov->quantity) * floatval($mov->cost_price);
+                    }));
+
+                // Outgoing parts (misc)
+                $partsCostMisc = floatval($jc->miscParts->sum('cost_price'));
+
+                // Outgoing outsourcing
+                $outsourcingCost = floatval($jc->outsourcingItems->sum('cost_price'));
+
+                // Outgoing labor
+                $labourCost = 0.00;
+                foreach ($jc->assignments as $assignment) {
+                    $worker = $assignment->user;
+                    if ($worker) {
+                        $activeHours = floatval($assignment->active_hours);
+                        $otHours = floatval($assignment->overtime_hours);
+                        $reqDays = max(1, (int)($worker->required_days ?? 26));
+                        $dailyWage = floatval($worker->basic_salary) / $reqDays;
+                        $regularHourlyRate = $dailyWage / 9.5;
+                        
+                        $labourCost += ($activeHours * $regularHourlyRate) + ($otHours * floatval($worker->overtime_rate));
+                    }
+                }
+
+                $totalOutgoing = $partsCostInventory + $partsCostMisc + $outsourcingCost + $labourCost + $proratedConsumables;
+
+                $formattedJobs[] = [
+                    'id' => $jc->id,
+                    'card_number' => $jc->card_number,
+                    'status' => $jc->status,
+                    'plate_number' => $jc->vehicle->plate_number ?? 'Unknown',
+                    'client_name' => $jc->vehicle->client->name ?? 'Unknown',
+                    'bill_number' => $jc->bill->bill_number ?? null,
+                    'income' => $income,
+                    'parts_inventory' => $partsCostInventory,
+                    'parts_misc' => $partsCostMisc,
+                    'outsourcing' => $outsourcingCost,
+                    'labor' => $labourCost,
+                    'consumables' => $proratedConsumables,
+                    'outgoing' => $totalOutgoing,
+                    'profit' => $income - $totalOutgoing
+                ];
+            }
+
+            $formattedJobCardsByDay[$dateStr] = $formattedJobs;
+        }
+
         return view('dashboard.statistics', compact(
             'startDate', 'endDate',
             'totalIncome', 'totalStockPurchases', 'paidBasicSalaries', 'paidAllowances', 'totalPayroll',
@@ -577,7 +670,8 @@ class DashboardController extends Controller
             'outsourcingRevenue', 'outsourcingCOGS', 'outsourcingProfit', 'outsourcingMargin',
             'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin',
             'dailyTimeline', 'expendituresByAccount',
-            'remainingBreakEven', 'daysLeft', 'dailyBreakEvenTarget', 'totalAugustCosts', 'totalAugustIncome', 'breakEvenMonthName'
+            'remainingBreakEven', 'daysLeft', 'dailyBreakEvenTarget', 'totalAugustCosts', 'totalAugustIncome', 'breakEvenMonthName',
+            'formattedJobCardsByDay'
         ));
     }
 }

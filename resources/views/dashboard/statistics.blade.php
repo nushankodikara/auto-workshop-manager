@@ -42,6 +42,9 @@
         <button onclick="switchStatsTab('dashboard-trends')" id="btn-tab-trends" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer">
             Trends & Predictions
         </button>
+        <button onclick="switchStatsTab('dashboard-jobcards')" id="btn-tab-jobcards" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer">
+            Job Cards Detail
+        </button>
     </div>
 
     <!-- 1. TAB: Overview & Analytics -->
@@ -675,6 +678,119 @@
         </div>
     </div>
 
+    <!-- 4. TAB: Job Cards Detail -->
+    <div id="dashboard-jobcards" class="tab-content hidden space-y-6">
+        @php
+            $statusBadges = [
+                'received-vehicle' => ['label' => 'Received', 'badge' => 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'],
+                'on-going' => ['label' => 'Ongoing', 'badge' => 'bg-primary/10 text-primary'],
+                'blocked' => ['label' => 'Blocked', 'badge' => 'bg-red-500/10 text-red-500'],
+                'testing' => ['label' => 'Testing', 'badge' => 'bg-indigo-500/10 text-indigo-500'],
+                'waiting-to-pickup' => ['label' => 'Ready', 'badge' => 'bg-green-500/10 text-green-600 dark:text-green-400'],
+            ];
+        @endphp
+
+        @if(empty($formattedJobCardsByDay))
+            <div class="text-slate-500 text-sm py-12 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+                No Job Cards found in the selected date range.
+            </div>
+        @else
+            @foreach($formattedJobCardsByDay as $dateStr => $dayJobs)
+                @php
+                    $dayIncome = collect($dayJobs)->sum('income');
+                    $dayOutgoing = collect($dayJobs)->sum('outgoing');
+                    $dayProfit = $dayIncome - $dayOutgoing;
+                @endphp
+                <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-slate-200 dark:border-slate-800">
+                    <!-- Day Header Card -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-4 h-4 text-primary"></i>
+                                <span>{{ \Carbon\Carbon::parse($dateStr)->format('F d, Y') }}</span>
+                                <span class="text-xs font-normal text-slate-500">({{ count($dayJobs) }} Job Cards)</span>
+                            </h3>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3 text-xs font-mono font-semibold">
+                            <span class="text-green-600 dark:text-green-400 bg-green-500/5 px-2.5 py-1 rounded">
+                                In: Rs. {{ number_format($dayIncome, 2) }}
+                            </span>
+                            <span class="text-red-500 bg-red-500/5 px-2.5 py-1 rounded">
+                                Out: Rs. {{ number_format($dayOutgoing, 2) }}
+                            </span>
+                            <span class="{{ $dayProfit >= 0 ? 'text-primary' : 'text-red-500' }} bg-primary/5 px-2.5 py-1 rounded">
+                                Profit: Rs. {{ number_format($dayProfit, 2) }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Job Cards Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                                    <th class="py-3 px-4">Job Card No</th>
+                                    <th class="py-3 px-4">Vehicle</th>
+                                    <th class="py-3 px-4">Client</th>
+                                    <th class="py-3 px-4">Status</th>
+                                    <th class="py-3 px-4 text-right">Income</th>
+                                    <th class="py-3 px-4 text-right">Parts Cost</th>
+                                    <th class="py-3 px-4 text-right">Labor Cost</th>
+                                    <th class="py-3 px-4 text-right">Outsource Cost</th>
+                                    <th class="py-3 px-4 text-right">Consumables</th>
+                                    <th class="py-3 px-4 text-right">Total Outgoing</th>
+                                    <th class="py-3 px-4 text-right">Profit / Loss</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                                @foreach($dayJobs as $job)
+                                    <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/20 transition">
+                                        <td class="py-3 px-4 font-mono font-bold text-primary">
+                                            <a href="{{ route('job-cards.show', $job['id']) }}" class="hover:underline">
+                                                {{ $job['card_number'] }}
+                                            </a>
+                                        </td>
+                                        <td class="py-3 px-4 font-mono text-slate-800 dark:text-slate-200">{{ $job['plate_number'] }}</td>
+                                        <td class="py-3 px-4 text-slate-800 dark:text-slate-200">{{ $job['client_name'] }}</td>
+                                        <td class="py-3 px-4">
+                                            @php
+                                                $badgeInfo = $statusBadges[$job['status']] ?? ['label' => $job['status'], 'badge' => 'bg-slate-100 text-slate-500'];
+                                            @endphp
+                                            <span class="px-2 py-0.5 text-[9px] font-bold rounded-full {{ $badgeInfo['badge'] }}">
+                                                {{ $badgeInfo['label'] }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono text-green-600 dark:text-green-400 font-semibold">
+                                            {{ $job['income'] > 0 ? 'Rs. ' . number_format($job['income'], 2) : '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
+                                            {{ ($job['parts_inventory'] + $job['parts_misc']) > 0 ? 'Rs. ' . number_format($job['parts_inventory'] + $job['parts_misc'], 2) : '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
+                                            {{ $job['labor'] > 0 ? 'Rs. ' . number_format($job['labor'], 2) : '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
+                                            {{ $job['outsourcing'] > 0 ? 'Rs. ' . number_format($job['outsourcing'], 2) : '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
+                                            {{ $job['consumables'] > 0 ? 'Rs. ' . number_format($job['consumables'], 2) : '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono text-red-500 font-semibold">
+                                            {{ $job['outgoing'] > 0 ? 'Rs. ' . number_format($job['outgoing'], 2) : '-' }}
+                                        </td>
+                                        <td class="py-3 px-4 text-right font-mono font-semibold {{ $job['profit'] >= 0 ? 'text-primary' : 'text-red-500' }}">
+                                            Rs. {{ number_format($job['profit'], 2) }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endforeach
+        @endif
+    </div>
+
 </div>
 
 <!-- Chart.js Advanced Generation Script -->
@@ -1064,10 +1180,12 @@
         document.getElementById('btn-tab-overview').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
         document.getElementById('btn-tab-calendar').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
         document.getElementById('btn-tab-trends').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
+        document.getElementById('btn-tab-jobcards').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
 
         let activeBtnId = 'btn-tab-overview';
         if (tabId === 'dashboard-calendar') activeBtnId = 'btn-tab-calendar';
         if (tabId === 'dashboard-trends') activeBtnId = 'btn-tab-trends';
+        if (tabId === 'dashboard-jobcards') activeBtnId = 'btn-tab-jobcards';
 
         document.getElementById(activeBtnId).className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-primary text-primary transition uppercase tracking-wider cursor-pointer";
         localStorage.setItem('stats_active_tab', tabId);

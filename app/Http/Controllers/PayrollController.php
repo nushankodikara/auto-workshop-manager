@@ -886,4 +886,38 @@ class PayrollController extends Controller
 
         return back()->with('success', 'Salary advance cancelled and matching ledger entry cleared.');
     }
+
+    /**
+     * Export / Print monthly attendance summary.
+     */
+    public function printAttendanceSummary(Request $request)
+    {
+        $year = (int)$request->input('year', date('Y'));
+        $month = (int)$request->input('month', date('m'));
+
+        $users = User::where('is_archived', false)->orderBy('name')->get();
+        $daysInMonth = (int)date('t', mktime(0, 0, 0, $month, 1, $year));
+
+        // Load attendance data
+        $attendanceData = Attendance::whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->get()
+            ->groupBy('user_id');
+
+        $startDateStr = sprintf('%04d-%02d-01', $year, $month);
+        $endDateStr = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
+        
+        $advancesThisMonth = \App\Models\EmployeeAdvance::whereBetween('advance_date', [$startDateStr, $endDateStr])
+            ->where('status', '!=', 'cancelled')
+            ->select('user_id', DB::raw('SUM(amount) as total_amount'))
+            ->groupBy('user_id')
+            ->get()
+            ->pluck('total_amount', 'user_id');
+
+        $preparedBy = Auth::user() ? Auth::user()->name : 'System Administrator';
+
+        return view('payroll.print_attendance', compact(
+            'users', 'year', 'month', 'daysInMonth', 'attendanceData', 'advancesThisMonth', 'preparedBy'
+        ));
+    }
 }
