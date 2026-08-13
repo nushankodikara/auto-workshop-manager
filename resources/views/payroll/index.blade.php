@@ -657,6 +657,56 @@
             </button>
         </div>
 
+        <!-- Outstanding Summary Table -->
+        <div class="space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4 text-primary"></i>
+                <span>Outstanding Unrecovered Balances (as of {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }})</span>
+            </h4>
+            <div class="app-card rounded-2xl overflow-x-auto shadow-xs border border-slate-200 dark:border-slate-800">
+                <table class="w-full text-left border-collapse text-sm min-w-[600px]">
+                    <thead>
+                        <tr class="bg-slate-100/60 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                            <th class="py-4 px-6">Employee</th>
+                            <th class="py-4 px-6 text-right">Outstanding Salary Advances</th>
+                            <th class="py-4 px-6 text-right">Outstanding Benefit Advances</th>
+                            <th class="py-4 px-6 text-right">Total Outstanding</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                        @forelse($pendingSummary as $sum)
+                            <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition text-slate-750 dark:text-slate-300">
+                                <td class="py-4 px-6 font-semibold text-slate-855 dark:text-slate-200 capitalize">
+                                    {{ $sum->user->name ?? 'Unknown Employee' }}
+                                    <span class="block text-[10px] text-slate-500 mt-0.5 capitalize">{{ $sum->user->role ?? '' }}</span>
+                                </td>
+                                <td class="py-4 px-6 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
+                                    {{ config('app.currency', 'Rs.') }}{{ number_format($sum->pending_salaries, 2) }}
+                                </td>
+                                <td class="py-4 px-6 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                    {{ config('app.currency', 'Rs.') }}{{ number_format($sum->pending_benefits, 2) }}
+                                </td>
+                                <td class="py-4 px-6 text-right font-mono font-bold text-slate-800 dark:text-slate-105">
+                                    {{ config('app.currency', 'Rs.') }}{{ number_format($sum->total_pending, 2) }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-slate-500 text-xs">
+                                    No outstanding unrecovered advances or benefits as of this period.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-8 mb-2 flex items-center gap-2">
+            <i data-lucide="history" class="w-4 h-4 text-primary"></i>
+            <span>All Historical Advance Records</span>
+        </h4>
+
         <div class="app-card rounded-2xl overflow-x-auto shadow-xs">
             <table class="datatable w-full text-left border-collapse text-sm">
                 <thead>

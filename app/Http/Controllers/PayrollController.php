@@ -37,11 +37,36 @@ class PayrollController extends Controller
             ->get()
             ->groupBy('user_id');
 
+        $endDate = sprintf('%04d-%02d-%02d', $year, $month, date('t', mktime(0, 0, 0, $month, 1, $year)));
+
+        $pendingSummary = \App\Models\EmployeeAdvance::where('advance_date', '<=', $endDate)
+            ->where(function($query) use ($year, $month) {
+                $query->where('status', 'pending')
+                      ->orWhere(function($q) use ($year, $month) {
+                          $q->where('status', 'deducted')
+                            ->whereHas('payrollSlip', function($sub) use ($year, $month) {
+                                $sub->where('year', '>', $year)
+                                    ->orWhere(function($sub2) use ($year, $month) {
+                                        $sub2->where('year', $year)
+                                             ->where('month', '>', $month);
+                                    });
+                            });
+                      });
+            })
+            ->select('user_id', 
+                DB::raw("SUM(CASE WHEN type = 'benefit' THEN amount ELSE 0 END) as pending_benefits"),
+                DB::raw("SUM(CASE WHEN type = 'salary' OR type IS NULL THEN amount ELSE 0 END) as pending_salaries"),
+                DB::raw("SUM(amount) as total_pending")
+            )
+            ->groupBy('user_id')
+            ->with('user')
+            ->get();
+
         $advances = \App\Models\EmployeeAdvance::with('user')
             ->orderBy('advance_date', 'desc')
             ->get();
 
-        return view('payroll.index', compact('slips', 'users', 'archivedUsers', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData', 'advances'));
+        return view('payroll.index', compact('slips', 'users', 'archivedUsers', 'categories', 'year', 'month', 'daysInMonth', 'attendanceData', 'advances', 'pendingSummary'));
     }
 
     /**
@@ -93,10 +118,121 @@ class PayrollController extends Controller
         $baseAllowance = max(0.00, floatval($user->total_salary) - floatval($user->basic_salary));
 
         $categories = PayrollCategory::all();
-        $pendingSalaryAdvancesSum = floatval($user->pendingAdvances()->where(function($q) { $q->where('type', 'salary')->orWhereNull('type'); })->sum('amount'));
-        $pendingBenefitAdvances = $user->pendingAdvances()->where('type', 'benefit')->get();
+        
+        $startDate = sprintf('%04d-%02d-01', $year, $month);
+        $endDate = sprintf('%04d-%02d-%02d', $year, $month, date('t', mktime(0, 0, 0, $month, 1, $year)));
 
-        return view('payroll.create', compact('user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 'baseAllowance', 'pendingSalaryAdvancesSum', 'pendingBenefitAdvances'));
+        $pendingSalaryAdvancesSum = floatval(
+            $user->pendingAdvances()
+                ->where('advance_date', '>=', $startDate)
+                ->where('advance_date', '<=', $endDate)
+                ->where(function($q) {
+                    $q->where('type', 'salary')->orWhereNull('type');
+                })
+                ->sum('amount')
+        );
+        $pendingBenefitAdvances = $user->pendingAdvances()
+            ->where('advance_date', '>=', $startDate)
+            ->where('advance_date', '<=', $endDate)
+            ->where('type', 'benefit')
+            ->get();
+
+        // Check if there is a previous salary slip to copy structure from
+        $previousSlip = PayrollSlip::where('user_id', $user->id)
+            ->where(function($query) use ($year, $month) {
+                $query->where('year', '<', $year)
+                      ->orWhere(function($q) use ($year, $month) {
+                          $q->where('year', $year)
+                            ->where('month', '<', $month);
+                      });
+            })
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->first();
+
+        if ($previousSlip) {
+            $prevItems = $previousSlip->items;
+
+            // Additions
+            $additions = $prevItems->where('type', 'addition')->map(function($item) {
+                return [
+                    'name' => $item->category_name,
+                    'amount' => $item->amount
+                ];
+            })->values()->all();
+
+            // Deductions (excluding 'Advance Payment')
+            $deductions = $prevItems->where('type', 'deduction')
+                ->where('category_name', '!=', 'Advance Payment')
+                ->map(function($item) {
+                    return [
+                        'name' => $item->category_name,
+                        'amount' => $item->amount
+                    ];
+                })->values()->all();
+
+            // Always ensure 'Advance Payment' deduction is present
+            $deductions[] = [
+                'name' => 'Advance Payment',
+                'amount' => $pendingSalaryAdvancesSum > 0 ? $pendingSalaryAdvancesSum : null
+            ];
+
+            // Benefits (excluding prepaid benefit advances)
+            $benefits = $prevItems->where('type', 'benefit')
+                ->filter(function($item) {
+                    return !str_starts_with($item->category_name, 'Prepaid Benefit:');
+                })
+                ->map(function($item) {
+                    return [
+                        'name' => $item->category_name,
+                        'amount' => $item->amount
+                    ];
+                })->values()->all();
+        } else {
+            // Default categories if no previous slip exists
+            $additions = [];
+            if ($baseAllowance > 0) {
+                $additions[] = [
+                    'name' => 'Base Allowance',
+                    'amount' => $baseAllowance
+                ];
+            }
+            foreach ($categories->where('type', 'addition') as $cat) {
+                $additions[] = [
+                    'name' => $cat->name,
+                    'amount' => $cat->default_amount
+                ];
+            }
+
+            // Deductions
+            $deductions = [];
+            foreach ($categories->where('type', 'deduction') as $cat) {
+                $amount = $cat->default_amount;
+                if ($cat->name === 'Advance Payment') {
+                    $amount = $pendingSalaryAdvancesSum > 0 ? $pendingSalaryAdvancesSum : null;
+                }
+                $deductions[] = [
+                    'name' => $cat->name,
+                    'amount' => $amount
+                ];
+            }
+
+            // Benefits
+            $benefits = [];
+            foreach ($categories->where('type', 'benefit') as $cat) {
+                $benefits[] = [
+                    'name' => $cat->name,
+                    'amount' => $cat->default_amount
+                ];
+            }
+        }
+
+        return view('payroll.create', compact(
+            'user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 
+            'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 
+            'baseAllowance', 'pendingSalaryAdvancesSum', 'pendingBenefitAdvances',
+            'additions', 'deductions', 'benefits'
+        ));
     }
 
     /**
@@ -157,8 +293,14 @@ class PayrollController extends Controller
                 'status' => 'draft'
             ]);
 
-            // Link pending advances to this payroll slip & mark as deducted
-            $pendingAdvances = $user->pendingAdvances()->get();
+            // Link pending advances within the calendar month to this payroll slip & mark as deducted
+            $startDate = sprintf('%04d-%02d-01', $data['year'], $data['month']);
+            $endDate = sprintf('%04d-%02d-%02d', $data['year'], $data['month'], date('t', mktime(0, 0, 0, $data['month'], 1, $data['year'])));
+
+            $pendingAdvances = $user->pendingAdvances()
+                ->where('advance_date', '>=', $startDate)
+                ->where('advance_date', '<=', $endDate)
+                ->get();
             foreach ($pendingAdvances as $advance) {
                 $advance->update([
                     'status' => 'deducted',

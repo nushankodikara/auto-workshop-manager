@@ -93,7 +93,7 @@ class PayrollAdvanceAndBenefitsTest extends TestCase
         $advance = EmployeeAdvance::create([
             'user_id' => $this->employee->id,
             'amount' => 10000.00,
-            'advance_date' => date('Y-m-d'),
+            'advance_date' => '2026-07-15',
             'reason' => 'Advance',
             'status' => 'pending'
         ]);
@@ -187,5 +187,93 @@ class PayrollAdvanceAndBenefitsTest extends TestCase
 
         $this->assertEquals(4500.00, floatval($debitItem->debit));
         $this->assertEquals(4500.00, floatval($creditItem->credit));
+    }
+
+    public function test_payroll_slip_month_wise_advances_and_structure_copying()
+    {
+        $this->actingAs($this->superManager);
+
+        // 1. Issue an advance in July 2026 and another in August 2026
+        $julyAdvance = EmployeeAdvance::create([
+            'user_id' => $this->employee->id,
+            'amount' => 5000.00,
+            'advance_date' => '2026-07-15',
+            'reason' => 'July Advance',
+            'status' => 'pending'
+        ]);
+
+        $augustAdvance = EmployeeAdvance::create([
+            'user_id' => $this->employee->id,
+            'amount' => 8000.00,
+            'advance_date' => '2026-08-05',
+            'reason' => 'August Advance',
+            'status' => 'pending'
+        ]);
+
+        // 2. Load create workspace for July 2026
+        $response = $this->get(route('payroll.create', [
+            'user' => $this->employee->id,
+            'year' => 2026,
+            'month' => 7
+        ]));
+        $response->assertStatus(200);
+        // July advance should be seen (5000)
+        $response->assertSee('5000');
+        // August advance should NOT be seen (8000)
+        $response->assertDontSee('8000');
+
+        // 3. Save the Payslip for July 2026
+        $payslipResponse = $this->post(route('payroll.store'), [
+            'user_id' => $this->employee->id,
+            'month' => 7,
+            'year' => 2026,
+            'required_days' => 26,
+            'attended_days' => 26,
+            'overtime_hours' => 0,
+            'overtime_rate' => 0,
+            'overtime_amount' => 0,
+            'prorated_salary' => 60000.00,
+            'total_salary' => 60000.00,
+            'item_name' => ['Advance Payment', 'Project Bonus'],
+            'item_type' => ['deduction', 'addition'],
+            'item_amount' => [5000.00, 3500.00]
+        ]);
+        $payslipResponse->assertRedirect();
+
+        // July advance should be deducted, August should still be pending
+        $julyAdvance->refresh();
+        $augustAdvance->refresh();
+        $this->assertEquals('deducted', $julyAdvance->status);
+        $this->assertEquals('pending', $augustAdvance->status);
+
+        // 4. Load create workspace for August 2026
+        $response2 = $this->get(route('payroll.create', [
+            'user' => $this->employee->id,
+            'year' => 2026,
+            'month' => 8
+        ]));
+        $response2->assertStatus(200);
+        // Should copy "Project Bonus" allowance (3500) from July slip
+        $response2->assertSee('Project Bonus');
+        $response2->assertSee('3500');
+        // Should show August advance (8000)
+        $response2->assertSee('8000');
+        // Should NOT show July advance (5000) anymore as it was already deducted
+        $response2->assertDontSee('5000');
+
+        // 5. Check index page summary for July 2026 vs August 2026
+        $indexResponse = $this->get(route('payroll.index', [
+            'year' => 2026,
+            'month' => 7
+        ]));
+        $indexResponse->assertStatus(200);
+
+        $indexResponse2 = $this->get(route('payroll.index', [
+            'year' => 2026,
+            'month' => 8
+        ]));
+        $indexResponse2->assertStatus(200);
+        // Should see August advance amount (8,000.00) in the summary
+        $indexResponse2->assertSee('8,000.00');
     }
 }

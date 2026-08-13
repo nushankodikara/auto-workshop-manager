@@ -18,8 +18,6 @@
     <form action="{{ route('payroll.store') }}" method="POST" class="space-y-8">
         @csrf
         <input type="hidden" name="user_id" value="{{ $user->id }}">
-        <input type="hidden" name="month" value="{{ $month }}">
-        <input type="hidden" name="year" value="{{ $year }}">
         <input type="hidden" name="total_salary" value="{{ $user->total_salary }}">
 
         <!-- 1. Employee Context -->
@@ -29,10 +27,23 @@
                 <span class="font-bold text-slate-800 dark:text-slate-200 text-sm capitalize block">{{ $user->name }}</span>
             </div>
             <div>
-                <span class="text-xs text-slate-500 uppercase tracking-wider block font-semibold mb-1">Pay Period</span>
-                <span class="font-semibold text-slate-800 dark:text-slate-200 text-sm block">
-                    {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}
-                </span>
+                <label class="text-xs text-slate-500 uppercase tracking-wider block font-semibold mb-1">Pay Period</label>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                    <select name="month" id="workspace_month" onchange="changeWorkspacePeriod()"
+                            class="px-2 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs font-semibold focus:outline-none focus:border-primary cursor-pointer">
+                        @for($m = 1; $m <= 12; $m++)
+                            <option value="{{ $m }}" {{ $m == $month ? 'selected' : '' }}>
+                                {{ date('F', mktime(0, 0, 0, $m, 1)) }}
+                            </option>
+                        @endfor
+                    </select>
+                    <select name="year" id="workspace_year" onchange="changeWorkspacePeriod()"
+                            class="px-2 py-1 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs font-semibold focus:outline-none focus:border-primary cursor-pointer font-mono">
+                        @for($y = date('Y') - 2; $y <= date('Y') + 2; $y++)
+                            <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>{{ $y }}</option>
+                        @endfor
+                    </select>
+                </div>
             </div>
             <div>
                 <span class="text-xs text-slate-500 uppercase tracking-wider block font-semibold mb-1">Contract Basic Salary</span>
@@ -109,35 +120,21 @@
 
         <!-- 4. Allowances & Additions -->
         <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-2">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-555 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-2">
                 <i data-lucide="plus-circle" class="w-4 h-4 text-green-600 dark:text-green-400"></i>
                 <span>Allowances & Dynamic Additions</span>
             </h3>
 
             <div id="additions-container" class="space-y-3">
-                @if($baseAllowance > 0)
+                @foreach($additions as $addition)
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center addition-row">
                         <div class="md:col-span-3">
-                            <input type="text" name="item_name[]" value="Base Allowance" readonly
+                            <input type="text" name="item_name[]" value="{{ $addition['name'] }}" readonly
                                    class="w-full px-4 py-2 bg-slate-100/60 dark:bg-slate-950/40 border border-slate-250 dark:border-slate-850 rounded-lg text-slate-500 dark:text-slate-400 text-xs focus:outline-none">
                             <input type="hidden" name="item_type[]" value="addition">
                         </div>
                         <div>
-                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $baseAllowance }}" oninput="recalculateTotal()"
-                                   class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary addition-amount">
-                        </div>
-                    </div>
-                @endif
-
-                @foreach($categories->where('type', 'addition') as $cat)
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center addition-row">
-                        <div class="md:col-span-3">
-                            <input type="text" name="item_name[]" value="{{ $cat->name }}" readonly
-                                   class="w-full px-4 py-2 bg-slate-100/60 dark:bg-slate-950/40 border border-slate-250 dark:border-slate-850 rounded-lg text-slate-500 dark:text-slate-400 text-xs focus:outline-none">
-                            <input type="hidden" name="item_type[]" value="addition">
-                        </div>
-                        <div>
-                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $cat->default_amount ?? '' }}" oninput="recalculateTotal()"
+                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $addition['amount'] ?? '' }}" oninput="recalculateTotal()"
                                    class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary addition-amount">
                         </div>
                     </div>
@@ -159,21 +156,15 @@
             </h3>
 
             <div id="deductions-container" class="space-y-3">
-                @foreach($categories->where('type', 'deduction') as $cat)
+                @foreach($deductions as $deduction)
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center deduction-row">
                         <div class="md:col-span-3">
-                            <input type="text" name="item_name[]" value="{{ $cat->name }}" readonly
+                            <input type="text" name="item_name[]" value="{{ $deduction['name'] }}" readonly
                                    class="w-full px-4 py-2 bg-slate-100/60 dark:bg-slate-955/40 border border-slate-250 dark:border-slate-850 rounded-lg text-slate-500 dark:text-slate-400 text-xs focus:outline-none">
                             <input type="hidden" name="item_type[]" value="deduction">
                         </div>
                         <div>
-                            @php
-                                $val = $cat->default_amount ?? '';
-                                if ($cat->name === 'Advance Payment' && isset($pendingAdvancesSum) && $pendingAdvancesSum > 0) {
-                                    $val = $pendingAdvancesSum;
-                                }
-                            @endphp
-                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $val }}" oninput="recalculateTotal()"
+                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $deduction['amount'] ?? '' }}" oninput="recalculateTotal()"
                                    class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary deduction-amount">
                         </div>
                     </div>
@@ -210,15 +201,15 @@
                         </div>
                     @endforeach
                 @endif
-                @foreach($categories->where('type', 'benefit') as $cat)
+                @foreach($benefits as $benefit)
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center benefit-row">
                         <div class="md:col-span-3">
-                            <input type="text" name="item_name[]" value="{{ $cat->name }}" readonly
-                                   class="w-full px-4 py-2 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-lg text-slate-700 dark:text-slate-200 text-xs focus:outline-none">
+                            <input type="text" name="item_name[]" value="{{ $benefit['name'] }}" readonly
+                                   class="w-full px-4 py-2 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-lg text-slate-700 dark:text-slate-250 text-xs focus:outline-none">
                             <input type="hidden" name="item_type[]" value="benefit">
                         </div>
                         <div>
-                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $cat->default_amount ?? '' }}" oninput="recalculateTotal()"
+                            <input type="number" step="0.01" name="item_amount[]" placeholder="0.00" value="{{ $benefit['amount'] ?? '' }}" oninput="recalculateTotal()"
                                    class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-xs focus:outline-none focus:border-primary benefit-amount">
                         </div>
                     </div>
@@ -346,5 +337,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         recalculateTotal();
     });
+
+    function changeWorkspacePeriod() {
+        const year = document.getElementById('workspace_year').value;
+        const month = document.getElementById('workspace_month').value;
+        const userId = "{{ $user->id }}";
+        window.location.href = `/payroll/create/${userId}?year=${year}&month=${month}`;
+    }
 </script>
 @endsection
