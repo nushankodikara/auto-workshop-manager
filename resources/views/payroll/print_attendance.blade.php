@@ -176,7 +176,8 @@
                 <th>Employee Name</th>
                 <th>Role</th>
                 <th class="text-right">Number of Days (Present)</th>
-                <th class="text-right">Advances Paid</th>
+                <th class="text-right">Salary Advance</th>
+                <th class="text-right">Benefit Advance</th>
             </tr>
         </thead>
         <tbody>
@@ -191,14 +192,19 @@
                             $presentCount += 0.5;
                         }
                     }
-                    $advancesPaid = $advancesThisMonth->get($user->id, 0.00);
+                    $userAdvances = $advancesThisMonth->get($user->id, collect());
+                    $salaryAdvances = $userAdvances->where('type', 'salary')->sum('amount');
+                    $benefitAdvances = $userAdvances->where('type', 'benefit')->sum('amount');
                 @endphp
                 <tr>
                     <td style="font-weight: 600; text-transform: capitalize;">{{ $user->name }}</td>
                     <td style="text-transform: capitalize; color: #475569;">{{ $user->role }}</td>
                     <td class="text-right font-mono" style="font-weight: 600;">{{ $presentCount }}</td>
                     <td class="text-right font-mono">
-                        {{ $advancesPaid > 0 ? 'Rs. ' . number_format($advancesPaid, 2) : '-' }}
+                        {{ $salaryAdvances > 0 ? 'Rs. ' . number_format($salaryAdvances, 2) : '-' }}
+                    </td>
+                    <td class="text-right font-mono">
+                        {{ $benefitAdvances > 0 ? 'Rs. ' . number_format($benefitAdvances, 2) : '-' }}
                     </td>
                 </tr>
             @endforeach

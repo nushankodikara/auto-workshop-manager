@@ -910,10 +910,8 @@ class PayrollController extends Controller
         
         $advancesThisMonth = \App\Models\EmployeeAdvance::whereBetween('advance_date', [$startDateStr, $endDateStr])
             ->where('status', '!=', 'cancelled')
-            ->select('user_id', DB::raw('SUM(amount) as total_amount'))
-            ->groupBy('user_id')
             ->get()
-            ->pluck('total_amount', 'user_id');
+            ->groupBy('user_id');
 
         $preparedBy = Auth::user() ? Auth::user()->name : 'System Administrator';
 
