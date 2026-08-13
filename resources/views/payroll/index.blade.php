@@ -530,6 +530,19 @@
                             </div>
                         </div>
 
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="emp_attendance_allowance" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Base Attendance Allowance</label>
+                                <input type="number" step="0.01" name="attendance_allowance" id="emp_attendance_allowance" required value="0.00"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="emp_performance_allowance" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Base Performance Allowance</label>
+                                <input type="number" step="0.01" name="performance_allowance" id="emp_performance_allowance" required value="0.00"
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                        </div>
+
                         <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
                             <button type="submit"
                                     class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
@@ -629,6 +642,19 @@
                             <div>
                                 <label for="edit_emp_ot" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Overtime Rate/hr</label>
                                 <input type="number" step="0.01" name="overtime_rate" id="edit_emp_ot" required
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="edit_emp_attendance_allowance" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Base Attendance Allowance</label>
+                                <input type="number" step="0.01" name="attendance_allowance" id="edit_emp_attendance_allowance" required
+                                       class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                            </div>
+                            <div>
+                                <label for="edit_emp_performance_allowance" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Base Performance Allowance</label>
+                                <input type="number" step="0.01" name="performance_allowance" id="edit_emp_performance_allowance" required
                                        class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
                             </div>
                         </div>
@@ -911,6 +937,8 @@
         document.getElementById('edit_emp_total_salary').value = emp.total_salary;
         document.getElementById('edit_emp_req_days').value = emp.required_days;
         document.getElementById('edit_emp_ot').value = emp.overtime_rate;
+        document.getElementById('edit_emp_attendance_allowance').value = emp.attendance_allowance || '0.00';
+        document.getElementById('edit_emp_performance_allowance').value = emp.performance_allowance || '0.00';
         document.getElementById('edit-employee-drawer').classList.remove('hidden');
     }
 </script>

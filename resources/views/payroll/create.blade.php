@@ -60,11 +60,11 @@
             </div>
         </div>
 
-        <!-- 2. Attendance & Pro-Rata Base Salary Calculations -->
+        <!-- 2. Attendance & Salary/Allowance Calculations -->
         <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
             <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-2">
                 <i data-lucide="calendar" class="w-4 h-4 text-primary"></i>
-                <span>Attendance & Prorated Base Salary</span>
+                <span>Attendance, Basic Salary & Allowances</span>
             </h3>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -79,24 +79,51 @@
                            class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-sm focus:outline-none focus:border-primary">
                 </div>
                 <div>
-                    <label for="prorated_salary" class="block text-xs text-slate-500 mb-1 font-semibold">Prorated Basic Salary ({{ config('app.currency', 'Rs.') }})</label>
+                    <label for="prorated_salary" class="block text-xs text-slate-500 mb-1 font-semibold">Basic Salary (Static, {{ config('app.currency', 'Rs.') }})</label>
                     <input type="number" step="0.01" name="prorated_salary" id="prorated_salary" value="{{ $proratedSalary }}" oninput="recalculateTotal()"
                            class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-sm focus:outline-none focus:border-primary">
                 </div>
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 border-t border-slate-200 dark:border-slate-800 pt-4">
+                <div>
+                    <label for="attendance_allowance" class="block text-xs text-slate-500 mb-1 font-semibold">
+                        Attendance Allowance (Base: {{ config('app.currency', 'Rs.') }}{{ number_format($user->attendance_allowance, 2) }})
+                    </label>
+                    <input type="hidden" id="base_attendance_allowance" name="base_attendance_allowance" value="{{ $user->attendance_allowance }}">
+                    <input type="number" step="0.01" name="attendance_allowance" id="attendance_allowance" value="{{ $attendanceAllowanceAmount }}" oninput="recalculateTotal()"
+                           class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-sm focus:outline-none focus:border-primary font-bold text-green-600 dark:text-green-400">
+                </div>
+                <div>
+                    <label for="performance_allowance" class="block text-xs text-slate-500 mb-1 font-semibold">
+                        Performance Allowance (Base: {{ config('app.currency', 'Rs.') }}{{ number_format($user->performance_allowance, 2) }})
+                    </label>
+                    <input type="hidden" id="base_performance_allowance" name="base_performance_allowance" value="{{ $user->performance_allowance }}">
+                    <input type="number" step="0.01" name="performance_allowance" id="performance_allowance" value="{{ $performanceAllowanceAmount }}" oninput="recalculateTotal()"
+                           class="w-full px-4 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 font-mono text-sm focus:outline-none focus:border-primary font-bold text-green-600 dark:text-green-400">
+                </div>
+            </div>
+
             <p class="text-[10px] text-slate-500 leading-normal">
-                Formula: (Attended Days / Required Days) * Contract Basic Salary. Calculated automatically, but can be overridden manually if needed.
+                Basic salary remains static. Attendance & Performance allowances are pro-rated as <code>Allowance Base * (Attended Days / Required Days)</code> when employee is absent or present more than required.
             </p>
         </div>
 
         <!-- 3. Overtime Calculations -->
         <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-2">
-                <i data-lucide="clock" class="w-4 h-4 text-primary"></i>
-                <span>Overtime (OT) Log</span>
-            </h3>
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400 flex items-center gap-2">
+                    <i data-lucide="clock" class="w-4 h-4 text-primary"></i>
+                    <span>Overtime (OT) Log</span>
+                </h3>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="pay_overtime" id="pay_overtime" value="1" checked onchange="toggleOvertimePay()"
+                           class="w-4 h-4 rounded text-primary border-slate-300 dark:border-slate-700 focus:ring-primary cursor-pointer">
+                    <label for="pay_overtime" class="text-xs font-semibold text-slate-650 dark:text-slate-350 cursor-pointer">Pay Overtime This Month</label>
+                </div>
+            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div id="ot-inputs-grid" class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
                     <label for="overtime_hours" class="block text-xs text-slate-500 mb-1 font-semibold">Overtime Hours Worked</label>
                     <input type="number" step="0.01" name="overtime_hours" id="overtime_hours" value="{{ $overtimeHours }}" oninput="recalculate()"
@@ -114,7 +141,7 @@
                 </div>
             </div>
             <p class="text-[10px] text-slate-500 leading-normal">
-                Formula: Overtime Hours * Hourly OT Rate. Calculated automatically, but can be overridden manually if needed.
+                Formula: Overtime Hours * Hourly OT Rate. If disabled, overtime payout will be zeroed out.
             </p>
         </div>
 
@@ -282,24 +309,42 @@
         lucide.createIcons();
     }
 
+    function toggleOvertimePay() {
+        const payOt = document.getElementById('pay_overtime').checked;
+        const grid = document.getElementById('ot-inputs-grid');
+        if (payOt) {
+            grid.classList.remove('opacity-40', 'pointer-events-none');
+            grid.querySelectorAll('input').forEach(i => i.removeAttribute('readonly'));
+        } else {
+            grid.classList.add('opacity-40', 'pointer-events-none');
+            grid.querySelectorAll('input').forEach(i => i.setAttribute('readonly', 'true'));
+        }
+        recalculate();
+    }
+
     function recalculate() {
-        const contractSalary = parseFloat(document.getElementById('contract_salary').value) || 0;
         const requiredDays = parseInt(document.getElementById('required_days').value) || 0;
         const attendedDays = parseFloat(document.getElementById('attended_days').value) || 0;
         const otHours = parseFloat(document.getElementById('overtime_hours').value) || 0;
         const otRate = parseFloat(document.getElementById('overtime_rate').value) || 0;
+        const payOt = document.getElementById('pay_overtime').checked;
 
-        // Prorated Salary
-        let proratedSalary = contractSalary;
-        if (requiredDays > 0) {
-            proratedSalary = (attendedDays / requiredDays) * contractSalary;
-        } else {
-            proratedSalary = 0;
-        }
-        document.getElementById('prorated_salary').value = proratedSalary.toFixed(2);
+        // Pro-rate allowances based on ratio (y/x):
+        const baseAttendance = parseFloat(document.getElementById('base_attendance_allowance').value) || 0;
+        const basePerformance = parseFloat(document.getElementById('base_performance_allowance').value) || 0;
+        const ratio = requiredDays > 0 ? (attendedDays / requiredDays) : 0;
+        
+        const paidAttendance = baseAttendance * ratio;
+        const paidPerformance = basePerformance * ratio;
+        
+        document.getElementById('attendance_allowance').value = paidAttendance.toFixed(2);
+        document.getElementById('performance_allowance').value = paidPerformance.toFixed(2);
 
         // OT Amount
-        const otAmount = otHours * otRate;
+        let otAmount = 0.00;
+        if (payOt) {
+            otAmount = otHours * otRate;
+        }
         document.getElementById('overtime_amount').value = otAmount.toFixed(2);
 
         recalculateTotal();
@@ -307,6 +352,8 @@
 
     function recalculateTotal() {
         const proratedSalary = parseFloat(document.getElementById('prorated_salary').value) || 0;
+        const attendanceAllowance = parseFloat(document.getElementById('attendance_allowance').value) || 0;
+        const performanceAllowance = parseFloat(document.getElementById('performance_allowance').value) || 0;
         const overtimeAmount = parseFloat(document.getElementById('overtime_amount').value) || 0;
 
         // Sum additions
@@ -328,14 +375,14 @@
         });
 
         // Calculate Net
-        const netSalary = proratedSalary + overtimeAmount + allowanceSum - deductionSum;
+        const netSalary = proratedSalary + attendanceAllowance + performanceAllowance + overtimeAmount + allowanceSum - deductionSum;
         document.getElementById('net_salary_display').innerText = netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         document.getElementById('benefits_display').innerText = benefitSum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     // Run calculation once on load to populate net salary
     document.addEventListener('DOMContentLoaded', () => {
-        recalculateTotal();
+        recalculate();
     });
 
     function changeWorkspacePeriod() {

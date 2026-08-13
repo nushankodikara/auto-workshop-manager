@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['user_id', 'month', 'year', 'basic_salary', 'total_salary', 'allowance', 'deductions', 'company_benefits', 'net_salary', 'status', 'required_days', 'attended_days', 'overtime_hours', 'overtime_rate', 'overtime_amount', 'prorated_salary'])]
+#[Fillable(['user_id', 'month', 'year', 'basic_salary', 'total_salary', 'allowance', 'deductions', 'company_benefits', 'net_salary', 'status', 'required_days', 'attended_days', 'overtime_hours', 'overtime_rate', 'overtime_amount', 'prorated_salary', 'base_attendance_allowance', 'base_performance_allowance', 'attendance_allowance', 'performance_allowance', 'pay_overtime'])]
 class PayrollSlip extends Model
 {
     protected static function boot()
@@ -42,6 +42,11 @@ class PayrollSlip extends Model
             'overtime_rate' => 'decimal:2',
             'overtime_amount' => 'decimal:2',
             'prorated_salary' => 'decimal:2',
+            'base_attendance_allowance' => 'decimal:2',
+            'base_performance_allowance' => 'decimal:2',
+            'attendance_allowance' => 'decimal:2',
+            'performance_allowance' => 'decimal:2',
+            'pay_overtime' => 'boolean',
         ];
     }
 

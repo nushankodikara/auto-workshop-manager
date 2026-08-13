@@ -83,9 +83,20 @@
         @media print {
             body {
                 padding: 0;
+                font-size: 10px;
             }
             .no-print {
                 display: none !important;
+            }
+            @page {
+                size: landscape;
+                margin: 8mm;
+            }
+            table {
+                font-size: 9px;
+            }
+            th, td {
+                padding: 5px 6px;
             }
         }
     </style>
@@ -123,9 +134,9 @@
                 </div>
             </div>
 
-            <!-- Checked By Group -->
+            <!-- Inspected By Group -->
             <div style="flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px;">
-                <h4 style="margin: 0; font-size: 11px; text-transform: uppercase; color: #475569; font-weight: bold; border-b: 1px solid #e2e8f0; padding-bottom: 5px;">2. Checked By</h4>
+                <h4 style="margin: 0; font-size: 11px; text-transform: uppercase; color: #475569; font-weight: bold; border-b: 1px solid #e2e8f0; padding-bottom: 5px;">2. Inspected By</h4>
                 <div>
                     <label for="select-checked" style="display: block; font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">Select Name</label>
                     <select id="select-checked" style="width: 100%; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px;">
@@ -165,9 +176,9 @@
         </div>
     </div>
 
-    <div class="header">
+    <div class="header" style="margin-bottom: 20px;">
         <h1>Total Drive Care Solutions (PVT) LTD</h1>
-        <p>Monthly Attendance & Advance Summary — {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
+        <p style="font-weight: bold;">Monthly Salary, Allowances & Advances Sheet — {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
     </div>
 
     <table>
@@ -175,9 +186,16 @@
             <tr>
                 <th>Employee Name</th>
                 <th>Role</th>
-                <th class="text-right">Number of Days (Present)</th>
-                <th class="text-right">Salary Advance</th>
-                <th class="text-right">Benefit Advance</th>
+                <th class="text-center">Days (Req/Att)</th>
+                <th class="text-right">Basic Salary</th>
+                <th class="text-right">Attendance Allowance</th>
+                <th class="text-right">Performance Allowance</th>
+                <th class="text-right">OT Payout</th>
+                <th class="text-right">Salary Advances</th>
+                <th class="text-right">Benefit Advances</th>
+                <th class="text-right">Total Package</th>
+                <th class="text-right">Receivable Salary</th>
+                <th style="width: 130px;">Signature Acknowledgement</th>
             </tr>
         </thead>
         <tbody>
@@ -192,26 +210,86 @@
                             $presentCount += 0.5;
                         }
                     }
+
+                    $slip = $slipsThisMonth->get($user->id);
+
+                    // Calculations
+                    $basic = $slip ? $slip->basic_salary : $user->basic_salary;
+                    $req = $slip ? $slip->required_days : ($user->required_days ?: 26);
+                    $att = $presentCount;
+                    $ratio = $req > 0 ? ($att / $req) : 0.0;
+
+                    $baseAttendance = $slip ? $slip->base_attendance_allowance : $user->attendance_allowance;
+                    $attendanceAllowance = $slip ? $slip->attendance_allowance : ($baseAttendance * $ratio);
+
+                    $basePerformance = $slip ? $slip->base_performance_allowance : $user->performance_allowance;
+                    $performanceAllowance = $slip ? $slip->performance_allowance : ($basePerformance * $ratio);
+
+                    $payOt = $slip ? $slip->pay_overtime : true;
+                    $otHours = 0;
+                    if (!$slip) {
+                        $otHours = $uRecords->sum('overtime_hours');
+                    } else {
+                        $otHours = $slip->overtime_hours;
+                    }
+                    $otAmount = $slip ? $slip->overtime_amount : ($payOt ? ($otHours * ($user->overtime_rate ?: 15.00)) : 0.00);
+
+                    $additions = $slip ? $slip->items->where('type', 'addition')->whereNotIn('category_name', ['Attendance Allowance', 'Performance Allowance', 'Base Allowance'])->sum('amount') : 0.00;
+                    $deductions = $slip ? $slip->items->where('type', 'deduction')->where('category_name', '!=', 'Advance Payment')->sum('amount') : 0.00;
+
                     $userAdvances = $advancesThisMonth->get($user->id, collect());
-                    $salaryAdvances = $userAdvances->where('type', 'salary')->sum('amount');
+                    $salaryAdvances = $userAdvances->where(fn($q) => $q->type === 'salary' || is_null($q->type))->sum('amount');
                     $benefitAdvances = $userAdvances->where('type', 'benefit')->sum('amount');
+
+                    $receivable = $slip ? $slip->net_salary : ($basic + $attendanceAllowance + $performanceAllowance + $otAmount + $additions - $deductions - $salaryAdvances);
+                    $totalPackage = $basic + $attendanceAllowance + $performanceAllowance + $otAmount + $additions + $benefitAdvances;
                 @endphp
                 <tr>
                     <td style="font-weight: 600; text-transform: capitalize;">{{ $user->name }}</td>
                     <td style="text-transform: capitalize; color: #475569;">{{ $user->role }}</td>
-                    <td class="text-right font-mono" style="font-weight: 600;">{{ $presentCount }}</td>
-                    <td class="text-right font-mono">
-                        {{ $salaryAdvances > 0 ? 'Rs. ' . number_format($salaryAdvances, 2) : '-' }}
+                    <td class="text-center font-mono font-semibold">{{ $req }} / {{ $att }}</td>
+                    <td class="text-right font-mono">{{ number_format($basic, 2) }}</td>
+                    <td class="text-right font-mono text-green-600">
+                        {{ $attendanceAllowance > 0 ? number_format($attendanceAllowance, 2) : '-' }}
                     </td>
-                    <td class="text-right font-mono">
-                        {{ $benefitAdvances > 0 ? 'Rs. ' . number_format($benefitAdvances, 2) : '-' }}
+                    <td class="text-right font-mono text-green-600">
+                        {{ $performanceAllowance > 0 ? number_format($performanceAllowance, 2) : '-' }}
                     </td>
+                    <td class="text-right font-mono text-green-600 font-semibold">
+                        @if($payOt && $otAmount > 0)
+                            {{ number_format($otAmount, 2) }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td class="text-right font-mono text-red-650">
+                        @if($salaryAdvances > 0)
+                            {{ number_format($salaryAdvances, 2) }}
+                            <div class="text-[7.5px] text-slate-500 font-sans mt-0.5 normal-case font-normal leading-none print:text-black">
+                                @foreach($userAdvances->where(fn($q) => $q->type === 'salary' || is_null($q->type)) as $adv)
+                                    <div>{{ $adv->reason ?: 'Salary Adv' }} ({{ $adv->advance_date ? $adv->advance_date->format('j/n') : '' }})</div>
+                                @endforeach
+                            </div>
+                        @else
+                            -
+                        @endif
+                    </td>
+                    <td class="text-right font-mono text-emerald-600 font-semibold">
+                        {{ $benefitAdvances > 0 ? number_format($benefitAdvances, 2) : '-' }}
+                    </td>
+                    <td class="text-right font-mono font-bold text-emerald-700">
+                        {{ number_format($totalPackage, 2) }}
+                    </td>
+                    <td class="text-right font-mono font-bold text-primary">
+                        {{ number_format($receivable, 2) }}
+                    </td>
+                    <td style="height: 35px; border-bottom: 1px solid #cbd5e1;"></td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="footer">
+    <div class="footer" style="margin-top: 50px;">
         <div class="signature-block">
             <div class="title">Prepared By</div>
             <div style="border-top: 1px solid #475569; padding-top: 8px;">
@@ -220,7 +298,7 @@
             </div>
         </div>
         <div class="signature-block">
-            <div class="title">Checked By</div>
+            <div class="title">Inspected By</div>
             <div style="border-top: 1px solid #475569; padding-top: 8px;">
                 <strong id="sig-checked-name">{{ $defaultChecked ?: 'Not Selected' }}</strong>
                 <div id="sig-checked-title" style="font-size: 10px; color: #64748b; margin-top: 2px;">Manager / Coordinator</div>

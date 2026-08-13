@@ -111,9 +111,14 @@ class PayrollController extends Controller
         $requiredDays = $user->required_days ?: 26;
         $overtimeRate = $user->overtime_rate ?: 0.00;
 
-        // Base salary prorated calculation (uses basic_salary)
-        $proratedSalary = $requiredDays > 0 ? round(($attendedDays / $requiredDays) * $user->basic_salary, 2) : $user->basic_salary;
+        // Base salary static calculation
+        $proratedSalary = $user->basic_salary;
         $overtimeAmount = round($overtimeHours * $overtimeRate, 2);
+
+        // Attendance / Performance allowance calculation based on y/x ratio
+        $ratio = $requiredDays > 0 ? ($attendedDays / $requiredDays) : 0.0;
+        $attendanceAllowanceAmount = round($user->attendance_allowance * $ratio, 2);
+        $performanceAllowanceAmount = round($user->performance_allowance * $ratio, 2);
 
         // Allowances difference calculation
         $baseAllowance = max(0.00, floatval($user->total_salary) - floatval($user->basic_salary));
@@ -154,13 +159,17 @@ class PayrollController extends Controller
         if ($previousSlip) {
             $prevItems = $previousSlip->items;
 
-            // Additions
-            $additions = $prevItems->where('type', 'addition')->map(function($item) {
-                return [
-                    'name' => $item->category_name,
-                    'amount' => $item->amount
-                ];
-            })->values()->all();
+            // Additions (excluding allowances calculated separately)
+            $additions = $prevItems->where('type', 'addition')
+                ->filter(function($item) {
+                    return !in_array($item->category_name, ['Attendance Allowance', 'Performance Allowance', 'Base Allowance']);
+                })
+                ->map(function($item) {
+                    return [
+                        'name' => $item->category_name,
+                        'amount' => $item->amount
+                    ];
+                })->values()->all();
 
             // Deductions (excluding 'Advance Payment')
             $deductions = $prevItems->where('type', 'deduction')
@@ -192,13 +201,8 @@ class PayrollController extends Controller
         } else {
             // Default categories if no previous slip exists
             $additions = [];
-            if ($baseAllowance > 0) {
-                $additions[] = [
-                    'name' => 'Base Allowance',
-                    'amount' => $baseAllowance
-                ];
-            }
             foreach ($categories->where('type', 'addition') as $cat) {
+                if (in_array($cat->name, ['Attendance Allowance', 'Performance Allowance', 'Base Allowance'])) continue;
                 $additions[] = [
                     'name' => $cat->name,
                     'amount' => $cat->default_amount
@@ -232,7 +236,8 @@ class PayrollController extends Controller
             'user', 'categories', 'year', 'month', 'attendedDays', 'requiredDays', 
             'overtimeHours', 'overtimeRate', 'proratedSalary', 'overtimeAmount', 
             'baseAllowance', 'pendingSalaryAdvancesSum', 'pendingBenefitAdvances',
-            'additions', 'deductions', 'benefits'
+            'additions', 'deductions', 'benefits',
+            'attendanceAllowanceAmount', 'performanceAllowanceAmount'
         ));
     }
 
@@ -252,6 +257,11 @@ class PayrollController extends Controller
             'overtime_amount' => 'required|numeric|min:0',
             'prorated_salary' => 'required|numeric|min:0',
             'total_salary' => 'required|numeric|min:0',
+            'attendance_allowance' => 'required|numeric|min:0',
+            'performance_allowance' => 'required|numeric|min:0',
+            'base_attendance_allowance' => 'required|numeric|min:0',
+            'base_performance_allowance' => 'required|numeric|min:0',
+            'pay_overtime' => 'nullable|boolean',
             // Allowances/Deductions arrays
             'item_name' => 'nullable|array',
             'item_type' => 'nullable|array',
@@ -275,23 +285,31 @@ class PayrollController extends Controller
             $deductionTotal = 0.00;
             $benefitTotal = 0.00;
 
+            $payOvertime = isset($data['pay_overtime']) ? (bool)$data['pay_overtime'] : false;
+            $overtimeAmount = $payOvertime ? floatval($data['overtime_amount']) : 0.00;
+
             $slip = PayrollSlip::create([
                 'user_id' => $user->id,
                 'month' => $data['month'],
                 'year' => $data['year'],
-                'basic_salary' => $user->basic_salary,
+                'basic_salary' => $data['prorated_salary'],
                 'total_salary' => $data['total_salary'],
                 'required_days' => $data['required_days'],
                 'attended_days' => $data['attended_days'],
                 'overtime_hours' => $data['overtime_hours'],
                 'overtime_rate' => $data['overtime_rate'],
-                'overtime_amount' => $data['overtime_amount'],
+                'overtime_amount' => $overtimeAmount,
                 'prorated_salary' => $data['prorated_salary'],
                 'allowance' => 0.00, // Temp
                 'deductions' => 0.00, // Temp
                 'company_benefits' => 0.00, // Temp
-                'net_salary' => $data['prorated_salary'] + $data['overtime_amount'],
-                'status' => 'draft'
+                'net_salary' => 0.00, // Temp
+                'status' => 'draft',
+                'base_attendance_allowance' => floatval($data['base_attendance_allowance'] ?? 0.00),
+                'base_performance_allowance' => floatval($data['base_performance_allowance'] ?? 0.00),
+                'attendance_allowance' => floatval($data['attendance_allowance'] ?? 0.00),
+                'performance_allowance' => floatval($data['performance_allowance'] ?? 0.00),
+                'pay_overtime' => $payOvertime,
             ]);
 
             // Link pending advances within the calendar month to this payroll slip & mark as deducted
@@ -334,7 +352,12 @@ class PayrollController extends Controller
             }
 
             // Compute net salary
-            $netSalary = $data['prorated_salary'] + $data['overtime_amount'] + $allowanceTotal - $deductionTotal;
+            $netSalary = floatval($data['prorated_salary']) 
+                + $slip->attendance_allowance 
+                + $slip->performance_allowance 
+                + $slip->overtime_amount 
+                + $allowanceTotal 
+                - $deductionTotal;
 
             $slip->update([
                 'allowance' => $allowanceTotal,
@@ -392,6 +415,11 @@ class PayrollController extends Controller
             'overtime_amount' => 'required|numeric|min:0',
             'prorated_salary' => 'required|numeric|min:0',
             'total_salary' => 'required|numeric|min:0',
+            'attendance_allowance' => 'required|numeric|min:0',
+            'performance_allowance' => 'required|numeric|min:0',
+            'base_attendance_allowance' => 'required|numeric|min:0',
+            'base_performance_allowance' => 'required|numeric|min:0',
+            'pay_overtime' => 'nullable|boolean',
             // Allowances/Deductions arrays
             'item_name' => 'nullable|array',
             'item_type' => 'nullable|array',
@@ -430,8 +458,16 @@ class PayrollController extends Controller
                 }
             }
 
+            $payOvertime = isset($data['pay_overtime']) ? (bool)$data['pay_overtime'] : false;
+            $overtimeAmount = $payOvertime ? floatval($data['overtime_amount']) : 0.00;
+
             // Compute net salary
-            $netSalary = $data['prorated_salary'] + $data['overtime_amount'] + $allowanceTotal - $deductionTotal;
+            $netSalary = floatval($data['prorated_salary']) 
+                + floatval($data['attendance_allowance']) 
+                + floatval($data['performance_allowance']) 
+                + $overtimeAmount 
+                + $allowanceTotal 
+                - $deductionTotal;
 
             $payrollSlip->update([
                 'total_salary' => $data['total_salary'],
@@ -439,12 +475,17 @@ class PayrollController extends Controller
                 'attended_days' => $data['attended_days'],
                 'overtime_hours' => $data['overtime_hours'],
                 'overtime_rate' => $data['overtime_rate'],
-                'overtime_amount' => $data['overtime_amount'],
+                'overtime_amount' => $overtimeAmount,
                 'prorated_salary' => $data['prorated_salary'],
                 'allowance' => $allowanceTotal,
                 'deductions' => $deductionTotal,
                 'company_benefits' => $benefitTotal,
-                'net_salary' => $netSalary
+                'net_salary' => $netSalary,
+                'base_attendance_allowance' => floatval($data['base_attendance_allowance'] ?? 0.00),
+                'base_performance_allowance' => floatval($data['base_performance_allowance'] ?? 0.00),
+                'attendance_allowance' => floatval($data['attendance_allowance'] ?? 0.00),
+                'performance_allowance' => floatval($data['performance_allowance'] ?? 0.00),
+                'pay_overtime' => $payOvertime,
             ]);
 
             // Re-post if already marked as paid
@@ -666,6 +707,8 @@ class PayrollController extends Controller
             'required_days' => 'required|integer|min:1|max:31',
             'overtime_rate' => 'required|numeric|min:0',
             'contact_number' => 'nullable|string|max:30',
+            'attendance_allowance' => 'nullable|numeric|min:0',
+            'performance_allowance' => 'nullable|numeric|min:0',
         ]);
 
         if ($data['role'] === 'super-manager' && !auth()->user()->isSuperManager()) {
@@ -676,7 +719,8 @@ class PayrollController extends Controller
         
         $roleRecord = \App\Models\Role::where('name', $data['role'])->first();
         $data['allowed_modules'] = $roleRecord ? $roleRecord->allowed_modules : [];
-
+        $data['attendance_allowance'] = floatval($data['attendance_allowance'] ?? 0.00);
+        $data['performance_allowance'] = floatval($data['performance_allowance'] ?? 0.00);
 
         User::create($data);
 
@@ -702,8 +746,9 @@ class PayrollController extends Controller
             'overtime_rate' => 'required|numeric|min:0',
             'password' => 'nullable|string|min:6',
             'contact_number' => 'nullable|string|max:30',
+            'attendance_allowance' => 'nullable|numeric|min:0',
+            'performance_allowance' => 'nullable|numeric|min:0',
         ]);
-
 
         if (!empty($data['password'])) {
             if (!auth()->user()->isSuperManager()) {
@@ -724,6 +769,8 @@ class PayrollController extends Controller
 
         $roleRecord = \App\Models\Role::where('name', $data['role'])->first();
         $data['allowed_modules'] = $roleRecord ? $roleRecord->allowed_modules : [];
+        $data['attendance_allowance'] = floatval($data['attendance_allowance'] ?? 0.00);
+        $data['performance_allowance'] = floatval($data['performance_allowance'] ?? 0.00);
 
         $user->update($data);
 
@@ -919,8 +966,14 @@ class PayrollController extends Controller
             return in_array($u->role, ['manager', 'super-manager']);
         });
 
+        $slipsThisMonth = PayrollSlip::where('year', $year)
+            ->where('month', $month)
+            ->with(['items', 'advances'])
+            ->get()
+            ->keyBy('user_id');
+
         return view('payroll.print_attendance', compact(
-            'users', 'year', 'month', 'daysInMonth', 'attendanceData', 'advancesThisMonth', 'preparedBy', 'managers'
+            'users', 'year', 'month', 'daysInMonth', 'attendanceData', 'advancesThisMonth', 'preparedBy', 'managers', 'slipsThisMonth'
         ));
     }
 }
