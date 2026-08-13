@@ -58,7 +58,7 @@ class SettingsController extends Controller
         $this->checkAccess();
 
 
-        Artisan::call('db:backup');
+        Artisan::call('db:backup', ['--force' => true]);
 
         return back()->with('success', 'Manual database backup generated successfully.');
     }

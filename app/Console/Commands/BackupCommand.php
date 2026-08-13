@@ -12,7 +12,7 @@ class BackupCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'db:backup';
+    protected $signature = 'db:backup {--force : Force backup ignoring frequency policy}';
 
     /**
      * The console command description.
@@ -45,7 +45,8 @@ class BackupCommand extends Command
 
         // 2.5 Check Backup Frequency
         $frequency = \App\Models\Setting::get('backup_frequency', 'hourly');
-        if ($this->shouldSkipBackup($backupDir, $frequency)) {
+        $force = $this->option('force');
+        if (!$force && $this->shouldSkipBackup($backupDir, $frequency)) {
             $this->info("Backup skipped based on frequency policy ({$frequency}).");
             return Command::SUCCESS;
         }

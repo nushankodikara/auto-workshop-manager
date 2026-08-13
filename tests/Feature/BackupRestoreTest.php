@@ -167,4 +167,28 @@ class BackupRestoreTest extends TestCase
         // Total backups should be 4 now (3 fresh ones + the new one created by the command)
         $this->assertCount(4, File::glob($this->testBackupDir . '/backup_*.sqlite'));
     }
+
+    /**
+     * Test db:backup with --force option bypasses frequency check.
+     */
+    public function test_backup_force_option_bypasses_frequency_policy()
+    {
+        // Setup daily frequency
+        \App\Models\Setting::updateOrCreate(['key' => 'backup_frequency'], ['value' => 'daily']);
+
+        // Run backup 1: should succeed
+        $exitCode1 = Artisan::call('db:backup');
+        $this->assertEquals(0, $exitCode1);
+        $this->assertCount(1, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+
+        // Run backup 2 immediately: should skip (exit code still 0, but count remains 1)
+        $exitCode2 = Artisan::call('db:backup');
+        $this->assertEquals(0, $exitCode2);
+        $this->assertCount(1, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+
+        // Run backup 3 immediately with --force: should succeed and create a second backup
+        $exitCode3 = Artisan::call('db:backup', ['--force' => true]);
+        $this->assertEquals(0, $exitCode3);
+        $this->assertCount(2, File::glob($this->testBackupDir . '/backup_*.sqlite'));
+    }
 }
