@@ -917,8 +917,12 @@ class PayrollController extends Controller
 
         $preparedBy = Auth::user() ? Auth::user()->name : 'System Administrator';
 
+        $managers = $users->filter(function($u) {
+            return in_array($u->role, ['manager', 'super-manager']);
+        });
+
         return view('payroll.print_attendance', compact(
-            'users', 'year', 'month', 'daysInMonth', 'attendanceData', 'advancesThisMonth', 'preparedBy'
+            'users', 'year', 'month', 'daysInMonth', 'attendanceData', 'advancesThisMonth', 'preparedBy', 'managers'
         ));
     }
 }
