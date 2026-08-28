@@ -26,7 +26,7 @@
 
             <!-- Print Button -->
             <button onclick="window.print()" 
-                    class="px-4 py-2 bg-slate-200 hover:bg-slate-305 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                    class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                 <i data-lucide="printer" class="w-3.5 h-3.5"></i>
                 <span>Print / Save PDF</span>
             </button>

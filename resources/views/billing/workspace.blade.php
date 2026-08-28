@@ -31,9 +31,8 @@
                 @foreach($allocatedParts as $mov)
                     @php 
                         $hasParts = true;
-                        $existingPartItem = $jobCard->bill ? $jobCard->bill->items->where('type', 'part')->where('inventory_id', $mov->inventory_id)->first() : null;
-                        $costVal = $existingPartItem ? $existingPartItem->cost_price : ($mov->cost_price ?? ($mov->purchaseBatch ? $mov->purchaseBatch->cost_price : $mov->inventory->cost_price));
-                        $sellVal = $existingPartItem ? $existingPartItem->unit_price : ($mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price);
+                        $costVal = $mov->cost_price ?? ($mov->purchaseBatch ? $mov->purchaseBatch->cost_price : $mov->inventory->cost_price);
+                        $sellVal = $mov->purchaseBatch ? $mov->purchaseBatch->selling_price : $mov->inventory->selling_price;
                     @endphp
                     <div class="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800/80 text-sm">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -91,108 +90,83 @@
             @endif
 
             <div id="labor-items-container" class="space-y-3">
-                @if($jobCard->bill)
-                    @forelse($jobCard->bill->items->where('type', 'labor') as $item)
-                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end labor-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
-                            <div class="md:col-span-3">
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Service / Labor Description</label>
-                                <input type="text" name="labor_desc[]" value="{{ $item->description }}" required placeholder="e.g., Engine Tune-Up, Brake Calipers Alignment"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_cost[]" value="{{ $item->cost_price }}" required placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_price[]" value="{{ $item->unit_price }}" required placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="button" onclick="this.closest('.labor-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
-                                    ✕ Remove
-                                </button>
-                            </div>
+                @php
+                    $laborItems = [];
+                    // Load labor items from the job card services (source of truth)
+                    foreach ($jobCard->services as $serv) {
+                        $laborItems[] = [
+                            'description' => $serv->name,
+                            'cost_price' => $serv->price,
+                            'unit_price' => $serv->price,
+                        ];
+                    }
+                    // Plus any other labor items on the bill that do not exist on the job card (manually added ones)
+                    if ($jobCard->bill) {
+                        $jobCardServiceNames = $jobCard->services->pluck('name')->toArray();
+                        foreach ($jobCard->bill->items->where('type', 'labor') as $item) {
+                            if (!in_array($item->description, $jobCardServiceNames)) {
+                                $laborItems[] = [
+                                    'description' => $item->description,
+                                    'cost_price' => $item->cost_price,
+                                    'unit_price' => $item->unit_price,
+                                ];
+                            }
+                        }
+                    }
+                @endphp
+
+                @forelse($laborItems as $item)
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end labor-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                        <div class="md:col-span-3">
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Service / Labor Description</label>
+                            <input type="text" name="labor_desc[]" value="{{ $item['description'] }}" required placeholder="e.g., Engine Tune-Up, Brake Calipers Alignment"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
                         </div>
-                    @empty
-                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end labor-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
-                            <div class="md:col-span-3">
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Service / Labor Description</label>
-                                <input type="text" name="labor_desc[]" placeholder="e.g., Engine Tune-Up, Brake Calipers Alignment"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_cost[]" placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_price[]" placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="button" onclick="this.closest('.labor-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
-                                    ✕ Remove
-                                </button>
-                            </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="labor_cost[]" value="{{ $item['cost_price'] }}" required placeholder="0.00"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
                         </div>
-                    @endforelse
-                @else
-                    @forelse($jobCard->services as $serv)
-                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end labor-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
-                            <div class="md:col-span-3">
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Service / Labor Description</label>
-                                <input type="text" name="labor_desc[]" value="{{ $serv->name }}" required placeholder="e.g., Engine Tune-Up, Brake Calipers Alignment"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-505 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_cost[]" value="{{ $serv->price }}" required placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-505 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_price[]" value="{{ $serv->price }}" required placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="button" onclick="this.closest('.labor-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
-                                    ✕ Remove
-                                </button>
-                            </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="labor_price[]" value="{{ $item['unit_price'] }}" required placeholder="0.00"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
                         </div>
-                    @empty
-                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end labor-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
-                            <div class="md:col-span-3">
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Service / Labor Description</label>
-                                <input type="text" name="labor_desc[]" placeholder="e.g., Engine Tune-Up, Brake Calipers Alignment"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_cost[]" placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="labor_price[]" placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="button" onclick="this.closest('.labor-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
-                                    ✕ Remove
-                                </button>
-                            </div>
+                        <div class="flex justify-end">
+                            <button type="button" onclick="this.closest('.labor-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
+                                ✕ Remove
+                            </button>
                         </div>
-                    @endforelse
-                @endif
-            </div>
+                    </div>
+                @empty
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end labor-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                        <div class="md:col-span-3">
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Service / Labor Description</label>
+                            <input type="text" name="labor_desc[]" placeholder="e.g., Engine Tune-Up, Brake Calipers Alignment"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="labor_cost[]" placeholder="0.00"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="labor_price[]" placeholder="0.00"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="button" onclick="this.closest('.labor-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
+                                ✕ Remove
+                            </button>
+                        </div>
+                    </div>
+                @endforelse
+            </div>  </div>
 
             <!-- Add more rows button -->
             <button type="button" onclick="addLaborRow()" 
-                    class="py-1.5 px-3 bg-slate-200 hover:bg-slate-305 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-300 font-semibold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700 flex items-center gap-1 cursor-pointer">
+                    class="py-1.5 px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-300 font-semibold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700 flex items-center gap-1 cursor-pointer">
                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                 <span>Add Custom Service Line</span>
             </button>
@@ -206,46 +180,74 @@
             </h3>
             
             <div id="outsourcing-items-container" class="space-y-3">
-                @if($jobCard->bill)
-                    @foreach($jobCard->bill->items->where('type', 'outsourcing') as $item)
-                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end outsourcing-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
-                            <div class="md:col-span-2">
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Partner Company</label>
-                                <select name="outsourcing_company_id[]" required class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs cursor-pointer">
-                                    <option value="">-- Select Partner --</option>
-                                    @foreach($partners as $partner)
-                                        <option value="{{ $partner->id }}" {{ $item->outsourcing_company_id == $partner->id ? 'selected' : '' }}>{{ $partner->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Job Description</label>
-                                <input type="text" name="outsourcing_desc[]" value="{{ $item->description }}" required placeholder="e.g., Lathe Engine Block Sleeving"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="outsourcing_cost[]" value="{{ $item->cost_price }}" required placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
-                                <input type="number" step="0.01" name="outsourcing_price[]" value="{{ $item->unit_price }}" required placeholder="0.00"
-                                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
-                            </div>
-                            <div class="flex justify-end">
-                                <button type="button" onclick="this.closest('.outsourcing-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
-                                    ✕ Remove
-                                </button>
-                            </div>
+                @php
+                    $outsourcingLines = [];
+                    // Load outsourcing items from the job card (source of truth)
+                    foreach ($jobCard->outsourcingItems as $osi) {
+                        $outsourcingLines[] = [
+                            'outsourcing_company_id' => $osi->outsourcing_company_id,
+                            'description' => $osi->description,
+                            'cost_price' => $osi->cost_price,
+                            'unit_price' => $osi->selling_price,
+                        ];
+                    }
+                    // Plus any other outsourcing items on the bill that do not exist on the job card (manually added ones)
+                    if ($jobCard->bill) {
+                        foreach ($jobCard->bill->items->where('type', 'outsourcing') as $item) {
+                            $matched = $jobCard->outsourcingItems->contains(function ($osi) use ($item) {
+                                return $osi->outsourcing_company_id == $item->outsourcing_company_id 
+                                    && $osi->description == $item->description;
+                            });
+                            if (!$matched) {
+                                $outsourcingLines[] = [
+                                    'outsourcing_company_id' => $item->outsourcing_company_id,
+                                    'description' => $item->description,
+                                    'cost_price' => $item->cost_price,
+                                    'unit_price' => $item->unit_price,
+                                ];
+                            }
+                        }
+                    }
+                @endphp
+
+                @foreach($outsourcingLines as $item)
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end outsourcing-item bg-slate-50 dark:bg-slate-900/10 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Partner Company</label>
+                            <select name="outsourcing_company_id[]" required class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs cursor-pointer">
+                                <option value="">-- Select Partner --</option>
+                                @foreach($partners as $partner)
+                                    <option value="{{ $partner->id }}" {{ $item['outsourcing_company_id'] == $partner->id ? 'selected' : '' }}>{{ $partner->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                    @endforeach
-                @endif
+                        <div class="md:col-span-2">
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Job Description</label>
+                            <input type="text" name="outsourcing_desc[]" value="{{ $item['description'] }}" required placeholder="e.g., Lathe Engine Block Sleeving"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="outsourcing_cost[]" value="{{ $item['cost_price'] }}" required placeholder="0.00"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase mb-1 font-semibold">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" name="outsourcing_price[]" value="{{ $item['unit_price'] }}" required placeholder="0.00"
+                                   class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs font-mono">
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="button" onclick="this.closest('.outsourcing-item').remove()" class="text-red-500 hover:text-red-400 font-bold px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer">
+                                ✕ Remove
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
             </div>
 
             <!-- Add outsourcing row button -->
             <button type="button" onclick="addOutsourcingRow()" 
-                    class="py-1.5 px-3 bg-slate-200 hover:bg-slate-305 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-300 font-semibold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700 flex items-center gap-1 cursor-pointer">
+                    class="py-1.5 px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-750 dark:text-slate-300 font-semibold rounded-lg text-xs transition border border-transparent hover:border-slate-300 dark:hover:border-slate-700 flex items-center gap-1 cursor-pointer">
                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                 <span>Add Outsourced/Specialist Service Line</span>
             </button>

@@ -150,34 +150,15 @@ class BillingController extends Controller
                 }
             }
 
-            // 3. Add Outsourcing Items from job card records
-            // Job card outsourcing lines are the source of truth; billing workspace shows them pre-filled.
-            // We pull directly from job_card_outsourcing so costs are always reflected correctly.
-            $jobCardOutsourcingItems = \App\Models\JobCardOutsourcing::where('job_card_id', $jobCard->id)->get();
-            foreach ($jobCardOutsourcingItems as $osi) {
-                $price = floatval($osi->selling_price);
-                BillItem::create([
-                    'bill_id'                => $bill->id,
-                    'inventory_id'           => null,
-                    'outsourcing_company_id' => $osi->outsourcing_company_id,
-                    'type'                   => 'outsourcing',
-                    'description'            => $osi->description,
-                    'quantity'               => 1.00,
-                    'cost_price'             => floatval($osi->cost_price),
-                    'unit_price'             => $price,
-                    'total_price'            => $price,
-                ]);
-                $totalAmount += $price;
-            }
-
-            // Also include any additional outsourcing lines entered manually at billing time
+            // 3. Add Outsourcing Items
+            // The workspace form submits all outsourcing items (both pre-filled from the job card and custom ones)
             if (!empty($data['outsourcing_desc'])) {
                 foreach ($data['outsourcing_desc'] as $key => $desc) {
                     if (empty($desc)) continue;
 
                     $companyId = $data['outsourcing_company_id'][$key] ?? null;
-                    $cost = $data['outsourcing_cost'][$key] ?? 0.00;
-                    $price = $data['outsourcing_price'][$key] ?? 0.00;
+                    $cost = floatval($data['outsourcing_cost'][$key] ?? 0.00);
+                    $price = floatval($data['outsourcing_price'][$key] ?? 0.00);
 
                     BillItem::create([
                         'bill_id'                => $bill->id,

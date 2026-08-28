@@ -74,7 +74,7 @@
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-slate-400 font-bold uppercase">Sort By:</span>
                     <select name="sort_by" onchange="this.form.submit()"
-                            class="px-2 py-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-xs text-slate-600 dark:text-slate-305 focus:outline-none focus:border-primary cursor-pointer">
+                            class="px-2 py-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-lg text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:border-primary cursor-pointer">
                         <option value="reorder_qty" {{ $sortBy == 'reorder_qty' ? 'selected' : '' }}>Recommended Order Qty</option>
                         <option value="daily_usage" {{ $sortBy == 'daily_usage' ? 'selected' : '' }}>Daily Usage Rate</option>
                         <option value="stock_level" {{ $sortBy == 'stock_level' ? 'selected' : '' }}>Current Stock Level</option>
