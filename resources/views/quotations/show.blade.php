@@ -58,6 +58,11 @@
                 <div class="text-xs text-slate-655 dark:text-slate-400 print:text-black/70 font-sans">
                     <div class="font-bold text-slate-800 dark:text-slate-300 print:text-black">{{ $shop->name }}</div>
                     <div>{{ $shop->address }}</div>
+                    <div class="mt-2 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 print:text-black/70 font-mono">
+                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Official:</span> 071 114 4444</div>
+                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Kodikara:</span> 077 728 4077</div>
+                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Nushan:</span> 077 399 6538</div>
+                    </div>
                 </div>
             </div>
 
@@ -149,8 +154,17 @@
         </div>
 
         <!-- Quotation footer -->
-        <div class="text-center text-xs text-slate-500 mt-12 border-t border-slate-200 dark:border-slate-800 pt-6 print:border-black/10 print:text-black/60">
-            This document is a service cost estimate and is valid for 30 days from the date of issue.
+        <div class="mt-12 border-t border-slate-200 dark:border-slate-800 pt-6 text-center print:border-black/10">
+            <p class="text-xs font-medium text-slate-700 dark:text-slate-300 print:text-black mb-1.5">
+                This document is a service cost estimate valid for 30 days. Please do not hesitate to reach out to us at any moment.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 print:text-black/70 font-mono">
+                <span><strong class="font-sans font-semibold text-slate-700 dark:text-slate-300 print:text-black">Official:</strong> 071 114 4444</span>
+                <span class="hidden sm:inline text-slate-300 dark:text-slate-700 print:text-black/30">•</span>
+                <span><strong class="font-sans font-semibold text-slate-700 dark:text-slate-300 print:text-black">Kodikara:</strong> 077 728 4077</span>
+                <span class="hidden sm:inline text-slate-300 dark:text-slate-700 print:text-black/30">•</span>
+                <span><strong class="font-sans font-semibold text-slate-700 dark:text-slate-300 print:text-black">Nushan:</strong> 077 399 6538</span>
+            </div>
         </div>
 
     </div>
