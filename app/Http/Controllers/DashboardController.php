@@ -170,11 +170,10 @@ class DashboardController extends Controller
             abort(403, 'Unauthorized module access.');
         }
 
-
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        // Income query (Type: Revenue accounts)
+        // 1. Total Cash In (Revenue accounts credit)
         $incomeQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
             $q->where('type', 'revenue');
         });
@@ -190,7 +189,8 @@ class DashboardController extends Controller
         }
         $totalIncome = (double)$incomeQuery->sum('credit');
 
-        // Stock Purchases (Code 1300 debit)
+        // 2. Expenditure Components (Cash Out):
+        // A. Parts Inventory Purchases (Code 1300 debit)
         $stockPurchasesQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
             $q->where('code', '1300');
         });
@@ -206,23 +206,7 @@ class DashboardController extends Controller
         }
         $totalStockPurchases = (double)$stockPurchasesQuery->sum('debit');
 
-        // Total Expenses query (Type: Expense accounts, excluding COGS 5000)
-        $expenditureQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
-            $q->where('type', 'expense')->where('code', '!=', '5000');
-        });
-        if ($startDate) {
-            $expenditureQuery->whereHas('entry', function ($q) use ($startDate) {
-                $q->whereDate('entry_date', '>=', $startDate);
-            });
-        }
-        if ($endDate) {
-            $expenditureQuery->whereHas('entry', function ($q) use ($endDate) {
-                $q->whereDate('entry_date', '<=', $endDate);
-            });
-        }
-        $expenseTotal = (double)$expenditureQuery->sum('debit');
-
-        // Segment Salaries (Code 5100)
+        // B. Salaries & Wages (Code 5100 debit)
         $salariesQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
             $q->where('code', '5100');
         });
@@ -237,10 +221,24 @@ class DashboardController extends Controller
             });
         }
         $totalPayroll = (double)$salariesQuery->sum('debit');
-        $paidBasicSalaries = $totalPayroll;
-        $paidAllowances = 0.00;
 
-        // Trading profitability (linked to paid bills in timeframe)
+        // C. General Operating Expenses (type 'expense', code != 5000 and code != 5100)
+        $operatingExpensesQuery = \App\Models\JournalItem::whereHas('account', function ($q) {
+            $q->where('type', 'expense')->whereNotIn('code', ['5000', '5100']);
+        });
+        if ($startDate) {
+            $operatingExpensesQuery->whereHas('entry', function ($q) use ($startDate) {
+                $q->whereDate('entry_date', '>=', $startDate);
+            });
+        }
+        if ($endDate) {
+            $operatingExpensesQuery->whereHas('entry', function ($q) use ($endDate) {
+                $q->whereDate('entry_date', '<=', $endDate);
+            });
+        }
+        $totalOperatingExpenses = (double)$operatingExpensesQuery->sum('debit');
+
+        // D. Direct/Misc Parts COGS & Outsourcing COGS from Paid Bills
         $billItemsQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($startDate, $endDate) {
             $q->where('status', 'paid');
             if ($startDate) {
@@ -251,71 +249,85 @@ class DashboardController extends Controller
             }
         });
 
-        // Compute miscellaneous parts cost (not in inventory) and outsourcing cost to include in total expenditure
-        $miscPartsCOGS = (clone $billItemsQuery)->where('type', 'part')->whereNull('inventory_id')->sum(DB::raw('quantity * cost_price'));
-        $outsourcingCOGS = (clone $billItemsQuery)->where('type', 'outsourcing')->sum('cost_price');
+        $miscPartsCOGS = floatval((clone $billItemsQuery)->where('type', 'part')->whereNull('inventory_id')->sum(DB::raw('quantity * cost_price')));
+        $outsourcingCOGS = floatval((clone $billItemsQuery)->where('type', 'outsourcing')->sum('cost_price'));
 
-        // Combined Total Expenditure = Stock Purchases + all other expenses + misc parts COGS + outsourcing COGS
-        $otherExpenses = max(0, $expenseTotal - $totalPayroll);
-        $totalExpenditure = $totalStockPurchases + $totalPayroll + $otherExpenses + floatval($miscPartsCOGS) + floatval($outsourcingCOGS);
+        // Combined Total Expenditure (Cash Out)
+        $totalExpenditure = $totalStockPurchases + $totalPayroll + $totalOperatingExpenses + $miscPartsCOGS + $outsourcingCOGS;
         $netProfit = $totalIncome - $totalExpenditure;
 
-        // Parts
-        $partsRevenue = (clone $billItemsQuery)->where('type', 'part')->sum('total_price');
-        $partsCOGS = (clone $billItemsQuery)->where('type', 'part')->sum(DB::raw('quantity * cost_price'));
-        $partsProfit = $partsRevenue - $partsCOGS;
-        $partsMargin = $partsRevenue > 0 ? ($partsProfit / $partsRevenue) * 100 : 0;
+        // Grouped Operating Expenditures by Account
+        $expendituresByAccount = \App\Models\JournalItem::join('accounts', 'journal_items.account_id', '=', 'accounts.id')
+            ->join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+            ->where('accounts.type', 'expense')
+            ->whereNotIn('accounts.code', ['5000', '5100'])
+            ->when($startDate, function($q) use ($startDate) {
+                return $q->whereDate('journal_entries.entry_date', '>=', $startDate);
+            })
+            ->when($endDate, function($q) use ($endDate) {
+                return $q->whereDate('journal_entries.entry_date', '<=', $endDate);
+            })
+            ->select('accounts.name', 'accounts.code', DB::raw('SUM(journal_items.debit) as total'), DB::raw('COUNT(DISTINCT journal_entries.id) as count'))
+            ->groupBy('accounts.id', 'accounts.name', 'accounts.code')
+            ->orderBy('total', 'desc')
+            ->get();
 
-        // Labor
-        $laborRevenue = (clone $billItemsQuery)->where('type', 'labor')->sum('total_price');
-        
-        // Calculate laborCOGS dynamically from worker attendance (excluding managers/super-managers)
-        $workers = \App\Models\User::where('role', 'worker')->get();
-        $workerIds = $workers->pluck('id');
-        $attendancesQuery = \App\Models\Attendance::whereIn('user_id', $workerIds);
-        if ($startDate) {
-            $attendancesQuery->whereDate('date', '>=', $startDate);
-        }
-        if ($endDate) {
-            $attendancesQuery->whereDate('date', '<=', $endDate);
-        }
-        $attendances = $attendancesQuery->get();
-        
-        $workersMap = $workers->keyBy('id');
-        $laborCOGS = 0.00;
-        foreach ($attendances as $att) {
-            $worker = $workersMap->get($att->user_id);
-            if ($worker && $worker->basic_salary > 0) {
-                $reqDays = max(1, (int)($worker->required_days ?? 26));
-                $dailyWage = $worker->basic_salary / $reqDays;
-                if ($att->status === 'present') {
-                    $laborCOGS += $dailyWage;
-                } elseif ($att->status === 'half_day') {
-                    $laborCOGS += $dailyWage * 0.5;
-                }
-            }
-        }
-        
-        $laborProfit = $laborRevenue - $laborCOGS;
-        $laborMargin = $laborRevenue > 0 ? ($laborProfit / $laborRevenue) * 100 : 0;
+        // Structured Expenditure Breakdown
+        $expenditureBreakdown = [
+            [
+                'category' => 'Direct Job Parts (Misc COGS)',
+                'code' => '5000',
+                'description' => 'Direct and dealer parts purchased specifically for billed client job cards',
+                'amount' => $miscPartsCOGS,
+                'percentage' => $totalExpenditure > 0 ? ($miscPartsCOGS / $totalExpenditure) * 100 : 0,
+                'icon' => 'wrench'
+            ],
+            [
+                'category' => 'Outsourcing & Sublet Services',
+                'code' => '5000',
+                'description' => 'External specialized lathe, machining, and sublet repair services',
+                'amount' => $outsourcingCOGS,
+                'percentage' => $totalExpenditure > 0 ? ($outsourcingCOGS / $totalExpenditure) * 100 : 0,
+                'icon' => 'external-link'
+            ],
+            [
+                'category' => 'Parts Inventory Stock Purchases',
+                'code' => '1300',
+                'description' => 'Stock replenishment and warehouse inventory purchase batches',
+                'amount' => $totalStockPurchases,
+                'percentage' => $totalExpenditure > 0 ? ($totalStockPurchases / $totalExpenditure) * 100 : 0,
+                'icon' => 'boxes'
+            ],
+            [
+                'category' => 'Staff Salaries & Wages',
+                'code' => '5100',
+                'description' => 'Technician basic salaries, overtime, and salary payouts',
+                'amount' => $totalPayroll,
+                'percentage' => $totalExpenditure > 0 ? ($totalPayroll / $totalExpenditure) * 100 : 0,
+                'icon' => 'users'
+            ],
+            [
+                'category' => 'General Operating Overheads',
+                'code' => '5200-5999',
+                'description' => 'Rent, utilities, marketing, consumables, tools, and fuel',
+                'amount' => $totalOperatingExpenses,
+                'percentage' => $totalExpenditure > 0 ? ($totalOperatingExpenses / $totalExpenditure) * 100 : 0,
+                'icon' => 'receipt',
+                'items' => $expendituresByAccount
+            ]
+        ];
 
-        // Outsourcing
-        $outsourcingRevenue = (clone $billItemsQuery)->where('type', 'outsourcing')->sum('total_price');
-        $outsourcingCOGS = (clone $billItemsQuery)->where('type', 'outsourcing')->sum('cost_price');
-        $outsourcingProfit = $outsourcingRevenue - $outsourcingCOGS;
-        $outsourcingMargin = $outsourcingRevenue > 0 ? ($outsourcingProfit / $outsourcingRevenue) * 100 : 0;
-
-        // Total Trading
-        $tradingRevenue = $partsRevenue + $laborRevenue + $outsourcingRevenue;
-        $tradingCOGS = $partsCOGS + $laborCOGS + $outsourcingCOGS;
-        $tradingProfit = $tradingRevenue - $tradingCOGS;
-        $tradingMargin = $tradingRevenue > 0 ? ($tradingProfit / $tradingRevenue) * 100 : 0;
-
-        // Unified Daily Financial Timeline Aggregation
-        // 1. Daily Ledger Income (revenue accounts)
+        // 3. Unified Daily Financial Timeline Aggregation
+        // Daily Income
         $dailyIncome = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
             ->whereHas('account', function ($q) {
                 $q->where('type', 'revenue');
+            })
+            ->when($startDate, function($q) use ($startDate) {
+                return $q->whereDate('journal_entries.entry_date', '>=', $startDate);
+            })
+            ->when($endDate, function($q) use ($endDate) {
+                return $q->whereDate('journal_entries.entry_date', '<=', $endDate);
             })
             ->select(
                 DB::raw("strftime('%Y-%m-%d', journal_entries.entry_date) as date"),
@@ -325,10 +337,16 @@ class DashboardController extends Controller
             ->get()
             ->pluck('value', 'date');
 
-        // 2. Daily Ledger Expenditure (expense accounts)
-        $dailyExpenditure = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+        // Daily Stock Purchases
+        $dailyStockPurchases = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
             ->whereHas('account', function ($q) {
-                $q->where('type', 'expense');
+                $q->where('code', '1300');
+            })
+            ->when($startDate, function($q) use ($startDate) {
+                return $q->whereDate('journal_entries.entry_date', '>=', $startDate);
+            })
+            ->when($endDate, function($q) use ($endDate) {
+                return $q->whereDate('journal_entries.entry_date', '<=', $endDate);
             })
             ->select(
                 DB::raw("strftime('%Y-%m-%d', journal_entries.entry_date) as date"),
@@ -338,238 +356,156 @@ class DashboardController extends Controller
             ->get()
             ->pluck('value', 'date');
 
-        // 3. Daily Parts Revenue & COGS (paid bills)
-        $dailyParts = \App\Models\BillItem::where('type', 'part')
-            ->whereHas('bill', function ($q) {
-                $q->where('status', 'paid');
+        // Daily Payroll
+        $dailyPayroll = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+            ->whereHas('account', function ($q) {
+                $q->where('code', '5100');
             })
-            ->select(
-                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
-                DB::raw("SUM(total_price) as revenue"),
-                DB::raw("SUM(quantity * cost_price) as cogs")
-            )
-            ->groupBy('date')
-            ->get()
-            ->keyBy('date');
-
-        // 4. Daily Labor Revenue (paid bills)
-        $dailyLaborRev = \App\Models\BillItem::where('type', 'labor')
-            ->whereHas('bill', function ($q) {
-                $q->where('status', 'paid');
-            })
-            ->select(
-                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
-                DB::raw("SUM(total_price) as revenue")
-            )
-            ->groupBy('date')
-            ->get()
-            ->pluck('revenue', 'date');
-
-        // 5. Daily Labor COGS (based on worker attendance)
-        $workers = \App\Models\User::where('role', 'worker')->get();
-        $workerIds = $workers->pluck('id');
-        $workersMap = $workers->keyBy('id');
-        
-        $dailyLaborCOGSQuery = \App\Models\Attendance::whereIn('user_id', $workerIds)
-            ->select('date', 'user_id', 'status')
-            ->get();
-            
-        $dailyLaborCOGS = [];
-        foreach ($dailyLaborCOGSQuery as $att) {
-            $dateStr = $att->date->format('Y-m-d');
-            $worker = $workersMap->get($att->user_id);
-            if ($worker && $worker->basic_salary > 0) {
-                $reqDays = max(1, (int)($worker->required_days ?? 26));
-                $dailyWage = $worker->basic_salary / $reqDays;
-                
-                if (!isset($dailyLaborCOGS[$dateStr])) {
-                    $dailyLaborCOGS[$dateStr] = 0.00;
-                }
-                
-                if ($att->status === 'present') {
-                    $dailyLaborCOGS[$dateStr] += $dailyWage;
-                } elseif ($att->status === 'half_day') {
-                    $dailyLaborCOGS[$dateStr] += $dailyWage * 0.5;
-                }
-            }
-        }
-
-        // 6. Daily Outsourcing Revenue & COGS (paid bills)
-        $dailyOutsourcing = \App\Models\BillItem::where('type', 'outsourcing')
-            ->whereHas('bill', function ($q) {
-                $q->where('status', 'paid');
-            })
-            ->select(
-                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
-                DB::raw("SUM(total_price) as revenue"),
-                DB::raw("SUM(cost_price) as cogs")
-            )
-            ->groupBy('date')
-            ->get()
-            ->keyBy('date');
-
-        // 7. Daily Jobs (Job Cards)
-        $dailyJobs = \App\Models\JobCard::select(
-            DB::raw("strftime('%Y-%m-%d', created_at) as date"),
-            DB::raw("COUNT(*) as count")
-        )
-        ->groupBy('date')
-        ->get()
-        ->pluck('count', 'date');
-
-        // Grouped General Expenditures Details
-        $expendituresByAccount = \App\Models\JournalItem::join('accounts', 'journal_items.account_id', '=', 'accounts.id')
-            ->join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
-            ->where('accounts.type', 'expense')
-            ->where('accounts.code', '!=', '5000') // Exclude COGS
             ->when($startDate, function($q) use ($startDate) {
                 return $q->whereDate('journal_entries.entry_date', '>=', $startDate);
             })
             ->when($endDate, function($q) use ($endDate) {
                 return $q->whereDate('journal_entries.entry_date', '<=', $endDate);
             })
-            ->select('accounts.name', 'accounts.code', DB::raw('SUM(journal_items.debit) as total'))
-            ->groupBy('accounts.id', 'accounts.name', 'accounts.code')
-            ->get();
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', journal_entries.entry_date) as date"),
+                DB::raw("SUM(journal_items.debit) as value")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('value', 'date');
 
-        // Collect all unique dates from all daily logs
+        // Daily Operating Expenses
+        $dailyOperatingExpenses = \App\Models\JournalItem::join('journal_entries', 'journal_items.journal_entry_id', '=', 'journal_entries.id')
+            ->whereHas('account', function ($q) {
+                $q->where('type', 'expense')->whereNotIn('code', ['5000', '5100']);
+            })
+            ->when($startDate, function($q) use ($startDate) {
+                return $q->whereDate('journal_entries.entry_date', '>=', $startDate);
+            })
+            ->when($endDate, function($q) use ($endDate) {
+                return $q->whereDate('journal_entries.entry_date', '<=', $endDate);
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', journal_entries.entry_date) as date"),
+                DB::raw("SUM(journal_items.debit) as value")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('value', 'date');
+
+        // Daily Misc Parts COGS
+        $dailyMiscParts = \App\Models\BillItem::where('type', 'part')
+            ->whereNull('inventory_id')
+            ->whereHas('bill', function ($q) use ($startDate, $endDate) {
+                $q->where('status', 'paid');
+                if ($startDate) $q->whereDate('created_at', '>=', $startDate);
+                if ($endDate) $q->whereDate('created_at', '<=', $endDate);
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+                DB::raw("SUM(quantity * cost_price) as cogs")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('cogs', 'date');
+
+        // Daily Outsourcing COGS
+        $dailyOutsourcing = \App\Models\BillItem::where('type', 'outsourcing')
+            ->whereHas('bill', function ($q) use ($startDate, $endDate) {
+                $q->where('status', 'paid');
+                if ($startDate) $q->whereDate('created_at', '>=', $startDate);
+                if ($endDate) $q->whereDate('created_at', '<=', $endDate);
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+                DB::raw("SUM(cost_price) as cogs")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('cogs', 'date');
+
+        // Daily Jobs Count
+        $dailyJobs = \App\Models\JobCard::when($startDate, function($q) use ($startDate) {
+                return $q->whereDate('created_at', '>=', $startDate);
+            })
+            ->when($endDate, function($q) use ($endDate) {
+                return $q->whereDate('created_at', '<=', $endDate);
+            })
+            ->select(
+                DB::raw("strftime('%Y-%m-%d', created_at) as date"),
+                DB::raw("COUNT(*) as count")
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('count', 'date');
+
+        // Collect all unique dates
         $allDates = collect()
             ->merge($dailyIncome->keys())
-            ->merge($dailyExpenditure->keys())
-            ->merge($dailyParts->keys())
-            ->merge($dailyLaborRev->keys())
-            ->merge(array_keys($dailyLaborCOGS))
+            ->merge($dailyStockPurchases->keys())
+            ->merge($dailyPayroll->keys())
+            ->merge($dailyOperatingExpenses->keys())
+            ->merge($dailyMiscParts->keys())
             ->merge($dailyOutsourcing->keys())
             ->merge($dailyJobs->keys())
             ->unique()
             ->sort()
             ->values();
 
-        // Filter unique dates by target bounds
-        if ($startDate) {
-            $allDates = $allDates->filter(fn($d) => $d >= $startDate);
-        }
-        if ($endDate) {
-            $allDates = $allDates->filter(fn($d) => $d <= $endDate);
-        }
-        $allDates = $allDates->values();
-
-        // Build unified daily timeline
+        // Build unified daily timeline (Cash In, Cash Out, Net, Jobs)
         $dailyTimeline = $allDates->map(function ($date) use (
-            $dailyIncome, $dailyExpenditure, $dailyParts, $dailyLaborRev, $dailyLaborCOGS, $dailyOutsourcing, $dailyJobs
+            $dailyIncome, $dailyStockPurchases, $dailyPayroll, $dailyOperatingExpenses, $dailyMiscParts, $dailyOutsourcing, $dailyJobs
         ) {
             $inc = (double)($dailyIncome->get($date) ?? 0.00);
-            $exp = (double)($dailyExpenditure->get($date) ?? 0.00);
+            $stock = (double)($dailyStockPurchases->get($date) ?? 0.00);
+            $pay = (double)($dailyPayroll->get($date) ?? 0.00);
+            $op = (double)($dailyOperatingExpenses->get($date) ?? 0.00);
+            $misc = (double)($dailyMiscParts->get($date) ?? 0.00);
+            $out = (double)($dailyOutsourcing->get($date) ?? 0.00);
+
+            $exp = $stock + $pay + $op + $misc + $out;
             $jobsCount = (int)($dailyJobs->get($date) ?? 0);
-            
-            $partRev = 0.00;
-            $partCogs = 0.00;
-            if ($p = $dailyParts->get($date)) {
-                $partRev = (double)$p->revenue;
-                $partCogs = (double)$p->cogs;
-            }
-            
-            $labRev = (double)($dailyLaborRev->get($date) ?? 0.00);
-            $labCogs = (double)($dailyLaborCOGS[$date] ?? 0.00);
-            
-            $outRev = 0.00;
-            $outCogs = 0.00;
-            if ($o = $dailyOutsourcing->get($date)) {
-                $outRev = (double)$o->revenue;
-                $outCogs = (double)$o->cogs;
-            }
-            
+
             return [
                 'date' => $date,
                 'income' => $inc,
                 'expenditure' => $exp,
-                'jobs' => $jobsCount,
-                'parts_revenue' => $partRev,
-                'parts_cogs' => $partCogs,
-                'labor_revenue' => $labRev,
-                'labor_cogs' => $labCogs,
-                'outsourcing_revenue' => $outRev,
-                'outsourcing_cogs' => $outCogs
+                'net_profit' => $inc - $exp,
+                'jobs' => $jobsCount
             ];
         });
 
-        // Break-Even Target Calculation for the current month until the 30th
+        // Break-Even Target Calculation for the current month until the end of the month
         $currentYear = intval(date('Y'));
         $currentMonth = intval(date('m'));
         $currentDay = intval(date('d'));
-        
-        // 1. Management salaries for the current month
+        $daysInMonth = intval(date('t'));
+
         $managementSalaries = \App\Models\User::where('role', '!=', 'worker')
             ->where('is_archived', false)
             ->sum('basic_salary');
-
-        // 2. Fixed utilities
         $monthlyUtilities = 80000.00;
 
-        // 3. Parts COGS for current month so far (both inventory and misc parts)
-        $augustBillItemsQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($currentYear, $currentMonth) {
-            $q->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth);
+        $monthBillItemsQuery = \App\Models\BillItem::whereHas('bill', function ($q) use ($currentYear, $currentMonth) {
+            $q->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->where('status', 'paid');
         });
-        $augustPartsCOGS = floatval((clone $augustBillItemsQuery)->where('type', 'part')->sum(DB::raw('quantity * cost_price')));
-        $augustOutsourcingCOGS = floatval((clone $augustBillItemsQuery)->where('type', 'outsourcing')->sum('cost_price'));
+        $monthMiscPartsCOGS = floatval((clone $monthBillItemsQuery)->where('type', 'part')->whereNull('inventory_id')->sum(DB::raw('quantity * cost_price')));
+        $monthOutsourcingCOGS = floatval((clone $monthBillItemsQuery)->where('type', 'outsourcing')->sum('cost_price'));
 
-        // 4. Labor Cost (technician wages based on attendance in current month so far)
-        $workers = \App\Models\User::where('role', 'worker')->get();
-        $workerIds = $workers->pluck('id');
-        $workersMap = $workers->keyBy('id');
-        $augustAttendances = \App\Models\Attendance::whereIn('user_id', $workerIds)
-            ->whereYear('date', $currentYear)
-            ->whereMonth('date', $currentMonth)
-            ->get();
-        
-        $augustLabourCOGS = 0.00;
-        foreach ($augustAttendances as $att) {
-            $worker = $workersMap->get($att->user_id);
-            if ($worker && $worker->basic_salary > 0) {
-                $reqDays = max(1, (int)($worker->required_days ?? 26));
-                $dailyWage = floatval($worker->basic_salary) / $reqDays;
-                if ($att->status === 'present') {
-                    $augustLabourCOGS += $dailyWage;
-                } elseif ($att->status === 'half_day') {
-                    $augustLabourCOGS += $dailyWage * 0.5;
-                }
-            }
-        }
-
-        // 5. Consumables Cost in current month so far (weighted average cost)
-        $weightedAvgCosts = [];
-        $consumables = \App\Models\Consumable::all();
-        foreach ($consumables as $item) {
-            $totalQty = floatval($item->purchases()->sum('quantity'));
-            $totalCost = floatval($item->purchases()->sum('cost_price'));
-            $weightedAvgCosts[$item->id] = $totalQty > 0 ? ($totalCost / $totalQty) : 0.00;
-        }
-
-        $augustUsages = \App\Models\ConsumableUsage::whereYear('recorded_at', $currentYear)
-            ->whereMonth('recorded_at', $currentMonth)
-            ->get();
-        
-        $augustConsumablesCost = 0.00;
-        foreach ($augustUsages as $usage) {
-            $avgCost = $weightedAvgCosts[$usage->consumable_id] ?? 0.00;
-            $augustConsumablesCost += floatval($usage->quantity_consumed) * $avgCost;
-        }
-
-        // Total Costs for the Month so far + fixed overheads
-        $totalAugustCosts = floatval($managementSalaries) + $monthlyUtilities + $augustPartsCOGS + $augustOutsourcingCOGS + $augustLabourCOGS + $augustConsumablesCost;
-
-        // Total Income for current month so far (include all generated bills: both paid and draft)
-        $totalAugustIncome = floatval(\App\Models\Bill::whereYear('created_at', $currentYear)
+        $totalMonthCosts = floatval($managementSalaries) + $monthlyUtilities + $monthMiscPartsCOGS + $monthOutsourcingCOGS;
+        $totalMonthIncome = floatval(\App\Models\Bill::whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
+            ->where('status', 'paid')
             ->sum('total_amount'));
 
-        $remainingBreakEven = max(0.00, $totalAugustCosts - $totalAugustIncome);
-        $daysLeft = max(1, 30 - $currentDay + 1);
+        $remainingBreakEven = max(0.00, $totalMonthCosts - $totalMonthIncome);
+        $daysLeft = max(1, $daysInMonth - $currentDay + 1);
         $dailyBreakEvenTarget = $remainingBreakEven / $daysLeft;
         $breakEvenMonthName = date('F');
 
-        // Fetch Job Cards for the new view
-        $jobCardsQuery = \App\Models\JobCard::with(['vehicle.client', 'bill', 'stockMovements', 'miscParts', 'assignments.user', 'services', 'outsourcingItems']);
+        // Job Cards Detail View (NO LABOUR)
+        $jobCardsQuery = \App\Models\JobCard::with(['vehicle.client', 'bill', 'stockMovements', 'miscParts', 'outsourcingItems']);
         if ($startDate) {
             $jobCardsQuery->whereDate('created_at', '>=', $startDate);
         }
@@ -578,12 +514,11 @@ class DashboardController extends Controller
         }
         $rawJobCards = $jobCardsQuery->orderBy('created_at', 'desc')->get();
 
-        // Group by day
         $jobCardsByDay = $rawJobCards->groupBy(function($jc) {
             return $jc->created_at->format('Y-m-d');
         });
 
-        // Precalculate weighted average costs for consumables (needed for proration)
+        // Precalculate weighted average costs for consumables
         $weightedAvgCostsForProration = [];
         $consumablesList = \App\Models\Consumable::all();
         foreach ($consumablesList as $item) {
@@ -592,10 +527,8 @@ class DashboardController extends Controller
             $weightedAvgCostsForProration[$item->id] = $totalQty > 0 ? ($totalCost / $totalQty) : 0.00;
         }
 
-        // Map and format job cards by day
         $formattedJobCardsByDay = [];
         foreach ($jobCardsByDay as $dateStr => $dayJobCards) {
-            // Calculate daily consumables cost for this day
             $dateUsages = \App\Models\ConsumableUsage::whereDate('recorded_at', $dateStr)->get();
             $dailyConsumablesCost = 0.00;
             foreach ($dateUsages as $usage) {
@@ -607,38 +540,19 @@ class DashboardController extends Controller
 
             $formattedJobs = [];
             foreach ($dayJobCards as $jc) {
-                // Income
                 $income = $jc->bill ? floatval($jc->bill->total_amount) : 0.00;
 
-                // Outgoing parts (inventory)
                 $partsCostInventory = floatval($jc->stockMovements
                     ->where('type', 'out')
                     ->sum(function($mov) {
                         return abs($mov->quantity) * floatval($mov->cost_price);
                     }));
 
-                // Outgoing parts (misc)
                 $partsCostMisc = floatval($jc->miscParts->sum('cost_price'));
-
-                // Outgoing outsourcing
                 $outsourcingCost = floatval($jc->outsourcingItems->sum('cost_price'));
 
-                // Outgoing labor
-                $labourCost = 0.00;
-                foreach ($jc->assignments as $assignment) {
-                    $worker = $assignment->user;
-                    if ($worker) {
-                        $activeHours = floatval($assignment->active_hours);
-                        $otHours = floatval($assignment->overtime_hours);
-                        $reqDays = max(1, (int)($worker->required_days ?? 26));
-                        $dailyWage = floatval($worker->basic_salary) / $reqDays;
-                        $regularHourlyRate = $dailyWage / 9.5;
-                        
-                        $labourCost += ($activeHours * $regularHourlyRate) + ($otHours * floatval($worker->overtime_rate));
-                    }
-                }
-
-                $totalOutgoing = $partsCostInventory + $partsCostMisc + $outsourcingCost + $labourCost + $proratedConsumables;
+                // Notice: Labor is completely removed per user instructions!
+                $totalOutgoing = $partsCostInventory + $partsCostMisc + $outsourcingCost + $proratedConsumables;
 
                 $formattedJobs[] = [
                     'id' => $jc->id,
@@ -651,7 +565,6 @@ class DashboardController extends Controller
                     'parts_inventory' => $partsCostInventory,
                     'parts_misc' => $partsCostMisc,
                     'outsourcing' => $outsourcingCost,
-                    'labor' => $labourCost,
                     'consumables' => $proratedConsumables,
                     'outgoing' => $totalOutgoing,
                     'profit' => $income - $totalOutgoing
@@ -663,14 +576,11 @@ class DashboardController extends Controller
 
         return view('dashboard.statistics', compact(
             'startDate', 'endDate',
-            'totalIncome', 'totalStockPurchases', 'paidBasicSalaries', 'paidAllowances', 'totalPayroll',
-            'totalExpenditure', 'netProfit',
-            'partsRevenue', 'partsCOGS', 'partsProfit', 'partsMargin',
-            'laborRevenue', 'laborCOGS', 'laborProfit', 'laborMargin',
-            'outsourcingRevenue', 'outsourcingCOGS', 'outsourcingProfit', 'outsourcingMargin',
-            'tradingRevenue', 'tradingCOGS', 'tradingProfit', 'tradingMargin',
-            'dailyTimeline', 'expendituresByAccount',
-            'remainingBreakEven', 'daysLeft', 'dailyBreakEvenTarget', 'totalAugustCosts', 'totalAugustIncome', 'breakEvenMonthName',
+            'totalIncome', 'totalExpenditure', 'netProfit',
+            'totalStockPurchases', 'totalPayroll', 'totalOperatingExpenses', 'miscPartsCOGS', 'outsourcingCOGS',
+            'expenditureBreakdown', 'expendituresByAccount',
+            'dailyTimeline',
+            'remainingBreakEven', 'daysLeft', 'dailyBreakEvenTarget', 'totalMonthCosts', 'totalMonthIncome', 'breakEvenMonthName',
             'formattedJobCardsByDay'
         ));
     }

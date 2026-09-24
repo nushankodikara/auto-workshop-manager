@@ -31,433 +31,271 @@
         </form>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="flex border-b border-slate-200 dark:border-slate-800">
-        <button onclick="switchStatsTab('dashboard-overview')" id="btn-tab-overview" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-primary text-primary transition uppercase tracking-wider cursor-pointer">
-            Overview & Analytics
+    <!-- Tab Navigation (3 Streamlined Tabs) -->
+    <div class="flex border-b border-slate-200 dark:border-slate-800 gap-2">
+        <button onclick="switchStatsTab('dashboard-overview')" id="btn-tab-overview" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-primary text-primary transition uppercase tracking-wider cursor-pointer flex items-center gap-2">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Overview & Cash Flow</span>
         </button>
-        <button onclick="switchStatsTab('dashboard-calendar')" id="btn-tab-calendar" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer">
-            Details Calendar
+        <button onclick="switchStatsTab('dashboard-calendar')" id="btn-tab-calendar" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer flex items-center gap-2">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+            <span>Activity Calendar</span>
         </button>
-        <button onclick="switchStatsTab('dashboard-trends')" id="btn-tab-trends" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer">
-            Trends & Predictions
-        </button>
-        <button onclick="switchStatsTab('dashboard-jobcards')" id="btn-tab-jobcards" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer">
-            Job Cards Detail
+        <button onclick="switchStatsTab('dashboard-jobcards')" id="btn-tab-jobcards" class="px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer flex items-center gap-2">
+            <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+            <span>Job Cards Detail</span>
         </button>
     </div>
 
-    <!-- 1. TAB: Overview & Analytics -->
+    <!-- 1. TAB: Overview & Cash Flow -->
     <div id="dashboard-overview" class="tab-content space-y-8">
         
         <!-- High Level Cash Flow Metrics Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-            <!-- Card 1: Total Cash Income -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+            <!-- Card 1: Total Cash In -->
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border-l-4 border-l-emerald-500">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
-                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-green-500"></i>
-                            <span>Total Income</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="arrow-up-right" class="w-4 h-4 text-emerald-500"></i>
+                            <span>Total Cash In</span>
                         </span>
                         <h3 class="text-3xl font-bold mt-3 text-slate-800 dark:text-slate-100 font-mono">
                             {{ config('app.currency', 'Rs.') }} {{ number_format($totalIncome, 2) }}
                         </h3>
                     </div>
                 </div>
-                <p class="text-xs text-slate-505 dark:text-slate-400 leading-normal">
-                    Sum of all paid client invoices within this period.
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                    Total revenue collected from paid client invoices in this timeframe.
                 </p>
             </div>
 
-            <!-- Card 2: Total Cash Expenditure -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+            <!-- Card 2: Total Cash Out -->
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border-l-4 border-l-rose-500">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
-                            <i data-lucide="arrow-down-left" class="w-4 h-4 text-red-500"></i>
-                            <span>Total Expenditure</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="arrow-down-left" class="w-4 h-4 text-rose-500"></i>
+                            <span>Total Cash Out</span>
                         </span>
                         <h3 class="text-3xl font-bold mt-3 text-slate-800 dark:text-slate-100 font-mono">
                             {{ config('app.currency', 'Rs.') }} {{ number_format($totalExpenditure, 2) }}
                         </h3>
                     </div>
                 </div>
-                <p class="text-xs text-slate-505 dark:text-slate-400 leading-normal">
-                    Sum of parts inventory batch purchases and paid employee payroll.
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                    All business outflows: direct parts, outsourcing, stock, payroll & overheads.
                 </p>
             </div>
 
             <!-- Card 3: Net Cash Profit -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs">
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border-l-4 {{ $netProfit >= 0 ? 'border-l-primary' : 'border-l-rose-500' }}">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
-                            <i data-lucide="trending-up" class="w-4 h-4 text-primary"></i>
-                            <span>Net Profit</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="trending-up" class="w-4 h-4 {{ $netProfit >= 0 ? 'text-primary' : 'text-rose-500' }}"></i>
+                            <span>Net Cash Flow</span>
                         </span>
-                        <h3 class="text-3xl font-bold mt-3 font-mono {{ $netProfit >= 0 ? 'text-primary dark:text-primary' : 'text-red-500' }}">
+                        <h3 class="text-3xl font-bold mt-3 font-mono {{ $netProfit >= 0 ? 'text-primary dark:text-primary' : 'text-rose-500' }}">
                             {{ config('app.currency', 'Rs.') }} {{ number_format($netProfit, 2) }}
                         </h3>
                     </div>
                 </div>
-                <p class="text-xs text-slate-505 dark:text-slate-400 leading-normal">
-                    Net cash flow after subtracting expenditures from total income.
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                    Net cash margin (Total Cash In minus Total Cash Out).
                 </p>
             </div>
 
             <!-- Card 4: Daily Break-Even Target -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-primary/10 bg-primary/[0.01]">
+            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-primary/20 bg-primary/[0.02]">
                 <div class="flex justify-between items-start">
                     <div>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-550 flex items-center gap-1.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                             <i data-lucide="target" class="w-4 h-4 text-primary"></i>
-                            <span>Daily Break-Even Target</span>
+                            <span>Daily Break-Even</span>
                         </span>
                         <h3 class="text-3xl font-bold mt-3 text-slate-800 dark:text-slate-100 font-mono">
                             {{ config('app.currency', 'Rs.') }} {{ number_format($dailyBreakEvenTarget, 2) }}
                         </h3>
                     </div>
                 </div>
-                <p class="text-xs text-slate-505 dark:text-slate-400 leading-normal">
-                    @if($remainingBreakEven <= 0)
-                        <span class="text-emerald-505 font-bold flex items-center gap-1">
-                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Target Met (Broken Even)
-                        </span>
-                    @else
-                        Need {{ config('app.currency', 'Rs.') }}{{ number_format($remainingBreakEven, 2) }} more by 30th of {{ $breakEvenMonthName }}. Days left: {{ $daysLeft }}.
-                    @endif
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-normal">
+                    Required daily revenue to cover {{ $breakEvenMonthName }} fixed costs & overheads.
                 </p>
             </div>
 
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            <!-- Expenditure Breakdown Details -->
-            <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
-                    <i data-lucide="pie-chart" class="w-4 h-4 text-primary"></i>
-                    <span>Expenditure Details</span>
-                </h3>
-
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-500 font-semibold">Inventory & Payroll:</span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs pl-3 border-l-2 border-slate-200 dark:border-slate-800">
-                        <span class="text-slate-500">Parts Batch Purchases (Asset stock)</span>
-                        <span class="font-bold text-slate-750 dark:text-slate-200 font-mono">
-                            {{ config('app.currency', 'Rs.') }} {{ number_format($totalStockPurchases, 2) }}
-                        </span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs pl-3 border-l-2 border-slate-200 dark:border-slate-800">
-                        <span class="text-slate-500">Employee Salaries (Paid Basic)</span>
-                        <span class="font-bold text-slate-750 dark:text-slate-200 font-mono">
-                            {{ config('app.currency', 'Rs.') }} {{ number_format($paidBasicSalaries, 2) }}
-                        </span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs pl-3 border-l-2 border-slate-200 dark:border-slate-800">
-                        <span class="text-slate-500">Employee Allowances (Paid)</span>
-                        <span class="font-bold text-slate-750 dark:text-slate-200 font-mono">
-                            {{ config('app.currency', 'Rs.') }} {{ number_format($paidAllowances, 2) }}
-                        </span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs pl-3 border-l-2 border-slate-200 dark:border-slate-800">
-                        <span class="text-slate-500 font-semibold text-slate-600 dark:text-slate-400">Total Payroll Disbursements</span>
-                        <span class="font-bold text-slate-700 dark:text-slate-300 font-mono">
-                            {{ config('app.currency', 'Rs.') }} {{ number_format($totalPayroll, 2) }}
-                        </span>
-                    </div>
-
-                    @if($expendituresByAccount->count() > 0)
-                        <div class="flex justify-between items-center text-xs pt-2">
-                            <span class="text-slate-505 font-semibold">General Expenditures (Ledger):</span>
-                        </div>
-                        @foreach($expendituresByAccount as $expAcc)
-                            @if($expAcc->code !== '5100') {{-- Avoid duplicating salaries --}}
-                                <div class="flex justify-between items-center text-xs pl-3 border-l-2 border-slate-200 dark:border-slate-800">
-                                    <span class="text-slate-500">{{ $expAcc->name }}</span>
-                                    <span class="font-bold text-slate-750 dark:text-slate-200 font-mono">
-                                        {{ config('app.currency', 'Rs.') }} {{ number_format($expAcc->total, 2) }}
-                                    </span>
-                                </div>
-                            @endif
-                        @endforeach
-                    @endif
-
-                    <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-sm font-bold">
-                        <span class="text-slate-705 dark:text-slate-350">Total Outflow & Expenses</span>
-                        <span class="font-mono text-red-500">
-                            {{ config('app.currency', 'Rs.') }} {{ number_format($totalExpenditure, 2) }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Trading Profitability & Margins (COGS) -->
-            <div class="app-card rounded-2xl p-6 space-y-6 shadow-xs">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center gap-1.5">
-                    <i data-lucide="percent" class="w-4 h-4 text-primary"></i>
-                    <span>Trading Profitability & Margins (COGS)</span>
-                </h3>
-
-                <div class="space-y-6">
-                    <!-- Parts Segment -->
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300">
-                            <span>Parts Segment</span>
-                            <span class="font-mono text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded text-[11px]">
-                                Margin: {{ number_format($partsMargin, 1) }}%
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 dark:bg-slate-955/40 rounded-xl p-3 border border-slate-200 dark:border-slate-850/60">
-                            <div>
-                                <span class="text-slate-500 block">Revenue</span>
-                                <span class="font-semibold font-mono text-slate-700 dark:text-slate-300">
-                                    {{ number_format($partsRevenue, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">COGS (Cost)</span>
-                                <span class="font-semibold font-mono text-red-550 dark:text-red-400">
-                                    {{ number_format($partsCOGS, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Gross Profit</span>
-                                <span class="font-semibold font-mono text-green-600 dark:text-green-400">
-                                    {{ number_format($partsProfit, 2) }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Labor Segment -->
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300">
-                            <span>Labor Segment</span>
-                            <span class="font-mono text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded text-[11px]">
-                                Margin: {{ number_format($laborMargin, 1) }}%
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 dark:bg-slate-955/40 rounded-xl p-3 border border-slate-200 dark:border-slate-855">
-                            <div>
-                                <span class="text-slate-500 block">Revenue</span>
-                                <span class="font-semibold font-mono text-slate-700 dark:text-slate-300">
-                                    {{ number_format($laborRevenue, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block cursor-help" title="Calculated based on daily wage (basic salary / employee required days) multiplied by worker attendance days (present/half-day).">Direct Cost</span>
-                                <span class="font-semibold font-mono text-red-550 dark:text-red-400">
-                                    {{ number_format($laborCOGS, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Gross Profit</span>
-                                <span class="font-semibold font-mono text-green-600 dark:text-green-400">
-                                    {{ number_format($laborProfit, 2) }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="text-[10px] text-slate-400 dark:text-slate-500 px-1 leading-snug">
-                            * Direct cost computed from worker attendance days & basic salary (excluding managers and admins).
-                        </div>
-                    </div>
-
-                    <!-- Outsourcing Segment -->
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-600 dark:text-slate-300">
-                            <span>Specialist Services (Outsourced)</span>
-                            <span class="font-mono text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded text-[11px]">
-                                Margin: {{ number_format($outsourcingMargin, 1) }}%
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-slate-50 dark:bg-slate-955/40 rounded-xl p-3 border border-slate-200 dark:border-slate-855">
-                            <div>
-                                <span class="text-slate-500 block">Revenue</span>
-                                <span class="font-semibold font-mono text-slate-700 dark:text-slate-300">
-                                    {{ number_format($outsourcingRevenue, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Direct Cost</span>
-                                <span class="font-semibold font-mono text-red-550 dark:text-red-400">
-                                    {{ number_format($outsourcingCOGS, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Gross Profit</span>
-                                <span class="font-semibold font-mono text-green-600 dark:text-green-400">
-                                    {{ number_format($outsourcingProfit, 2) }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Overall Segment Summary -->
-                    <div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-700 dark:text-slate-200">
-                            <span>Overall Trading Performance</span>
-                            <span class="font-mono text-white bg-primary px-2.5 py-0.5 rounded-full text-[11px] shadow-sm">
-                                Avg Margin: {{ number_format($tradingMargin, 1) }}%
-                            </span>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 text-center text-[11px] bg-primary/5 dark:bg-primary/10 rounded-xl p-3 border border-primary/10">
-                            <div>
-                                <span class="text-slate-500 block">Total Revenue</span>
-                                <span class="font-bold font-mono text-slate-800 dark:text-slate-200">
-                                    {{ number_format($tradingRevenue, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Total COGS</span>
-                                <span class="font-bold font-mono text-red-500">
-                                    {{ number_format($tradingCOGS, 2) }}
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Total Gross Profit</span>
-                                <span class="font-bold font-mono text-primary">
-                                    {{ number_format($tradingProfit, 2) }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- Dynamic Advanced Financial Trend Card -->
+        <!-- Cash Flow Timeline Chart -->
         <div class="app-card rounded-2xl p-6 shadow-xs space-y-6">
-            <!-- Card Header with Frequency & Chart Style Controls -->
-            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-205 dark:border-slate-800 pb-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                        <i data-lucide="bar-chart-3" class="w-4 h-4 text-primary"></i>
-                        <span>Interactive Financial Trend Analyzer</span>
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-primary"></i>
+                        <span>Cash Flow & Performance Timeline</span>
                     </h3>
-                    <p class="text-[10px] text-slate-405 dark:text-slate-500 mt-1 leading-normal">
-                        Generate multi-metric overlay reports, adjust time buckets, and trace financial regressions.
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-normal">
+                        Unified visualization of daily Cash In, Cash Out, and Net Cash Flow matching the ledger and calendar.
                     </p>
                 </div>
                 
                 <div class="flex flex-wrap items-center gap-3">
-                    <!-- Frequency Selection -->
-                    <select id="chartFrequency" class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-sans cursor-pointer">
-                        <option value="days">Daily View</option>
-                        <option value="weeks" selected>Weekly View</option>
-                        <option value="months">Monthly View</option>
-                    </select>
+                    <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+                        <span class="text-[11px] font-semibold text-slate-500 px-2">Group By:</span>
+                        <select id="chartFrequency" onchange="updateChart()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer">
+                            <option value="days" selected>Daily</option>
+                            <option value="weeks">Weekly</option>
+                            <option value="months">Monthly</option>
+                        </select>
+                    </div>
 
-                    <!-- Chart Style Selector -->
-                    <select id="chartStyle" class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary font-sans cursor-pointer">
-                        <option value="line">Line Graph</option>
-                        <option value="bar">Bar Graph</option>
-                        <option value="pie">Share Breakdown (Pie)</option>
-                    </select>
-
-                    <!-- Trend Line Analysis Checkbox -->
-                    <div class="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg">
-                        <input type="checkbox" id="chartTrendAnalysis" class="rounded text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer">
-                        <label for="chartTrendAnalysis" class="text-xs text-slate-655 dark:text-slate-350 select-none cursor-pointer font-semibold uppercase text-[10px]">Trend Line</label>
+                    <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+                        <span class="text-[11px] font-semibold text-slate-500 px-2">Type:</span>
+                        <select id="chartStyle" onchange="updateChart()" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer">
+                            <option value="bar" selected>Bar Comparison</option>
+                            <option value="line">Line Trend</option>
+                        </select>
                     </div>
                 </div>
             </div>
 
-            <!-- Metric Selectors Grid (Multi-metric toggling) -->
-            <div class="space-y-3">
-                <h4 class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Select Metrics to Compare:</h4>
-                
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <!-- Group 1: General Cash flows -->
-                    <div class="space-y-2 border border-slate-200 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-950/20 rounded-xl p-3">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block border-b border-slate-200 dark:border-slate-855 pb-1.5 mb-2">Ledger Cash Flow</span>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="income" checked class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Total Income</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="expenditure" checked class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Total Expenditure</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="net_profit" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Net Profit</span>
-                        </label>
-                    </div>
-
-                    <!-- Group 2: Parts Trading -->
-                    <div class="space-y-2 border border-slate-200 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-950/20 rounded-xl p-3">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block border-b border-slate-200 dark:border-slate-855 pb-1.5 mb-2">Parts Segment</span>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="parts_revenue" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Parts Revenue</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="parts_cogs" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Parts Cost (COGS)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="parts_margin" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Parts Margin (%)</span>
-                        </label>
-                    </div>
-
-                    <!-- Group 3: Labor Trading -->
-                    <div class="space-y-2 border border-slate-200 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-950/20 rounded-xl p-3">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block border-b border-slate-200 dark:border-slate-855 pb-1.5 mb-2">Labor Segment</span>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="labor_revenue" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Labor Revenue</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="labor_cogs" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Labor Cost (COGS)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="labor_margin" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Labor Margin (%)</span>
-                        </label>
-                    </div>
-
-                    <!-- Group 4: Overall Trading -->
-                    <div class="space-y-2 border border-slate-200 dark:border-slate-850 bg-slate-50/40 dark:bg-slate-950/20 rounded-xl p-3">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider block border-b border-slate-200 dark:border-slate-855 pb-1.5 mb-2">Total Trading</span>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="trading_revenue" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Trading Revenue</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="trading_cogs" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Trading Cost (COGS)</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer text-slate-650 dark:text-slate-355">
-                            <input type="checkbox" name="chart_metrics" value="trading_margin" class="rounded text-primary focus:ring-primary w-4 h-4 cursor-pointer">
-                            <span>Trading Margin (%)</span>
-                        </label>
-                    </div>
-                </div>
+            <!-- Legend Pills -->
+            <div class="flex flex-wrap items-center gap-4 text-xs font-semibold">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>Cash In (Income)</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-500">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                    <span>Cash Out (Expenditure)</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                    <span>Net Cash Flow</span>
+                </span>
             </div>
 
             <!-- Render Target Canvas -->
-            <div class="relative w-full h-96 pt-2">
+            <div class="relative w-full h-80 pt-2">
                 <canvas id="financialChart"></canvas>
             </div>
         </div>
 
+        <!-- Structured Expenditure & Outflow Breakdown -->
+        <div class="app-card rounded-2xl p-6 shadow-xs space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <i data-lucide="receipt" class="w-5 h-5 text-rose-500"></i>
+                        <span>Expenditure Overview & Cost Structure</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-normal">
+                        All business costs and outgoing transactions itemized under this section, boiling up to Total Cash Out.
+                    </p>
+                </div>
+                <div class="text-right">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Outflow</span>
+                    <span class="text-lg font-bold font-mono text-rose-500">
+                        {{ config('app.currency', 'Rs.') }} {{ number_format($totalExpenditure, 2) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Main Expenditure Category Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100/70 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                            <th class="py-3 px-4">Cost Category</th>
+                            <th class="py-3 px-4">Account Code</th>
+                            <th class="py-3 px-4">Transaction Details</th>
+                            <th class="py-3 px-4 text-right">Amount</th>
+                            <th class="py-3 px-4 text-right">Share (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        @foreach($expenditureBreakdown as $cat)
+                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition">
+                                <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                    <div class="p-1.5 rounded-lg bg-rose-500/10 text-rose-500">
+                                        <i data-lucide="{{ $cat['icon'] }}" class="w-4 h-4"></i>
+                                    </div>
+                                    <span>{{ $cat['category'] }}</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold">
+                                        {{ $cat['code'] }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">
+                                    {{ $cat['description'] }}
+                                </td>
+                                <td class="py-3 px-4 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
+                                    {{ config('app.currency', 'Rs.') }} {{ number_format($cat['amount'], 2) }}
+                                </td>
+                                <td class="py-3 px-4 text-right font-mono text-xs">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <div class="w-16 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                            <div class="h-full bg-rose-500 rounded-full" style="width: {{ min(100, $cat['percentage']) }}%"></div>
+                                        </div>
+                                        <span class="w-12 text-slate-600 dark:text-slate-400 font-semibold">{{ number_format($cat['percentage'], 1) }}%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-slate-50 dark:bg-slate-900/50 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100">
+                            <td colspan="3" class="py-3 px-4 uppercase text-[11px] tracking-wider">
+                                Total Consolidated Cash Out
+                            </td>
+                            <td class="py-3 px-4 text-right font-mono text-sm text-rose-500">
+                                {{ config('app.currency', 'Rs.') }} {{ number_format($totalExpenditure, 2) }}
+                            </td>
+                            <td class="py-3 px-4 text-right font-mono text-xs text-rose-500">
+                                100.0%
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Operating Expenses Detail Sub-Table (if any overhead accounts logged) -->
+            @if($expendituresByAccount->count() > 0)
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                        Itemized Operating Overhead Accounts:
+                    </span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($expendituresByAccount as $acc)
+                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs">
+                                <div>
+                                    <span class="font-semibold text-slate-800 dark:text-slate-200 block">{{ $acc->name }}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">Code {{ $acc->code }} • {{ $acc->count }} {{ Str::plural('entry', $acc->count) }}</span>
+                                </div>
+                                <span class="font-mono font-bold text-rose-500">
+                                    {{ config('app.currency', 'Rs.') }} {{ number_format($acc->total, 2) }}
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+
     </div>
 
-    <!-- 2. TAB: Details Calendar Tracker -->
+    <!-- 2. TAB: Activity Calendar -->
     <div id="dashboard-calendar" class="tab-content hidden space-y-6">
         <div class="app-card rounded-2xl p-6 shadow-xs space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-550 dark:text-slate-400">Activity Calendar</h3>
-                    <p class="text-[10px] text-slate-405 dark:text-slate-500 mt-1 leading-normal">Daily details for job cards, income, and outflow.</p>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4 text-primary"></i>
+                        <span>Activity & Cash Calendar</span>
+                    </h3>
+                    <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-normal">Daily breakdown for job cards, cash in, and cash outflow.</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <select id="calendarMonth" onchange="renderCalendar()" class="px-2.5 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 text-xs focus:outline-none focus:border-primary cursor-pointer">
@@ -491,7 +329,7 @@
                     <i data-lucide="calendar-range" class="w-4 h-4 text-primary"></i>
                     <span>Weekly Performance Summaries</span>
                 </h4>
-                <div id="weekly-summary-list" class="divide-y divide-slate-250 dark:divide-slate-850/60 text-xs max-h-[300px] overflow-y-auto pr-1">
+                <div id="weekly-summary-list" class="divide-y divide-slate-200 dark:divide-slate-800 text-xs max-h-[300px] overflow-y-auto pr-1">
                     <!-- Dynamically populated -->
                 </div>
             </div>
@@ -501,184 +339,14 @@
                     <i data-lucide="layers" class="w-4 h-4 text-primary"></i>
                     <span>Monthly Performance Summaries</span>
                 </h4>
-                <div id="monthly-summary-list" class="divide-y divide-slate-250 dark:divide-slate-850/60 text-xs max-h-[300px] overflow-y-auto pr-1">
+                <div id="monthly-summary-list" class="divide-y divide-slate-200 dark:divide-slate-800 text-xs max-h-[300px] overflow-y-auto pr-1">
                     <!-- Dynamically populated -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 3. TAB: Trends & Predictions Console -->
-    <div id="dashboard-trends" class="tab-content hidden space-y-6">
-        <!-- Predictions Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Card 1: Weekly Prediction -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-primary/20 bg-primary/5 dark:bg-primary/10">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>7-Day Short Forecast</span>
-                </h3>
-                <div class="space-y-4 font-mono text-xs">
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
-                            <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-week">0</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-jobs-week">0 - 0</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
-                            <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-week">Rs. 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-income-week">Rs. 0.00 - Rs. 0.00</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
-                            <span class="font-bold text-red-500" id="forecast-expenditure-week">Rs. 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-expenditure-week">Rs. 0.00 - Rs. 0.00</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 2: Monthly Prediction -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-green-500/20 bg-green-500/5 dark:bg-green-500/10">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-green-600 dark:text-green-450 flex items-center gap-1.5">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>30-Day Medium Forecast</span>
-                </h3>
-                <div class="space-y-4 font-mono text-xs">
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
-                            <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-month">0</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-jobs-month">0 - 0</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
-                            <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-month">Rs. 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-income-month">Rs. 0.00 - Rs. 0.00</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
-                            <span class="font-bold text-red-500" id="forecast-expenditure-month">Rs. 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-expenditure-month">Rs. 0.00 - Rs. 0.00</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 3: Yearly Prediction -->
-            <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs border border-purple-500/20 bg-purple-500/5 dark:bg-purple-500/10">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-450 flex items-center gap-1.5">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>365-Day Long Forecast</span>
-                </h3>
-                <div class="space-y-4 font-mono text-xs">
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Jobs Forecast:</span>
-                            <span class="font-bold text-slate-800 dark:text-slate-200" id="forecast-jobs-year">0</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-jobs-year">0 - 0</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Income Forecast:</span>
-                            <span class="font-bold text-green-600 dark:text-green-400" id="forecast-income-year">Rs. 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-income-year">Rs. 0.00 - Rs. 0.00</span>
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex justify-between">
-                            <span class="text-slate-550 dark:text-slate-400 font-sans">Expenditure Forecast:</span>
-                            <span class="font-bold text-red-500" id="forecast-expenditure-year">Rs. 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-[10px] text-slate-450 dark:text-slate-500 font-sans">
-                            <span>Realistic Range:</span>
-                            <span id="range-expenditure-year">Rs. 0.00 - Rs. 0.00</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Trends Regression Analysis -->
-        <div class="app-card rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-3">
-                <i data-lucide="activity" class="w-4 h-4 text-primary"></i>
-                <span>Trend Direction & Regression Analysis (Slope Indicators)</span>
-            </h3>
-            
-            <div class="divide-y divide-slate-200 dark:divide-slate-850/60 text-xs">
-                <div class="py-3.5 flex justify-between items-center">
-                    <div>
-                        <span class="font-bold text-slate-750 dark:text-slate-200 block text-sm">Income Trend Slope</span>
-                        <span class="text-[10px] text-slate-500" id="income-regression-slope-text">Calculating regression...</span>
-                    </div>
-                    <div class="flex items-center font-semibold text-xs" id="income-trend-badge">
-                        <!-- Loaded dynamically -->
-                    </div>
-                </div>
-                
-                <div class="py-3.5 flex justify-between items-center">
-                    <div>
-                        <span class="font-bold text-slate-750 dark:text-slate-200 block text-sm">Expenditure Trend Slope</span>
-                        <span class="text-[10px] text-slate-500" id="expenditure-regression-slope-text">Calculating regression...</span>
-                    </div>
-                    <div class="flex items-center font-semibold text-xs" id="expenditure-trend-badge">
-                        <!-- Loaded dynamically -->
-                    </div>
-                </div>
-                
-                <div class="py-3.5 flex justify-between items-center">
-                    <div>
-                        <span class="font-bold text-slate-750 dark:text-slate-200 block text-sm">Jobs Volume Trend Slope</span>
-                        <span class="text-[10px] text-slate-500" id="jobs-regression-slope-text">Calculating regression...</span>
-                    </div>
-                    <div class="flex items-center font-semibold text-xs" id="jobs-trend-badge">
-                        <!-- Loaded dynamically -->
-                    </div>
-                </div>
-            </div>
-            
-            <p class="text-[10px] text-slate-450 leading-relaxed pt-2">
-                * Slope indicates the average daily rate of increase or decrease. Direction badges show calculated vector changes. Standard least-squares algorithm applies.
-            </p>
-        </div>
-    </div>
-
-    <!-- 4. TAB: Job Cards Detail -->
+    <!-- 3. TAB: Job Cards Detail (NO LABOUR) -->
     <div id="dashboard-jobcards" class="tab-content hidden space-y-6">
         @php
             $statusBadges = [
@@ -691,7 +359,7 @@
         @endphp
 
         @if(empty($formattedJobCardsByDay))
-            <div class="text-slate-500 text-sm py-12 text-center bg-slate-50 dark:bg-slate-955/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
+            <div class="text-slate-500 text-sm py-12 text-center bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
                 No Job Cards found in the selected date range.
             </div>
         @else
@@ -712,14 +380,14 @@
                             </h3>
                         </div>
                         <div class="flex flex-wrap items-center gap-3 text-xs font-mono font-semibold">
-                            <span class="text-green-600 dark:text-green-400 bg-green-500/5 px-2.5 py-1 rounded">
-                                In: Rs. {{ number_format($dayIncome, 2) }}
+                            <span class="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded">
+                                In: {{ config('app.currency', 'Rs.') }} {{ number_format($dayIncome, 2) }}
                             </span>
-                            <span class="text-red-500 bg-red-500/5 px-2.5 py-1 rounded">
-                                Out: Rs. {{ number_format($dayOutgoing, 2) }}
+                            <span class="text-rose-500 bg-rose-500/10 px-2.5 py-1 rounded">
+                                Out: {{ config('app.currency', 'Rs.') }} {{ number_format($dayOutgoing, 2) }}
                             </span>
-                            <span class="{{ $dayProfit >= 0 ? 'text-primary' : 'text-red-500' }} bg-primary/5 px-2.5 py-1 rounded">
-                                Profit: Rs. {{ number_format($dayProfit, 2) }}
+                            <span class="{{ $dayProfit >= 0 ? 'text-primary' : 'text-rose-500' }} bg-primary/10 px-2.5 py-1 rounded">
+                                Net: {{ config('app.currency', 'Rs.') }} {{ number_format($dayProfit, 2) }}
                             </span>
                         </div>
                     </div>
@@ -734,51 +402,56 @@
                                     <th class="py-3 px-4">Client</th>
                                     <th class="py-3 px-4">Status</th>
                                     <th class="py-3 px-4 text-right">Income</th>
-                                    <th class="py-3 px-4 text-right">Parts Cost</th>
-                                    <th class="py-3 px-4 text-right">Labor Cost</th>
+                                    <th class="py-3 px-4 text-right">Parts Cost (Stock)</th>
+                                    <th class="py-3 px-4 text-right">Parts Cost (Misc)</th>
                                     <th class="py-3 px-4 text-right">Outsource Cost</th>
                                     <th class="py-3 px-4 text-right">Consumables</th>
                                     <th class="py-3 px-4 text-right">Total Outgoing</th>
                                     <th class="py-3 px-4 text-right">Profit / Loss</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-200 dark:divide-slate-850/60">
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
                                 @foreach($dayJobs as $job)
                                     <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/20 transition">
                                         <td class="py-3 px-4 font-mono font-bold text-primary">
                                             <a href="{{ route('job-cards.show', $job['id']) }}" class="hover:underline">
                                                 {{ $job['card_number'] }}
                                             </a>
+                                            @if($job['bill_number'])
+                                                <span class="block text-[10px] font-normal text-slate-400">{{ $job['bill_number'] }}</span>
+                                            @endif
                                         </td>
-                                        <td class="py-3 px-4 font-mono text-slate-800 dark:text-slate-200">{{ $job['plate_number'] }}</td>
-                                        <td class="py-3 px-4 text-slate-800 dark:text-slate-200">{{ $job['client_name'] }}</td>
+                                        <td class="py-3 px-4 font-medium text-slate-700 dark:text-slate-300">
+                                            {{ $job['plate_number'] }}
+                                        </td>
+                                        <td class="py-3 px-4 text-slate-600 dark:text-slate-400">
+                                            {{ $job['client_name'] }}
+                                        </td>
                                         <td class="py-3 px-4">
-                                            @php
-                                                $badgeInfo = $statusBadges[$job['status']] ?? ['label' => $job['status'], 'badge' => 'bg-slate-100 text-slate-500'];
-                                            @endphp
-                                            <span class="px-2 py-0.5 text-[9px] font-bold rounded-full {{ $badgeInfo['badge'] }}">
-                                                {{ $badgeInfo['label'] }}
+                                            @php $badge = $statusBadges[$job['status']] ?? ['label' => ucfirst($job['status']), 'badge' => 'bg-slate-100 text-slate-600']; @endphp
+                                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold {{ $badge['badge'] }}">
+                                                {{ $badge['label'] }}
                                             </span>
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono text-green-600 dark:text-green-400 font-semibold">
+                                        <td class="py-3 px-4 text-right font-mono font-bold text-slate-800 dark:text-slate-200">
                                             {{ $job['income'] > 0 ? 'Rs. ' . number_format($job['income'], 2) : '-' }}
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
-                                            {{ ($job['parts_inventory'] + $job['parts_misc']) > 0 ? 'Rs. ' . number_format($job['parts_inventory'] + $job['parts_misc'], 2) : '-' }}
+                                        <td class="py-3 px-4 text-right font-mono text-slate-500">
+                                            {{ $job['parts_inventory'] > 0 ? 'Rs. ' . number_format($job['parts_inventory'], 2) : '-' }}
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
-                                            {{ $job['labor'] > 0 ? 'Rs. ' . number_format($job['labor'], 2) : '-' }}
+                                        <td class="py-3 px-4 text-right font-mono text-slate-500">
+                                            {{ $job['parts_misc'] > 0 ? 'Rs. ' . number_format($job['parts_misc'], 2) : '-' }}
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
+                                        <td class="py-3 px-4 text-right font-mono text-slate-500">
                                             {{ $job['outsourcing'] > 0 ? 'Rs. ' . number_format($job['outsourcing'], 2) : '-' }}
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono text-slate-550">
+                                        <td class="py-3 px-4 text-right font-mono text-slate-500">
                                             {{ $job['consumables'] > 0 ? 'Rs. ' . number_format($job['consumables'], 2) : '-' }}
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono text-red-500 font-semibold">
+                                        <td class="py-3 px-4 text-right font-mono text-rose-500 font-semibold">
                                             {{ $job['outgoing'] > 0 ? 'Rs. ' . number_format($job['outgoing'], 2) : '-' }}
                                         </td>
-                                        <td class="py-3 px-4 text-right font-mono font-semibold {{ $job['profit'] >= 0 ? 'text-primary' : 'text-red-500' }}">
+                                        <td class="py-3 px-4 text-right font-mono font-semibold {{ $job['profit'] >= 0 ? 'text-primary' : 'text-rose-500' }}">
                                             Rs. {{ number_format($job['profit'], 2) }}
                                         </td>
                                     </tr>
@@ -793,43 +466,21 @@
 
 </div>
 
-<!-- Chart.js Advanced Generation Script -->
+<!-- Chart.js Advanced Script -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const ctx = document.getElementById('financialChart').getContext('2d');
+        const canvas = document.getElementById('financialChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
         const dailyTimeline = @json($dailyTimeline);
-        
-        // Configuration reference variables (loads page-wide filter bounds natively)
         const startDateStr = "{{ $startDate }}";
         const endDateStr = "{{ $endDate }}";
         const frequencySelector = document.getElementById('chartFrequency');
         const styleSelector = document.getElementById('chartStyle');
-        const trendCheckbox = document.getElementById('chartTrendAnalysis');
-        const metricCheckboxes = document.querySelectorAll('input[name="chart_metrics"]');
 
         let currentChart = null;
 
-        // Global Metric Definitions & Colors
-        const METRIC_CONFIG = {
-            income: { label: 'Total Income (Ledger)', type: 'line', yAxisID: 'yAmount', borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)' },
-            expenditure: { label: 'Total Expenditure (Ledger)', type: 'line', yAxisID: 'yAmount', borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.15)' },
-            net_profit: { label: 'Net Profit (Ledger)', type: 'line', yAxisID: 'yAmount', borderColor: '#6366f1', backgroundColor: 'rgba(99, 102, 241, 0.15)' },
-            
-            parts_revenue: { label: 'Parts Revenue (Trading)', type: 'bar', yAxisID: 'yAmount', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.35)' },
-            parts_cogs: { label: 'Parts Cost (COGS)', type: 'bar', yAxisID: 'yAmount', borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.35)' },
-            parts_margin: { label: 'Parts Margin (%)', type: 'line', yAxisID: 'yPercent', borderColor: '#8b5cf6', backgroundColor: 'transparent', borderDash: [4, 4] },
-            
-            labor_revenue: { label: 'Labor Revenue (Trading)', type: 'bar', yAxisID: 'yAmount', borderColor: '#06b6d4', backgroundColor: 'rgba(6, 182, 212, 0.35)' },
-            labor_cogs: { label: 'Labor Cost (COGS)', type: 'bar', yAxisID: 'yAmount', borderColor: '#ec4899', backgroundColor: 'rgba(236, 72, 153, 0.35)' },
-            labor_margin: { label: 'Labor Margin (%)', type: 'line', yAxisID: 'yPercent', borderColor: '#a855f7', backgroundColor: 'transparent', borderDash: [4, 4] },
-            
-            trading_revenue: { label: 'Total Trading Revenue', type: 'bar', yAxisID: 'yAmount', borderColor: '#14b8a6', backgroundColor: 'rgba(20, 184, 166, 0.35)' },
-            trading_cogs: { label: 'Total Trading Cost (COGS)', type: 'bar', yAxisID: 'yAmount', borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.35)' },
-            trading_margin: { label: 'Total Trading Margin (%)', type: 'line', yAxisID: 'yPercent', borderColor: '#d946ef', backgroundColor: 'transparent', borderDash: [4, 4] }
-        };
-
-        // Date Utilities
         function getMonday(dateStr) {
             const d = new Date(dateStr);
             const day = d.getDay();
@@ -844,36 +495,7 @@
             return `${months[d.getMonth()]} ${d.getFullYear()}`;
         }
 
-        // Simple Linear Regression for Trend Line calculations
-        function calculateTrendPoints(dataPoints) {
-            const n = dataPoints.length;
-            if (n < 2) return null;
-            
-            let sumX = 0;
-            let sumY = 0;
-            let sumXY = 0;
-            let sumXX = 0;
-            
-            for (let i = 0; i < n; i++) {
-                sumX += i;
-                sumY += dataPoints[i];
-                sumXY += i * dataPoints[i];
-                sumXX += i * i;
-            }
-            
-            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-            const intercept = (sumY - slope * sumX) / n;
-            
-            const trend = [];
-            for (let i = 0; i < n; i++) {
-                trend.push(slope * i + intercept);
-            }
-            return trend;
-        }
-
-        // Data Processor
         function getAggregatedData() {
-            // 1. Date Range Filtering
             let filtered = dailyTimeline;
             if (startDateStr) {
                 filtered = filtered.filter(item => item.date >= startDateStr);
@@ -882,10 +504,9 @@
                 filtered = filtered.filter(item => item.date <= endDateStr);
             }
 
-            const freq = frequencySelector.value;
-
-            // 2. Bucketing
+            const freq = frequencySelector ? frequencySelector.value : 'days';
             const grouped = {};
+
             filtered.forEach(item => {
                 let key = item.date;
                 if (freq === 'weeks') {
@@ -895,30 +516,14 @@
                 }
 
                 if (!grouped[key]) {
-                    grouped[key] = {
-                        key: key,
-                        income: 0,
-                        expenditure: 0,
-                        parts_revenue: 0,
-                        parts_cogs: 0,
-                        labor_revenue: 0,
-                        labor_cogs: 0,
-                        outsourcing_revenue: 0,
-                        outsourcing_cogs: 0
-                    };
+                    grouped[key] = { key: key, income: 0, expenditure: 0, net_profit: 0 };
                 }
 
-                grouped[key].income += item.income;
-                grouped[key].expenditure += item.expenditure;
-                grouped[key].parts_revenue += item.parts_revenue;
-                grouped[key].parts_cogs += item.parts_cogs;
-                grouped[key].labor_revenue += item.labor_revenue;
-                grouped[key].labor_cogs += item.labor_cogs;
-                grouped[key].outsourcing_revenue += item.outsourcing_revenue;
-                grouped[key].outsourcing_cogs += item.outsourcing_cogs;
+                grouped[key].income += (item.income || 0);
+                grouped[key].expenditure += (item.expenditure || 0);
+                grouped[key].net_profit += ((item.income || 0) - (item.expenditure || 0));
             });
 
-            // Sort keys chronologically
             const keys = Object.keys(grouped);
             if (freq === 'months') {
                 keys.sort((a, b) => new Date('01 ' + a) - new Date('01 ' + b));
@@ -926,281 +531,154 @@
                 keys.sort();
             }
 
-            // Compile final aggregates & derived metrics
             return keys.map(key => {
                 const bin = grouped[key];
-                const netProfit = bin.income - bin.expenditure;
-                const partsProfit = bin.parts_revenue - bin.parts_cogs;
-                const partsMargin = bin.parts_revenue > 0 ? (partsProfit / bin.parts_revenue) * 100 : 0;
-                const laborProfit = bin.labor_revenue - bin.labor_cogs;
-                const laborMargin = bin.labor_revenue > 0 ? (laborProfit / bin.labor_revenue) * 100 : 0;
-                
-                const tradingRev = bin.parts_revenue + bin.labor_revenue + bin.outsourcing_revenue;
-                const tradingCogs = bin.parts_cogs + bin.labor_cogs + bin.outsourcing_cogs;
-                const tradingProfit = tradingRev - tradingCogs;
-                const tradingMargin = tradingRev > 0 ? (tradingProfit / tradingRev) * 100 : 0;
-
                 return {
                     label: freq === 'weeks' ? 'W/c ' + key : key,
-                    income: bin.income,
-                    expenditure: bin.expenditure,
-                    net_profit: netProfit,
-                    parts_revenue: bin.parts_revenue,
-                    parts_cogs: bin.parts_cogs,
-                    parts_margin: partsMargin,
-                    labor_revenue: bin.labor_revenue,
-                    labor_cogs: bin.labor_cogs,
-                    labor_margin: laborMargin,
-                    trading_revenue: tradingRev,
-                    trading_cogs: tradingCogs,
-                    trading_margin: tradingMargin
+                    income: Math.round(bin.income),
+                    expenditure: Math.round(bin.expenditure),
+                    net_profit: Math.round(bin.net_profit)
                 };
             });
         }
 
-        // Chart Render function
-        function updateChart() {
+        window.updateChart = function() {
             if (currentChart) {
                 currentChart.destroy();
             }
 
-            // 1. Get current configuration
-            const chartStyle = styleSelector.value;
-            const enableTrend = trendCheckbox.checked;
-            const selectedMetrics = Array.from(metricCheckboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
-
-            if (selectedMetrics.length === 0) {
-                // Render clean state if nothing selected
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                return;
-            }
-
+            const chartStyle = styleSelector ? styleSelector.value : 'bar';
             const data = getAggregatedData();
-            const labels = data.map(item => item.label);
+            const labels = data.map(i => i.label);
 
-            // Check theme colors
             const isDark = document.documentElement.classList.contains('dark');
             const gridColor = isDark ? '#334155' : '#e2e8f0';
             const textColor = isDark ? '#94a3b8' : '#64748b';
 
-            let datasets = [];
-            let options = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: {
-                            color: textColor,
-                            font: { family: 'Outfit', size: 11, weight: '500' }
-                        }
-                    },
-                    tooltip: {
-                        titleFont: { family: 'Outfit', size: 12 },
-                        bodyFont: { family: 'Outfit', size: 12 }
-                    }
-                }
-            };
+            const incomeData = data.map(i => i.income);
+            const expenditureData = data.map(i => i.expenditure);
+            const netData = data.map(i => i.net_profit);
 
-            // 2. PIE CHART RENDER LOGIC
-            if (chartStyle === 'pie') {
-                const sums = selectedMetrics.map(metricKey => {
-                    return data.reduce((acc, curr) => acc + (curr[metricKey] || 0), 0);
-                });
-
-                const pieLabels = selectedMetrics.map(k => METRIC_CONFIG[k].label);
-                const borderColors = selectedMetrics.map(k => METRIC_CONFIG[k].borderColor);
-
-                datasets.push({
-                    data: sums,
-                    backgroundColor: borderColors,
-                    borderColor: isDark ? '#020617' : '#ffffff',
-                    borderWidth: 2
-                });
-
-                currentChart = new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: pieLabels,
-                        datasets: datasets
-                    },
-                    options: {
-                        ...options,
-                        plugins: {
-                            ...options.plugins,
-                            tooltip: {
-                                ...options.plugins.tooltip,
-                                callbacks: {
-                                    label: function(context) {
-                                        const val = context.raw;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
-                                        const formattedVal = new Intl.NumberFormat('en-US').format(val);
-                                        return ` ${context.label}: Rs. ${formattedVal} (${pct})`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                return;
-            }
-
-            // 3. LINE & BAR CHART MULTI-AXES RENDER LOGIC
-            let showAmountAxis = false;
-            let showPercentAxis = false;
-
-            selectedMetrics.forEach(metricKey => {
-                const cfg = METRIC_CONFIG[metricKey];
-                if (cfg.yAxisID === 'yAmount') showAmountAxis = true;
-                if (cfg.yAxisID === 'yPercent') showPercentAxis = true;
-
-                const datasetData = data.map(item => item[metricKey] || 0);
-
-                datasets.push({
-                    label: cfg.label,
-                    data: datasetData,
-                    type: chartStyle === 'line' ? 'line' : cfg.type,
-                    borderColor: cfg.borderColor,
-                    backgroundColor: cfg.backgroundColor,
+            const datasets = [
+                {
+                    label: 'Cash In (Income)',
+                    data: incomeData,
+                    type: chartStyle === 'bar' ? 'bar' : 'line',
+                    borderColor: '#10b981',
+                    backgroundColor: chartStyle === 'bar' ? 'rgba(16, 185, 129, 0.7)' : 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 2,
-                    yAxisID: cfg.yAxisID,
-                    fill: chartStyle === 'line' ? false : (cfg.type === 'line' ? false : true),
-                    tension: 0.35,
+                    borderRadius: 6,
+                    tension: 0.3,
+                    fill: chartStyle === 'line'
+                },
+                {
+                    label: 'Cash Out (Expenditure)',
+                    data: expenditureData,
+                    type: chartStyle === 'bar' ? 'bar' : 'line',
+                    borderColor: '#ef4444',
+                    backgroundColor: chartStyle === 'bar' ? 'rgba(239, 68, 68, 0.7)' : 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    tension: 0.3,
+                    fill: chartStyle === 'line'
+                },
+                {
+                    label: 'Net Cash Flow',
+                    data: netData,
+                    type: 'line',
+                    borderColor: '#6366f1',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    borderDash: [4, 4],
                     pointRadius: 4,
-                    pointHoverRadius: 6
-                });
-
-                if (enableTrend) {
-                    const trendData = calculateTrendPoints(datasetData);
-                    if (trendData) {
-                        datasets.push({
-                            label: `${cfg.label} Trend`,
-                            data: trendData,
-                            type: 'line',
-                            borderColor: cfg.borderColor,
-                            borderWidth: 1.5,
-                            borderDash: [6, 6],
-                            fill: false,
-                            pointRadius: 0,
-                            yAxisID: cfg.yAxisID,
-                            tension: 0
-                        });
-                    }
+                    pointHoverRadius: 6,
+                    tension: 0.3
                 }
-            });
-
-            options.scales = {
-                x: {
-                    grid: { color: gridColor },
-                    ticks: { color: textColor, font: { family: 'Outfit', size: 10 } }
-                }
-            };
-
-            if (showAmountAxis) {
-                options.scales.yAmount = {
-                    type: 'linear',
-                    position: 'left',
-                    grid: { color: gridColor },
-                    ticks: {
-                        color: textColor,
-                        font: { family: 'Outfit', size: 10 },
-                        callback: function(value) {
-                            return 'Rs. ' + new Intl.NumberFormat('en-US').format(value);
-                        }
-                    }
-                };
-            }
-
-            if (showPercentAxis) {
-                options.scales.yPercent = {
-                    type: 'linear',
-                    position: 'right',
-                    grid: { drawOnChartArea: !showAmountAxis, color: gridColor },
-                    ticks: {
-                        color: textColor,
-                        font: { family: 'Outfit', size: 10 },
-                        callback: function(value) {
-                            return value.toFixed(0) + '%';
-                        }
-                    },
-                    min: 0
-                };
-            }
-
-            options.plugins.tooltip.callbacks = {
-                label: function(context) {
-                    let label = context.dataset.label || '';
-                    if (label) {
-                        label += ': ';
-                    }
-                    if (context.parsed.y !== null) {
-                        const isPercent = context.dataset.yAxisID === 'yPercent';
-                        if (isPercent) {
-                            label += context.parsed.y.toFixed(1) + '%';
-                        } else {
-                            label += 'Rs. ' + new Intl.NumberFormat('en-US').format(context.parsed.y);
-                        }
-                    }
-                    return label;
-                }
-            };
+            ];
 
             currentChart = new Chart(ctx, {
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: datasets
                 },
-                options: options
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: gridColor, drawBorder: false },
+                            ticks: { color: textColor, font: { family: 'Outfit', size: 10 } }
+                        },
+                        y: {
+                            grid: { color: gridColor, drawBorder: false },
+                            ticks: {
+                                color: textColor,
+                                font: { family: 'Outfit', size: 10 },
+                                callback: val => 'Rs. ' + val.toLocaleString()
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: textColor,
+                                font: { family: 'Outfit', size: 11, weight: '500' }
+                            }
+                        },
+                        tooltip: {
+                            titleFont: { family: 'Outfit', size: 12 },
+                            bodyFont: { family: 'Outfit', size: 12 },
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: Rs. ${context.raw.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    }
+                }
             });
-        }
+        };
 
-        // Setup Change Listeners
-        frequencySelector.addEventListener('change', updateChart);
-        styleSelector.addEventListener('change', updateChart);
-        trendCheckbox.addEventListener('change', updateChart);
-        metricCheckboxes.forEach(cb => cb.addEventListener('change', updateChart));
-
-        // Theme Mutation Observer
-        const themeObserver = new MutationObserver(updateChart);
-        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-
-        // Initial Render
         updateChart();
     });
 
     // -------------------------------------------------------------
-    // STATS TABS NAVIGATION LOGIC
+    // TAB SWITCHING LOGIC
     // -------------------------------------------------------------
     function switchStatsTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.getElementById(tabId).classList.remove('hidden');
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+        const activeContent = document.getElementById(tabId);
+        if (activeContent) activeContent.classList.remove('hidden');
 
-        document.getElementById('btn-tab-overview').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
-        document.getElementById('btn-tab-calendar').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
-        document.getElementById('btn-tab-trends').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
-        document.getElementById('btn-tab-jobcards').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-850 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer";
+        document.getElementById('btn-tab-overview').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer flex items-center gap-2";
+        document.getElementById('btn-tab-calendar').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer flex items-center gap-2";
+        document.getElementById('btn-tab-jobcards').className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition uppercase tracking-wider cursor-pointer flex items-center gap-2";
 
         let activeBtnId = 'btn-tab-overview';
         if (tabId === 'dashboard-calendar') activeBtnId = 'btn-tab-calendar';
-        if (tabId === 'dashboard-trends') activeBtnId = 'btn-tab-trends';
         if (tabId === 'dashboard-jobcards') activeBtnId = 'btn-tab-jobcards';
 
-        document.getElementById(activeBtnId).className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-primary text-primary transition uppercase tracking-wider cursor-pointer";
+        const activeBtn = document.getElementById(activeBtnId);
+        if (activeBtn) {
+            activeBtn.className = "px-4 py-2.5 font-semibold text-xs border-b-2 border-primary text-primary transition uppercase tracking-wider cursor-pointer flex items-center gap-2";
+        }
         localStorage.setItem('stats_active_tab', tabId);
         
-        // Trigger render components if they have layouts to build
         if (tabId === 'dashboard-calendar') {
             renderCalendar();
-        } else if (tabId === 'dashboard-trends') {
-            runLinearRegressionForecasts();
+        } else if (tabId === 'dashboard-overview') {
+            if (window.updateChart) window.updateChart();
         }
     }
 
-    // Restore stats tab on load
     document.addEventListener('DOMContentLoaded', () => {
-        const statsTab = localStorage.getItem('stats_active_tab') || 'dashboard-overview';
+        let statsTab = localStorage.getItem('stats_active_tab') || 'dashboard-overview';
+        if (statsTab === 'dashboard-trends') statsTab = 'dashboard-overview';
         switchStatsTab(statsTab);
     });
 
@@ -1208,47 +686,44 @@
     // CALENDAR VIEWER LOGIC (Tab 2)
     // -------------------------------------------------------------
     function renderCalendar() {
-        const selectedMonth = document.getElementById('calendarMonth').value;
-        const selectedYear = parseInt(document.getElementById('calendarYear').value);
+        const monthElem = document.getElementById('calendarMonth');
+        const yearElem = document.getElementById('calendarYear');
+        if (!monthElem || !yearElem) return;
+
+        const selectedMonth = monthElem.value;
+        const selectedYear = parseInt(yearElem.value);
         const daysContainer = document.getElementById('calendar-days-grid');
+        if (!daysContainer) return;
         daysContainer.innerHTML = '';
 
         const timeline = @json($dailyTimeline);
 
-        // Date constants
         const firstDayOfMonth = new Date(selectedYear, parseInt(selectedMonth) - 1, 1);
         const lastDayOfMonth = new Date(selectedYear, parseInt(selectedMonth), 0);
         
-        // Get day of week for 1st day (0 is Sun, convert to 0 for Mon, 6 for Sun)
         let firstDayIndex = firstDayOfMonth.getDay() - 1;
-        if (firstDayIndex < 0) firstDayIndex = 6; // Sunday is index 6
+        if (firstDayIndex < 0) firstDayIndex = 6;
 
         const totalDays = lastDayOfMonth.getDate();
 
-        // 1. Add empty padding cells before the first day of the month
         for (let i = 0; i < firstDayIndex; i++) {
             const pad = document.createElement('div');
             pad.className = "bg-slate-100/30 dark:bg-slate-900/10 rounded-xl min-h-[90px] border border-transparent";
             daysContainer.appendChild(pad);
         }
 
-        // 2. Add calendar cells for each day
         for (let day = 1; day <= totalDays; day++) {
             const dateStr = `${selectedYear}-${selectedMonth}-${String(day).padStart(2, '0')}`;
-            
-            // Find stats for this day
             const stats = timeline.find(item => item.date === dateStr) || { income: 0, expenditure: 0, jobs: 0 };
 
             const cell = document.createElement('div');
             cell.className = "app-card rounded-xl p-2 min-h-[90px] text-[10px] space-y-1 flex flex-col justify-between hover:border-primary transition duration-150";
 
-            // Day number header
             const header = document.createElement('div');
-            header.className = "font-bold text-slate-800 dark:text-slate-200 border-b border-slate-250 dark:border-slate-850 pb-0.5 mb-1";
+            header.className = "font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-800 pb-0.5 mb-1";
             header.innerText = day;
             cell.appendChild(header);
 
-            // Metrics container
             const metrics = document.createElement('div');
             metrics.className = "space-y-1 flex-1 flex flex-col justify-center";
 
@@ -1260,14 +735,14 @@
             }
             if (stats.income > 0) {
                 const inc = document.createElement('div');
-                inc.className = "text-green-600 dark:text-green-400 font-mono font-semibold flex justify-between";
-                inc.innerHTML = `<span>In:</span><span>Rs. ${Math.round(stats.income)}</span>`;
+                inc.className = "text-emerald-600 dark:text-emerald-400 font-mono font-semibold flex justify-between";
+                inc.innerHTML = `<span>In:</span><span>Rs. ${Math.round(stats.income).toLocaleString()}</span>`;
                 metrics.appendChild(inc);
             }
             if (stats.expenditure > 0) {
                 const exp = document.createElement('div');
-                exp.className = "text-red-500 font-mono font-semibold flex justify-between";
-                exp.innerHTML = `<span>Out:</span><span>Rs. ${Math.round(stats.expenditure)}</span>`;
+                exp.className = "text-rose-500 font-mono font-semibold flex justify-between";
+                exp.innerHTML = `<span>Out:</span><span>Rs. ${Math.round(stats.expenditure).toLocaleString()}</span>`;
                 metrics.appendChild(exp);
             }
 
@@ -1282,17 +757,16 @@
             daysContainer.appendChild(cell);
         }
 
-        // Populate weekly and monthly summary lists under calendar
         populateWeeklyAndMonthlySummaries(timeline);
     }
 
     function populateWeeklyAndMonthlySummaries(timeline) {
         const weeklyContainer = document.getElementById('weekly-summary-list');
         const monthlyContainer = document.getElementById('monthly-summary-list');
+        if (!weeklyContainer || !monthlyContainer) return;
         weeklyContainer.innerHTML = '';
         monthlyContainer.innerHTML = '';
 
-        // Helper: get ISO Week
         function getWeekNumber(d) {
             d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
             d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -1300,7 +774,6 @@
             return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
         }
 
-        // 1. Compile Weekly Summary
         const weeklyGroup = {};
         timeline.forEach(item => {
             const d = new Date(item.date);
@@ -1311,8 +784,8 @@
             if (!weeklyGroup[key]) {
                 weeklyGroup[key] = { key, income: 0, expenditure: 0, jobs: 0, count: 0 };
             }
-            weeklyGroup[key].income += item.income;
-            weeklyGroup[key].expenditure += item.expenditure;
+            weeklyGroup[key].income += (item.income || 0);
+            weeklyGroup[key].expenditure += (item.expenditure || 0);
             weeklyGroup[key].jobs += item.jobs || 0;
             weeklyGroup[key].count++;
         });
@@ -1324,29 +797,28 @@
             row.innerHTML = `
                 <div>
                     <span class="font-bold text-slate-800 dark:text-slate-200">${w.key}</span>
-                    <span class="block text-[9px] text-slate-500">Days Logged: ${w.count} • Jobs Count: ${w.jobs}</span>
+                    <span class="block text-[9px] text-slate-500">Days Logged: ${w.count} • Jobs: ${w.jobs}</span>
                 </div>
                 <div class="text-right font-mono font-semibold">
-                    <span class="text-green-600 dark:text-green-400 block">+Rs. ${w.income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                    <span class="text-red-500 block">-Rs. ${w.expenditure.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 block">+Rs. ${Math.round(w.income).toLocaleString()}</span>
+                    <span class="text-rose-500 block">-Rs. ${Math.round(w.expenditure).toLocaleString()}</span>
                 </div>
             `;
             weeklyContainer.appendChild(row);
         });
 
         if (weeklyContainer.children.length === 0) {
-            weeklyContainer.innerHTML = '<div class="text-slate-500 text-center py-6">No weekly stats loaded.</div>';
+            weeklyContainer.innerHTML = '<div class="text-slate-500 text-center py-6">No weekly activity found.</div>';
         }
 
-        // 2. Compile Monthly Summary
         const monthlyGroup = {};
         timeline.forEach(item => {
-            const key = item.date.substring(0, 7); // YYYY-MM
+            const key = item.date.substring(0, 7);
             if (!monthlyGroup[key]) {
                 monthlyGroup[key] = { key, income: 0, expenditure: 0, jobs: 0, count: 0 };
             }
-            monthlyGroup[key].income += item.income;
-            monthlyGroup[key].expenditure += item.expenditure;
+            monthlyGroup[key].income += (item.income || 0);
+            monthlyGroup[key].expenditure += (item.expenditure || 0);
             monthlyGroup[key].jobs += item.jobs || 0;
             monthlyGroup[key].count++;
         });
@@ -1363,165 +835,23 @@
             row.innerHTML = `
                 <div>
                     <span class="font-bold text-slate-800 dark:text-slate-200">${label}</span>
-                    <span class="block text-[9px] text-slate-500">Days Logged: ${m.count} • Jobs Count: ${m.jobs}</span>
+                    <span class="block text-[9px] text-slate-500">Days Logged: ${m.count} • Jobs: ${m.jobs}</span>
                 </div>
                 <div class="text-right font-mono font-semibold">
-                    <span class="text-green-600 dark:text-green-400 block">+Rs. ${m.income.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                    <span class="text-red-500 block">-Rs. ${m.expenditure.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 block">+Rs. ${Math.round(m.income).toLocaleString()}</span>
+                    <span class="text-rose-500 block">-Rs. ${Math.round(m.expenditure).toLocaleString()}</span>
                 </div>
             `;
             monthlyContainer.appendChild(row);
         });
 
         if (monthlyContainer.children.length === 0) {
-            monthlyContainer.innerHTML = '<div class="text-slate-500 text-center py-6">No monthly stats loaded.</div>';
+            monthlyContainer.innerHTML = '<div class="text-slate-500 text-center py-6">No monthly activity found.</div>';
         }
         
-        lucide.createIcons();
-    }
-
-    // -------------------------------------------------------------
-    // DAMPENED HOLT'S DOUBLE EXPONENTIAL SMOOTHING FORECAST ENGINE (Tab 3)
-    // -------------------------------------------------------------
-    function runLinearRegressionForecasts() {
-        const timeline = @json($dailyTimeline);
-        const n = timeline.length;
-
-        // Perform Dampened Holt's Double Exponential Smoothing
-        function getDampenedHoltForecast(data, key, days) {
-            const values = data.map(item => Number(item[key] || 0));
-            const len = values.length;
-
-            if (len === 0) {
-                return { forecast: 0, lowerBound: 0, upperBound: 0, slope: 0, avg: 0 };
-            }
-
-            // Smoothing constants and dampening factor
-            const alpha = 0.25;
-            const beta = 0.10;
-            const phi = 0.90; // trend dampening parameter
-
-            let level = values[0];
-            let trend = values[1] ? (values[1] - values[0]) : 0;
-            const smoothedValues = [level];
-
-            for (let t = 1; t < len; t++) {
-                const prevLevel = level;
-                level = alpha * values[t] + (1 - alpha) * (level + phi * trend);
-                trend = beta * (level - prevLevel) + (1 - beta) * phi * trend;
-                smoothedValues.push(level + trend);
-            }
-
-            // Calculate standard error of residuals
-            let sumSquaredResiduals = 0;
-            let actualCount = 0;
-            for (let t = 1; t < len; t++) {
-                const error = values[t] - smoothedValues[t - 1];
-                sumSquaredResiduals += error * error;
-                actualCount++;
-            }
-            const stdError = actualCount > 1 ? Math.sqrt(sumSquaredResiduals / (actualCount - 1)) : 0;
-
-            // Project forecast forward
-            let forecastSum = 0;
-            for (let m = 1; m <= days; m++) {
-                let dampenedTrendFactor = 0;
-                for (let i = 1; i <= m; i++) {
-                    dampenedTrendFactor += Math.pow(phi, i);
-                }
-                const dayForecast = level + dampenedTrendFactor * trend;
-                forecastSum += Math.max(0, dayForecast);
-            }
-
-            // Cumulative variance scales with target interval duration (approx. standard error * sqrt(days))
-            const margin = 1.28 * stdError * Math.sqrt(days);
-            const lowerBound = Math.max(0, forecastSum - margin);
-            const upperBound = forecastSum + margin;
-            const avg = values.reduce((a, b) => a + b, 0) / len;
-
-            return {
-                forecast: forecastSum,
-                lowerBound,
-                upperBound,
-                slope: trend,
-                avg
-            };
+        if (window.lucide) {
+            lucide.createIcons();
         }
-
-        const incomeStats = getDampenedHoltForecast(timeline, 'income', 30); // Use 30 days for base stats
-        const expenditureStats = getDampenedHoltForecast(timeline, 'expenditure', 30);
-        const jobsStats = getDampenedHoltForecast(timeline, 'jobs', 30);
-
-        // 1. Populate expectation forecasts
-        // Weekly
-        const incWeek = getDampenedHoltForecast(timeline, 'income', 7);
-        const expWeek = getDampenedHoltForecast(timeline, 'expenditure', 7);
-        const jobsWeek = getDampenedHoltForecast(timeline, 'jobs', 7);
-
-        // Monthly
-        const incMonth = getDampenedHoltForecast(timeline, 'income', 30);
-        const expMonth = getDampenedHoltForecast(timeline, 'expenditure', 30);
-        const jobsMonth = getDampenedHoltForecast(timeline, 'jobs', 30);
-
-        // Yearly
-        const incYear = getDampenedHoltForecast(timeline, 'income', 365);
-        const expYear = getDampenedHoltForecast(timeline, 'expenditure', 365);
-        const jobsYear = getDampenedHoltForecast(timeline, 'jobs', 365);
-
-        // Populate Income
-        document.getElementById('forecast-income-week').innerText = 'Rs. ' + incWeek.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('range-income-week').innerText = 'Rs. ' + incWeek.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + incWeek.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        document.getElementById('forecast-income-month').innerText = 'Rs. ' + incMonth.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('range-income-month').innerText = 'Rs. ' + incMonth.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + incMonth.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        document.getElementById('forecast-income-year').innerText = 'Rs. ' + incYear.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('range-income-year').innerText = 'Rs. ' + incYear.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + incYear.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        // Populate Expenditure
-        document.getElementById('forecast-expenditure-week').innerText = 'Rs. ' + expWeek.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('range-expenditure-week').innerText = 'Rs. ' + expWeek.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + expWeek.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        document.getElementById('forecast-expenditure-month').innerText = 'Rs. ' + expMonth.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('range-expenditure-month').innerText = 'Rs. ' + expMonth.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + expMonth.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        document.getElementById('forecast-expenditure-year').innerText = 'Rs. ' + expYear.forecast.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('range-expenditure-year').innerText = 'Rs. ' + expYear.lowerBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' - Rs. ' + expYear.upperBound.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        // Populate Jobs
-        document.getElementById('forecast-jobs-week').innerText = Math.round(jobsWeek.forecast);
-        document.getElementById('range-jobs-week').innerText = Math.round(jobsWeek.lowerBound) + ' - ' + Math.round(jobsWeek.upperBound);
-
-        document.getElementById('forecast-jobs-month').innerText = Math.round(jobsMonth.forecast);
-        document.getElementById('range-jobs-month').innerText = Math.round(jobsMonth.lowerBound) + ' - ' + Math.round(jobsMonth.upperBound);
-
-        document.getElementById('forecast-jobs-year').innerText = Math.round(jobsYear.forecast);
-        document.getElementById('range-jobs-year').innerText = Math.round(jobsYear.lowerBound) + ' - ' + Math.round(jobsYear.upperBound);
-
-        // 2. Populate Trend direction badges & slope texts
-        function buildTrendBadgeAndText(stats, targetTextId, targetBadgeId, label) {
-            const slopeText = document.getElementById(targetTextId);
-            const badgeContainer = document.getElementById(targetBadgeId);
-            
-            const rateStr = (stats.slope >= 0 ? '+' : '') + stats.slope.toFixed(2);
-            slopeText.innerHTML = `Daily change rate (Trend): <strong class="font-mono">${rateStr}</strong> units/day (Average base: ${Math.round(stats.avg)})`;
-
-            let badgeHtml = '';
-            if (stats.slope > 0.05) {
-                badgeHtml = `<span class="px-2 py-1 rounded bg-green-500/10 text-green-600 dark:text-green-400 flex items-center gap-1"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Upward Vector</span>`;
-            } else if (stats.slope < -0.05) {
-                badgeHtml = `<span class="px-2 py-1 rounded bg-red-500/10 text-red-500 flex items-center gap-1"><i data-lucide="trending-down" class="w-3.5 h-3.5"></i> Downward Vector</span>`;
-            } else {
-                badgeHtml = `<span class="px-2 py-1 rounded bg-slate-500/10 text-slate-500 flex items-center gap-1"><i data-lucide="minus" class="w-3.5 h-3.5"></i> Stable / Flat</span>`;
-            }
-            badgeContainer.innerHTML = badgeHtml;
-        }
-
-        buildTrendBadgeAndText(incomeStats, 'income-regression-slope-text', 'income-trend-badge', 'Income');
-        buildTrendBadgeAndText(expenditureStats, 'expenditure-regression-slope-text', 'expenditure-trend-badge', 'Expenditure');
-        buildTrendBadgeAndText(jobsStats, 'jobs-regression-slope-text', 'jobs-trend-badge', 'Jobs');
-
-        lucide.createIcons();
     }
 </script>
 @endsection

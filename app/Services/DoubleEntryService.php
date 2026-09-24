@@ -131,9 +131,11 @@ class DoubleEntryService
                 return;
             }
 
+            $billEntryDate = $bill->created_at ? $bill->created_at->format('Y-m-d') : date('Y-m-d');
+
             // 1. Invoicing Entry (Accounts Receivable debit, Revenues credit)
             $invoiceEntry = JournalEntry::create([
-                'entry_date' => date('Y-m-d'),
+                'entry_date' => $billEntryDate,
                 'reference' => $bill->bill_number,
                 'description' => "Invoice generated for Job Card {$jobCard->card_number} (Client: {$client->name})"
             ]);
@@ -179,7 +181,7 @@ class DoubleEntryService
             $totalCogsExpense = $inventoryPartsCostTotal;
             if ($totalCogsExpense > 0) {
                 $cogsEntry = JournalEntry::create([
-                    'entry_date' => date('Y-m-d'),
+                    'entry_date' => $billEntryDate,
                     'reference' => $bill->bill_number . '-COGS',
                     'description' => "Cost of Goods Sold for Bill {$bill->bill_number} (Client: {$client->name})"
                 ]);
@@ -211,7 +213,7 @@ class DoubleEntryService
             $transCollected = min($transportationTotal, $totalCollected);
 
             $paymentEntry = JournalEntry::create([
-                'entry_date' => date('Y-m-d'),
+                'entry_date' => $billEntryDate,
                 'reference' => $bill->bill_number . '-PAY',
                 'description' => "Final payment received and cash allocations for Bill {$bill->bill_number} (Client: {$client->name})"
             ]);
@@ -259,7 +261,7 @@ class DoubleEntryService
             // 4. Hired Transportation Expense payout (Debit Expense, Credit Transportation Account)
             if ($hireTotal > 0) {
                 $hireEntry = JournalEntry::create([
-                    'entry_date' => date('Y-m-d'),
+                    'entry_date' => $billEntryDate,
                     'reference' => $bill->bill_number . '-HIRE',
                     'description' => "Transportation hire third-party payout for Job Card {$jobCard->card_number}"
                 ]);
@@ -380,8 +382,10 @@ class DoubleEntryService
                 return;
             }
 
+            $slipDate = $payrollSlip->created_at ? $payrollSlip->created_at->format('Y-m-d') : date('Y-m-d');
+
             $entry = JournalEntry::create([
-                'entry_date' => date('Y-m-d'),
+                'entry_date' => $slipDate,
                 'reference' => 'SLIP-' . $payrollSlip->id,
                 'description' => "Salary slip generated for " . ($payrollSlip->user->name ?? 'Employee') . " (Month: {$payrollSlip->month}/{$payrollSlip->year}, Status: " . strtoupper($payrollSlip->status) . ")"
             ]);
