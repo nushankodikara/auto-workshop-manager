@@ -151,14 +151,21 @@
                             <div class="flex items-center gap-4">
                                 <span class="font-bold text-slate-800 dark:text-slate-200 font-mono">{{ config('app.currency', '$') }}{{ number_format($serv->price, 2) }}</span>
                                 @if(!$jobCard->bill || auth()->user()->isSuperManager())
-                                    <form action="{{ route('job-cards.delete-service', $serv->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" onclick="return confirm('Remove service operation?')"
-                                                class="text-xs text-red-650 dark:text-red-400 hover:bg-red-500/10 hover:text-red-500 font-bold p-1.5 rounded transition">
-                                            ✕
+                                    <div class="flex items-center gap-1">
+                                        <button type="button"
+                                                onclick="openEditServiceDrawer({{ $serv->id }}, '{{ addslashes($serv->name) }}', '{{ $serv->price }}', '{{ addslashes($serv->description ?? '') }}')"
+                                                class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition cursor-pointer" title="Edit Service Operation">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i>
                                         </button>
-                                    </form>
+                                        <form action="{{ route('job-cards.delete-service', $serv->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" onclick="return confirm('Remove service operation?')"
+                                                    class="p-1.5 text-red-650 dark:text-red-400 hover:bg-red-500/10 hover:text-red-500 rounded transition cursor-pointer" title="Remove Service">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -234,8 +241,8 @@
                                     @if(!$jobCard->bill || auth()->user()->isSuperManager())
                                         <div class="flex items-center gap-1">
                                             <!-- Edit Button -->
-                                            <button onclick="openEditAllocationModal({{ $mov->id }}, {{ abs($mov->quantity) }}, '{{ addslashes($mov->inventory->name) }}', '{{ addslashes($mov->notes) }}')"
-                                                    class="text-blue-600 hover:text-blue-500 p-1 cursor-pointer" title="Edit Quantity">
+                                            <button onclick="openEditAllocationDrawer({{ $mov->id }}, {{ abs($mov->quantity) }}, '{{ addslashes($mov->inventory->name) }}', '{{ addslashes($mov->notes) }}')"
+                                                    class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition cursor-pointer" title="Edit Quantity">
                                                 <i data-lucide="edit-2" class="w-4 h-4"></i>
                                             </button>
                                             
@@ -243,7 +250,7 @@
                                             <form action="{{ route('job-cards.deallocate-parts', $mov->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to remove this allocated part and return it to stock?')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="text-red-650 hover:text-red-500 p-1 cursor-pointer" title="Remove & Return to Stock">
+                                                <button type="submit" class="p-1.5 text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition cursor-pointer" title="Remove & Return to Stock">
                                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                                 </button>
                                             </form>
@@ -336,14 +343,21 @@
                                     <span class="text-xs text-slate-500 font-mono block mt-0.5">Cost: {{ config('app.currency', 'Rs.') }}{{ number_format($osi->cost_price, 2) }}</span>
                                 </div>
                                 @if(!$jobCard->bill || auth()->user()->isSuperManager())
-                                    <form action="{{ route('job-cards.delete-outsourcing', $osi->id) }}" method="POST" class="inline"
-                                          onsubmit="return confirm('Remove this outsourcing line?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Remove">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button"
+                                                onclick="openEditOutsourcingDrawer({{ $osi->id }}, '{{ $osi->outsourcing_company_id ?? '' }}', '{{ addslashes($osi->description) }}', '{{ $osi->cost_price }}', '{{ $osi->selling_price }}')"
+                                                class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition cursor-pointer" title="Edit Outsourcing Line">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i>
                                         </button>
-                                    </form>
+                                        <form action="{{ route('job-cards.delete-outsourcing', $osi->id) }}" method="POST" class="inline"
+                                              onsubmit="return confirm('Remove this outsourcing line?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition cursor-pointer" title="Remove">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -424,14 +438,21 @@
                                     <span class="text-xs text-slate-500 font-mono block mt-0.5">Cost: {{ config('app.currency', 'Rs.') }}{{ number_format($mp->cost_price, 2) }}</span>
                                 </div>
                                 @if(!$jobCard->bill || auth()->user()->isSuperManager())
-                                    <form action="{{ route('job-cards.delete-misc-part', $mp->id) }}" method="POST" class="inline"
-                                          onsubmit="return confirm('Remove this misc part?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Remove">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button"
+                                                onclick="openEditMiscPartDrawer({{ $mp->id }}, '{{ addslashes($mp->name) }}', '{{ $mp->cost_price }}', '{{ $mp->selling_price }}')"
+                                                class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition cursor-pointer" title="Edit Misc Part">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i>
                                         </button>
-                                    </form>
+                                        <form action="{{ route('job-cards.delete-misc-part', $mp->id) }}" method="POST" class="inline"
+                                              onsubmit="return confirm('Remove this misc part?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition cursor-pointer" title="Remove">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -521,14 +542,21 @@
                             </div>
                             <div>
                                 @if(!$jobCard->bill || auth()->user()->isSuperManager())
-                                    <form action="{{ route('job-cards.delete-advanced-payment', $payment->id) }}" method="POST" class="inline"
-                                          onsubmit="return confirm('Delete this advanced payment record?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Delete">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button"
+                                                onclick="openEditAdvancedPaymentDrawer({{ $payment->id }}, '{{ $payment->amount }}', '{{ $payment->payment_method }}', '{{ $payment->paid_at->format('Y-m-d') }}', '{{ addslashes($payment->transaction_reference ?? '') }}', '{{ addslashes($payment->notes ?? '') }}')"
+                                                class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition cursor-pointer" title="Edit Advanced Payment">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i>
                                         </button>
-                                    </form>
+                                        <form action="{{ route('job-cards.delete-advanced-payment', $payment->id) }}" method="POST" class="inline"
+                                              onsubmit="return confirm('Delete this advanced payment record?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 text-red-500 hover:text-red-400 p-1 cursor-pointer" title="Delete">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -614,14 +642,21 @@
                             </div>
                             <div>
                                 @if(!$jobCard->bill || auth()->user()->isSuperManager())
-                                    <form action="{{ route('job-cards.delete-transportation', $trans->id) }}" method="POST"
-                                          onsubmit="return confirm('Are you sure you want to delete this transportation log?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition cursor-pointer">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button"
+                                                onclick="openEditTransportationDrawer({{ $trans->id }}, '{{ addslashes($trans->description) }}', '{{ $trans->type }}', '{{ $trans->amount }}')"
+                                                class="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition cursor-pointer" title="Edit Transportation Log">
+                                            <i data-lucide="edit-2" class="w-4 h-4"></i>
                                         </button>
-                                    </form>
+                                        <form action="{{ route('job-cards.delete-transportation', $trans->id) }}" method="POST" class="inline"
+                                              onsubmit="return confirm('Are you sure you want to delete this transportation log?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition cursor-pointer" title="Delete">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 @endif
                             </div>
                         </div>
@@ -890,6 +925,51 @@
                             </button>
                             <button type="button" onclick="document.getElementById('edit-job-details-drawer').classList.add('hidden')"
                                     class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
+                                <!-- Sidebar Drawer: Edit Service Operation -->
+<div id="edit-service-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="closeEditServiceDrawer()"></div>
+
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="wrench" class="w-5 h-5 text-primary"></i>
+                            <span id="edit-service-title">Edit Service Operation</span>
+                        </h2>
+                        <button type="button" onclick="closeEditServiceDrawer()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-service-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label for="edit_service_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Service Operation Name</label>
+                            <input type="text" name="name" id="edit_service_name" required placeholder="e.g., Engine Oil & Filter Change"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_service_price" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Price ({{ config('app.currency', '$') }})</label>
+                            <input type="number" step="0.01" min="0" name="price" id="edit_service_price" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div>
+                            <label for="edit_service_desc" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Description / Notes (Optional)</label>
+                            <textarea name="description" id="edit_service_desc" rows="4" placeholder="Additional specifications or task details..."
+                                      class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm"></textarea>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Save Changes
+                            </button>
+                            <button type="button" onclick="closeEditServiceDrawer()"
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
                                 Cancel
                             </button>
                         </div>
@@ -900,56 +980,326 @@
     </div>
 </div>
 
-<!-- Edit Allocation Modal -->
-<div id="edit-allocation-modal" class="fixed inset-0 z-50 flex items-center justify-center p-6 hidden">
-    <!-- Backdrop -->
-    <div class="absolute inset-0 bg-slate-950/75" onclick="closeEditAllocationModal()"></div>
-    
-    <!-- Modal Card -->
-    <div class="app-card w-full max-w-md rounded-2xl relative z-10 overflow-hidden shadow-2xl">
-        <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <i data-lucide="package" class="w-4 h-4 text-primary"></i>
-                <span id="edit-alloc-title">Edit Allocated Quantity</span>
-            </h2>
-            <button onclick="closeEditAllocationModal()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+<!-- Sidebar Drawer: Edit Parts Allocation -->
+<div id="edit-allocation-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="closeEditAllocationDrawer()"></div>
+
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="package" class="w-5 h-5 text-primary"></i>
+                            <span id="edit-alloc-title">Edit Allocated Quantity</span>
+                        </h2>
+                        <button type="button" onclick="closeEditAllocationDrawer()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-allocation-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PATCH')
+
+                        <div>
+                            <label for="edit_alloc_quantity" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Allocated Quantity</label>
+                            <input type="number" name="quantity" id="edit_alloc_quantity" required min="1"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div>
+                            <label for="edit_alloc_notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Allocation Notes</label>
+                            <input type="text" name="notes" id="edit_alloc_notes" placeholder="Batch or allocation remarks..."
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Update Quantity
+                            </button>
+                            <button type="button" onclick="closeEditAllocationDrawer()"
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
+    </div>
+</div>
 
-        <form id="edit-allocation-form" method="POST" class="p-6 space-y-4 text-xs">
-            @csrf
-            @method('PATCH')
+<!-- Sidebar Drawer: Edit Outsourced / Specialist Service -->
+<div id="edit-outsourcing-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="closeEditOutsourcingDrawer()"></div>
 
-            <div>
-                <label for="edit_alloc_quantity" class="block text-slate-500 mb-1 font-semibold">Allocated Quantity</label>
-                <input type="number" name="quantity" id="edit_alloc_quantity" required min="1"
-                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary font-mono">
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="handshake" class="w-5 h-5 text-primary"></i>
+                            <span>Edit Outsourced Service</span>
+                        </h2>
+                        <button type="button" onclick="closeEditOutsourcingDrawer()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-outsourcing-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label for="edit_outsourcing_partner" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Partner Company (Optional)</label>
+                            <select name="outsourcing_company_id" id="edit_outsourcing_partner"
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                <option value="">— None —</option>
+                                @foreach($outsourcingCompanies as $co)
+                                    <option value="{{ $co->id }}">{{ $co->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="edit_outsourcing_desc" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Job Description</label>
+                            <input type="text" name="description" id="edit_outsourcing_desc" required placeholder="e.g., Lathe Engine Block Sleeving"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_outsourcing_cost" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" min="0" name="cost_price" id="edit_outsourcing_cost" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div>
+                            <label for="edit_outsourcing_selling" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" min="0" name="selling_price" id="edit_outsourcing_selling" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Save Changes
+                            </button>
+                            <button type="button" onclick="closeEditOutsourcingDrawer()"
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
+        </div>
+    </div>
+</div>
 
-            <div>
-                <label for="edit_alloc_notes" class="block text-slate-500 mb-1 font-semibold">Allocation Notes</label>
-                <input type="text" name="notes" id="edit_alloc_notes"
-                       class="w-full px-3 py-2 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary">
-            </div>
+<!-- Sidebar Drawer: Edit Misc Part -->
+<div id="edit-misc-part-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="closeEditMiscPartDrawer()"></div>
 
-            <!-- Buttons -->
-            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-2 justify-end">
-                <button type="button" onclick="closeEditAllocationModal()"
-                        class="py-2 px-3 bg-slate-200 dark:bg-slate-850 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg">
-                    Cancel
-                </button>
-                <button type="submit" class="py-2 px-4 bg-primary hover:bg-primary-hover text-white font-semibold rounded-lg">
-                    Update Quantity
-                </button>
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="shopping-bag" class="w-5 h-5 text-primary"></i>
+                            <span>Edit Misc Part (Dealer Direct)</span>
+                        </h2>
+                        <button type="button" onclick="closeEditMiscPartDrawer()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-misc-part-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label for="edit_misc_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Part Name</label>
+                            <input type="text" name="name" id="edit_misc_name" required placeholder="e.g., Timing Belt (Honda Dealer)"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_misc_cost" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Cost Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" min="0" name="cost_price" id="edit_misc_cost" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div>
+                            <label for="edit_misc_selling" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Selling Price ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" min="0" name="selling_price" id="edit_misc_selling" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Save Changes
+                            </button>
+                            <button type="button" onclick="closeEditMiscPartDrawer()"
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </form>
+        </div>
+    </div>
+</div>
+
+<!-- Sidebar Drawer: Edit Advanced Payment -->
+<div id="edit-advanced-payment-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="closeEditAdvancedPaymentDrawer()"></div>
+
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="wallet" class="w-5 h-5 text-primary"></i>
+                            <span>Edit Advanced Payment</span>
+                        </h2>
+                        <button type="button" onclick="closeEditAdvancedPaymentDrawer()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-advanced-payment-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label for="edit_adv_amount" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Deposit Amount ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="edit_adv_amount" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div>
+                            <label for="edit_adv_method" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Payment Method</label>
+                            <select name="payment_method" id="edit_adv_method" required
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                <option value="cash">Cash</option>
+                                <option value="card">Card Payment</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="edit_adv_paid_at" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Payment Date</label>
+                            <input type="date" name="paid_at" id="edit_adv_paid_at" required
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_adv_ref" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Transaction Reference (Optional)</label>
+                            <input type="text" name="transaction_reference" id="edit_adv_ref" placeholder="Receipt / Slip No."
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_adv_notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Notes / Remarks (Optional)</label>
+                            <input type="text" name="notes" id="edit_adv_notes" placeholder="Optional notes..."
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Save Changes
+                            </button>
+                            <button type="button" onclick="closeEditAdvancedPaymentDrawer()"
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sidebar Drawer: Edit Transportation Log -->
+<div id="edit-transportation-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="absolute inset-0 bg-slate-950/75 transition-opacity" onclick="closeEditTransportationDrawer()"></div>
+
+        <div class="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div class="pointer-events-auto w-screen max-w-md">
+                <div class="flex h-full flex-col overflow-y-scroll bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-xl">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-955/40">
+                        <h2 class="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <i data-lucide="truck" class="w-5 h-5 text-primary"></i>
+                            <span>Edit Transportation Log</span>
+                        </h2>
+                        <button type="button" onclick="closeEditTransportationDrawer()" class="text-slate-500 hover:text-slate-400 font-bold p-2">✕</button>
+                    </div>
+
+                    <form id="edit-transportation-form" method="POST" class="flex-1 p-6 space-y-5">
+                        @csrf
+                        @method('PUT')
+
+                        <div>
+                            <label for="edit_trans_desc" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Towing / Transport Description</label>
+                            <input type="text" name="description" id="edit_trans_desc" required placeholder="e.g. Towing from Colombo 03"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_trans_type" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mode / Type</label>
+                            <select name="type" id="edit_trans_type" required
+                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm cursor-pointer">
+                                <option value="provided">Company Provided</option>
+                                <option value="hire">Third-Party Hire</option>
+                            </select>
+                            <p class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                                <strong>Company Provided:</strong> Earned revenue accumulated in Transportation Account.<br>
+                                <strong>Third-Party Hire:</strong> Pass-through cost automatically debited to Transportation Hire Expense on settlement.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label for="edit_trans_amount" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Fee Amount ({{ config('app.currency', 'Rs.') }})</label>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="edit_trans_amount" required placeholder="0.00"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono">
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+                            <button type="submit"
+                                    class="flex-1 py-2.5 px-4 bg-primary hover:bg-primary-hover text-white font-medium rounded-lg transition text-sm">
+                                Save Changes
+                            </button>
+                            <button type="button" onclick="closeEditTransportationDrawer()"
+                                    class="py-2.5 px-4 bg-slate-200 dark:bg-slate-855 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-medium rounded-lg transition text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
     const inventoryData = @json($inventoryItems);
 
-    function openEditAllocationModal(movementId, currentQty, partName, notes) {
-        const modal = document.getElementById('edit-allocation-modal');
+    function openEditServiceDrawer(serviceId, name, price, description) {
+        const form = document.getElementById('edit-service-form');
+        form.action = `/job-cards/services/${serviceId}`;
+        document.getElementById('edit_service_name').value = name;
+        document.getElementById('edit_service_price').value = price;
+        document.getElementById('edit_service_desc').value = description;
+        document.getElementById('edit-service-drawer').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+    function closeEditServiceDrawer() {
+        document.getElementById('edit-service-drawer').classList.add('hidden');
+    }
+
+    function openEditAllocationDrawer(movementId, currentQty, partName, notes) {
         const form = document.getElementById('edit-allocation-form');
         const title = document.getElementById('edit-alloc-title');
         
@@ -958,11 +1308,69 @@
         document.getElementById('edit_alloc_quantity').value = currentQty;
         document.getElementById('edit_alloc_notes').value = notes;
         
-        modal.classList.remove('hidden');
+        document.getElementById('edit-allocation-drawer').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+    function closeEditAllocationDrawer() {
+        document.getElementById('edit-allocation-drawer').classList.add('hidden');
+    }
+    // Backward compatibility aliases
+    function openEditAllocationModal(mId, qty, name, notes) { openEditAllocationDrawer(mId, qty, name, notes); }
+    function closeEditAllocationModal() { closeEditAllocationDrawer(); }
+
+    function openEditOutsourcingDrawer(id, companyId, description, costPrice, sellingPrice) {
+        const form = document.getElementById('edit-outsourcing-form');
+        form.action = `/job-cards/outsourcing/${id}`;
+        document.getElementById('edit_outsourcing_partner').value = companyId || '';
+        document.getElementById('edit_outsourcing_desc').value = description;
+        document.getElementById('edit_outsourcing_cost').value = costPrice;
+        document.getElementById('edit_outsourcing_selling').value = sellingPrice;
+        document.getElementById('edit-outsourcing-drawer').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+    function closeEditOutsourcingDrawer() {
+        document.getElementById('edit-outsourcing-drawer').classList.add('hidden');
     }
 
-    function closeEditAllocationModal() {
-        document.getElementById('edit-allocation-modal').classList.add('hidden');
+    function openEditMiscPartDrawer(id, name, costPrice, sellingPrice) {
+        const form = document.getElementById('edit-misc-part-form');
+        form.action = `/job-cards/misc-parts/${id}`;
+        document.getElementById('edit_misc_name').value = name;
+        document.getElementById('edit_misc_cost').value = costPrice;
+        document.getElementById('edit_misc_selling').value = sellingPrice;
+        document.getElementById('edit-misc-part-drawer').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+    function closeEditMiscPartDrawer() {
+        document.getElementById('edit-misc-part-drawer').classList.add('hidden');
+    }
+
+    function openEditAdvancedPaymentDrawer(id, amount, paymentMethod, paidAt, transRef, notes) {
+        const form = document.getElementById('edit-advanced-payment-form');
+        form.action = `/job-cards/advanced-payments/${id}`;
+        document.getElementById('edit_adv_amount').value = amount;
+        document.getElementById('edit_adv_method').value = paymentMethod;
+        document.getElementById('edit_adv_paid_at').value = paidAt;
+        document.getElementById('edit_adv_ref').value = transRef;
+        document.getElementById('edit_adv_notes').value = notes;
+        document.getElementById('edit-advanced-payment-drawer').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+    function closeEditAdvancedPaymentDrawer() {
+        document.getElementById('edit-advanced-payment-drawer').classList.add('hidden');
+    }
+
+    function openEditTransportationDrawer(id, description, type, amount) {
+        const form = document.getElementById('edit-transportation-form');
+        form.action = `/job-cards/transportations/${id}`;
+        document.getElementById('edit_trans_desc').value = description;
+        document.getElementById('edit_trans_type').value = type;
+        document.getElementById('edit_trans_amount').value = amount;
+        document.getElementById('edit-transportation-drawer').classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    }
+    function closeEditTransportationDrawer() {
+        document.getElementById('edit-transportation-drawer').classList.add('hidden');
     }
     
     function updateBatchDropdown() {

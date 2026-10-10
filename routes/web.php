@@ -76,19 +76,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/job-cards/{jobCard}/workers', [JobCardController::class, 'assignWorkers'])->name('job-cards.workers');
     Route::post('/job-cards/{jobCard}/parts', [JobCardController::class, 'allocateParts'])->name('job-cards.allocate-parts');
     Route::post('/job-cards/{jobCard}/services', [JobCardController::class, 'addService'])->name('job-cards.add-service');
+    Route::put('/job-cards/services/{service}', [JobCardController::class, 'updateService'])->name('job-cards.update-service');
     Route::delete('/job-cards/services/{service}', [JobCardController::class, 'deleteService'])->name('job-cards.delete-service');
     Route::patch('/job-cards/allocated-parts/{stockMovement}', [JobCardController::class, 'updateAllocatedPart'])->name('job-cards.update-allocated-part');
     Route::delete('/job-cards/allocated-parts/{stockMovement}', [JobCardController::class, 'deallocateParts'])->name('job-cards.deallocate-parts');
     // Outsourcing (specialist services) on job card
+    Route::put('/job-cards/outsourcing/{outsourcingItem}', [JobCardController::class, 'updateOutsourcing'])->name('job-cards.update-outsourcing');
     Route::delete('/job-cards/outsourcing/{outsourcingItem}', [JobCardController::class, 'deleteOutsourcing'])->name('job-cards.delete-outsourcing');
     // Misc parts (dealer-direct) on job card
+    Route::put('/job-cards/misc-parts/{miscPart}', [JobCardController::class, 'updateMiscPart'])->name('job-cards.update-misc-part');
     Route::delete('/job-cards/misc-parts/{miscPart}', [JobCardController::class, 'deleteMiscPart'])->name('job-cards.delete-misc-part');
     // These POST routes use {jobCard} so must come AFTER the static delete routes above
     Route::post('/job-cards/{jobCard}/outsourcing', [JobCardController::class, 'addOutsourcing'])->name('job-cards.add-outsourcing');
     Route::post('/job-cards/{jobCard}/misc-parts', [JobCardController::class, 'addMiscPart'])->name('job-cards.add-misc-part');
     Route::post('/job-cards/{jobCard}/advanced-payments', [JobCardController::class, 'addAdvancedPayment'])->name('job-cards.add-advanced-payment');
+    Route::put('/job-cards/advanced-payments/{payment}', [JobCardController::class, 'updateAdvancedPayment'])->name('job-cards.update-advanced-payment');
     Route::delete('/job-cards/advanced-payments/{payment}', [JobCardController::class, 'deleteAdvancedPayment'])->name('job-cards.delete-advanced-payment');
     Route::post('/job-cards/{jobCard}/transportations', [JobCardController::class, 'addTransportation'])->name('job-cards.add-transportation');
+    Route::put('/job-cards/transportations/{transportation}', [JobCardController::class, 'updateTransportation'])->name('job-cards.update-transportation');
     Route::delete('/job-cards/transportations/{transportation}', [JobCardController::class, 'deleteTransportation'])->name('job-cards.delete-transportation');
 
     // Appointments

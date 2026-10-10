@@ -117,6 +117,17 @@ Auto Workshop Manager is a modular, configurable vehicle management system for w
 - **Employee Salary Advances & Custom Deductions**: Renders emergency advances log panel and right-sliding drawer (Debit Advances asset `1220`, Credit Cashbook `1000`).
   * Automatically pre-fills pending advances total as deduction row on Payslip creation form. On save, links advance to payslip, marks status as `'deducted'`, and credits Advances asset `1220` to clear loan.
   * Pre-seeded `"Food / Meals Deduction"` category default configurations.
+- **Job Card Entry Editing & Ledger Re-synchronization**:
+  * Added edit buttons (`edit-2`) and right side-sliding drawers for all job card entry types: **Services/Tasks**, **Allocated Parts**, **Outsourced Work**, **Miscellaneous Dealer-Direct Parts**, **Advanced Payments**, and **Towing & Transportation**.
+  * **Automated Ledger & Bill Recalculation**: Editing or deleting entries on billed job cards invokes `syncJobCardBill()`. This helper recalculates the bill's total amount, updates line items (`bill_items`), re-balances double-entry journal entries (`postBillTransaction`), and updates corresponding payment receipts (`-PAY`).
+  * **Outsourcing & Misc Parts Bookkeeping Sync**: Model event hooks automatically update the specific double-entry journal entries (`OUTSOURCING-{id}` and `MISC-PART-{id}`) adjusting Cost of Goods Sold (`5000`) and Cash Drawer (`1000`) to reflect modified cost prices.
+  * **Advanced Payments Bookkeeping Sync**: Editing updates the `ADV-PAY-{id}` journal entry (debiting Cash Drawer `1000` and crediting Accounts Receivable `1200`). Deleting an advanced payment purges its journal entry.
+  * **Transportation Accounting (Provided vs. Hire)**:
+    - Billed job cards automatically track whether transportation is provided in-house or outsourced to a third party.
+    - If transportation is switched to third-party `hire` or its amount updated, the `-HIRE` journal entry (debiting Transportation Hire Expense `5500` and crediting Transportation Account `1030`) is created or adjusted for the exact hired total.
+    - If switched back to company-provided (`provided`) or if all hired items are deleted, the `-HIRE` journal entry is automatically deleted.
+    - Reposts invoice and `-PAY` entries so that Accounts Receivable (`1200`), Transportation Account (`1030`), and Transportation Revenue (`4200`) match the revised figures.
+    - Role protection: On already-billed job cards, entry modifications are guarded and reserved for `super-manager` (Super Admin), maintaining strict audit trail integrity.
 
 ## Tracker Integration & Bi-directional Sync
 

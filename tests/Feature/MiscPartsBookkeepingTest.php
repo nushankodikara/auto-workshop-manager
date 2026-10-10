@@ -256,4 +256,97 @@ class MiscPartsBookkeepingTest extends TestCase
         $this->assertStringContainsString('+18000.00', $content);
         $this->assertStringContainsString('-12000.00', $content);
     }
+
+    /**
+     * Test editing misc part and outsourcing updates journal entries and billed amounts.
+     */
+    public function test_misc_part_and_outsourcing_editing_updates_ledger_and_bill()
+    {
+        $jobCard = JobCard::create([
+            'shop_id' => $this->shop->id,
+            'vehicle_id' => $this->vehicle->id,
+            'card_number' => 'TDC-888888',
+            'status' => 'received-vehicle'
+        ]);
+
+        // 1. Add misc part and outsourcing
+        $this->actingAs($this->superManager)->post(route('job-cards.add-misc-part', $jobCard->id), [
+            'name' => 'Initial Hose',
+            'cost_price' => 1000.00,
+            'selling_price' => 2000.00
+        ]);
+        $miscPart = \App\Models\JobCardMiscPart::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($miscPart);
+
+        $this->actingAs($this->superManager)->post(route('job-cards.add-outsourcing', $jobCard->id), [
+            'description' => 'Initial Lathe Work',
+            'cost_price' => 1500.00,
+            'selling_price' => 3000.00,
+            'outsourcing_company_id' => null
+        ]);
+        $outsourcing = \App\Models\JobCardOutsourcing::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($outsourcing);
+
+        // 2. Bill job card
+        $this->actingAs($this->superManager)->post(route('billing.store', $jobCard->id), [
+            'discount_percent' => 0.00,
+            'tax' => 0.00,
+            'status' => 'paid',
+            'payment_method' => 'cash'
+        ]);
+
+        $bill = Bill::where('job_card_id', $jobCard->id)->first();
+        $this->assertNotNull($bill);
+        $this->assertEquals(5000.00, floatval($bill->total_amount));
+
+        // 3. Edit misc part: update cost to 2500 and selling to 4000
+        $responseEditMisc = $this->actingAs($this->superManager)->put(route('job-cards.update-misc-part', $miscPart->id), [
+            'name' => 'Upgraded Hose',
+            'cost_price' => 2500.00,
+            'selling_price' => 4000.00
+        ]);
+        $responseEditMisc->assertRedirect();
+
+        // Check Misc Part Journal Entry (MISC-PART-{id}) updated
+        $miscEntry = JournalEntry::where('reference', 'MISC-PART-' . $miscPart->id)->first();
+        $this->assertNotNull($miscEntry);
+        $cogsItem = $miscEntry->items()->where('account_id', Account::where('code', '5000')->first()->id)->first();
+        $this->assertEquals(2500.00, floatval($cogsItem->debit));
+
+        // 4. Edit outsourcing: update cost to 2000 and selling to 5000
+        $responseEditOut = $this->actingAs($this->superManager)->put(route('job-cards.update-outsourcing', $outsourcing->id), [
+            'description' => 'Upgraded Lathe Work',
+            'cost_price' => 2000.00,
+            'selling_price' => 5000.00,
+            'outsourcing_company_id' => null
+        ]);
+        $responseEditOut->assertRedirect();
+
+        // Check Outsourcing Journal Entry (OUTSOURCING-{id}) updated
+        $outEntry = JournalEntry::where('reference', 'OUTSOURCING-' . $outsourcing->id)->first();
+        $this->assertNotNull($outEntry);
+        $outCogsItem = $outEntry->items()->where('account_id', Account::where('code', '5000')->first()->id)->first();
+        $this->assertEquals(2000.00, floatval($outCogsItem->debit));
+
+        // 5. Verify Bill and Bill Items updated: new total = 4000 (misc) + 5000 (outsourcing) = 9000.00
+        $bill->refresh();
+        $this->assertEquals(9000.00, floatval($bill->total_amount));
+
+        $this->assertDatabaseHas('bill_items', [
+            'bill_id' => $bill->id,
+            'description' => 'Upgraded Hose',
+            'total_price' => '4000.00'
+        ]);
+        $this->assertDatabaseHas('bill_items', [
+            'bill_id' => $bill->id,
+            'description' => 'Upgraded Lathe Work',
+            'total_price' => '5000.00'
+        ]);
+
+        // 6. Verify Payment Journal entry (-PAY) reflects new total 9000.00
+        $payEntry = JournalEntry::where('reference', $bill->bill_number . '-PAY')->first();
+        $this->assertNotNull($payEntry);
+        $cashItem = $payEntry->items()->where('account_id', Account::where('code', '1000')->first()->id)->first();
+        $this->assertEquals(9000.00, floatval($cashItem->debit));
+    }
 }

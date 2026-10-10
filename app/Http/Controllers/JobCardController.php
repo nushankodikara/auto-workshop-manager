@@ -552,6 +552,37 @@ class JobCardController extends Controller
     }
 
     /**
+     * Recalculate bill total amount (including transportation, items, discounts, tax)
+     * and re-post double-entry ledger transactions when job card entries are updated.
+     */
+    protected function syncJobCardBill(JobCard $jobCard): void
+    {
+        if (!$jobCard->bill) {
+            return;
+        }
+
+        $bill = $jobCard->bill;
+        $itemsSum = floatval($bill->items()->sum('total_price'));
+        $transSum = floatval($jobCard->transportations()->sum('amount'));
+        if ($transSum == 0 && floatval($jobCard->transportation_fee) > 0) {
+            $transSum = floatval($jobCard->transportation_fee);
+        }
+
+        $subtotal = $itemsSum + $transSum;
+        if ($bill->discount_percent > 0) {
+            $subtotal -= $subtotal * (floatval($bill->discount_percent) / 100);
+        }
+        if ($bill->tax > 0) {
+            $subtotal += $subtotal * (floatval($bill->tax) / 100);
+        }
+
+        $bill->total_amount = $subtotal;
+        $bill->saveQuietly();
+
+        \App\Services\DoubleEntryService::postBillTransaction($bill);
+    }
+
+    /**
      * Add service/task to Job Card.
      */
     public function addService(Request $request, JobCard $jobCard)
@@ -582,6 +613,51 @@ class JobCardController extends Controller
     }
 
     /**
+     * Update service/task on Job Card.
+     */
+    public function updateService(Request $request, JobCardService $service)
+    {
+        $jobCard = $service->jobCard;
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify service operations.']);
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string|max:500'
+        ]);
+
+        DB::transaction(function () use ($service, $jobCard, $data) {
+            $oldName = $service->name;
+
+            $service->update($data);
+
+            if ($jobCard && $jobCard->bill) {
+                $billItem = $jobCard->bill->items()->where('type', 'labor')->where('description', $oldName)->first();
+                if ($billItem) {
+                    $billItem->update([
+                        'description' => $service->name,
+                        'unit_price' => $service->price,
+                        'total_price' => $service->price,
+                    ]);
+                }
+                $this->syncJobCardBill($jobCard);
+            }
+
+            // Log activity
+            Activity::create([
+                'job_card_id' => $service->job_card_id,
+                'user_id' => Auth::id(),
+                'action' => 'service_updated',
+                'details' => "Updated service: '{$service->name}' for " . config('app.currency', '$') . number_format((double)$service->price, 2)
+            ]);
+        });
+
+        return back()->with('success', 'Service operation updated successfully.');
+    }
+
+    /**
      * Delete service/task from Job Card.
      */
     public function deleteService(JobCardService $service)
@@ -594,8 +670,16 @@ class JobCardController extends Controller
         $jobCardId = $service->job_card_id;
         $serviceName = $service->name;
 
-        DB::transaction(function () use ($service, $jobCardId, $serviceName) {
+        DB::transaction(function () use ($service, $jobCardId, $serviceName, $jobCard) {
             $service->delete();
+
+            if ($jobCard && $jobCard->bill) {
+                $billItem = $jobCard->bill->items()->where('type', 'labor')->where('description', $serviceName)->first();
+                if ($billItem) {
+                    $billItem->delete();
+                }
+                $this->syncJobCardBill($jobCard);
+            }
 
             // Log activity
             Activity::create([
@@ -740,24 +824,89 @@ class JobCardController extends Controller
     }
 
     /**
+     * Update an outsourcing line on a Job Card.
+     */
+    public function updateOutsourcing(Request $request, \App\Models\JobCardOutsourcing $outsourcingItem)
+    {
+        $jobCard = $outsourcingItem->jobCard;
+
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify outsourcing lines.']);
+        }
+
+        $data = $request->validate([
+            'outsourcing_company_id' => 'nullable|exists:outsourcing_companies,id',
+            'description'            => 'required|string|max:255',
+            'cost_price'             => 'required|numeric|min:0',
+            'selling_price'          => 'required|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($outsourcingItem, $jobCard, $data) {
+            $oldDesc = $outsourcingItem->description;
+
+            $outsourcingItem->update([
+                'outsourcing_company_id' => $data['outsourcing_company_id'] ?? null,
+                'description'            => $data['description'],
+                'cost_price'             => $data['cost_price'],
+                'selling_price'          => $data['selling_price'],
+            ]);
+
+            if ($jobCard && $jobCard->bill) {
+                $billItem = $jobCard->bill->items()->where('type', 'outsourcing')->where('description', $oldDesc)->first();
+                if ($billItem) {
+                    $billItem->update([
+                        'outsourcing_company_id' => $outsourcingItem->outsourcing_company_id,
+                        'description'            => $outsourcingItem->description,
+                        'cost_price'             => $outsourcingItem->cost_price,
+                        'unit_price'             => $outsourcingItem->selling_price,
+                        'total_price'            => $outsourcingItem->selling_price,
+                    ]);
+                }
+                $this->syncJobCardBill($jobCard);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'outsourcing_updated',
+                'details'     => "Outsourcing updated: {$outsourcingItem->description} — Selling: " . config('app.currency', 'Rs.') . number_format($outsourcingItem->selling_price, 2) . ", Cost: " . config('app.currency', 'Rs.') . number_format($outsourcingItem->cost_price, 2),
+            ]);
+        });
+
+        return back()->with('success', "Outsourcing line '{$outsourcingItem->description}' updated.");
+    }
+
+    /**
      * Delete an outsourcing line from a Job Card.
      */
     public function deleteOutsourcing(\App\Models\JobCardOutsourcing $outsourcingItem)
     {
         $jobCard = $outsourcingItem->jobCard;
 
-        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
             return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can remove outsourcing lines.']);
         }
 
-        Activity::create([
-            'job_card_id' => $jobCard->id,
-            'user_id'     => Auth::id(),
-            'action'      => 'outsourcing_removed',
-            'details'     => "Outsourcing removed: {$outsourcingItem->description}",
-        ]);
+        DB::transaction(function () use ($outsourcingItem, $jobCard) {
+            $desc = $outsourcingItem->description;
 
-        $outsourcingItem->delete();
+            $outsourcingItem->delete();
+
+            if ($jobCard && $jobCard->bill) {
+                $billItem = $jobCard->bill->items()->where('type', 'outsourcing')->where('description', $desc)->first();
+                if ($billItem) {
+                    $billItem->delete();
+                }
+                $this->syncJobCardBill($jobCard);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'outsourcing_removed',
+                'details'     => "Outsourcing removed: {$desc}",
+            ]);
+        });
 
         return back()->with('success', 'Outsourcing line removed.');
     }
@@ -798,24 +947,85 @@ class JobCardController extends Controller
     }
 
     /**
+     * Update a misc part on a Job Card.
+     */
+    public function updateMiscPart(Request $request, \App\Models\JobCardMiscPart $miscPart)
+    {
+        $jobCard = $miscPart->jobCard;
+
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify misc parts.']);
+        }
+
+        $data = $request->validate([
+            'name'          => 'required|string|max:255',
+            'cost_price'    => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+        ]);
+
+        DB::transaction(function () use ($miscPart, $jobCard, $data) {
+            $oldName = $miscPart->name;
+
+            $miscPart->update([
+                'name'          => $data['name'],
+                'cost_price'    => $data['cost_price'],
+                'selling_price' => $data['selling_price'],
+            ]);
+
+            if ($jobCard && $jobCard->bill) {
+                $billItem = $jobCard->bill->items()->where('type', 'part')->where('description', 'like', $oldName . '%')->first();
+                if ($billItem) {
+                    $billItem->update([
+                        'description' => $miscPart->name . ' (Misc / Dealer Direct)',
+                        'cost_price'  => $miscPart->cost_price,
+                        'unit_price'  => $miscPart->selling_price,
+                        'total_price' => $miscPart->selling_price,
+                    ]);
+                }
+                $this->syncJobCardBill($jobCard);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'misc_part_updated',
+                'details'     => "Misc part updated: {$miscPart->name} — Cost: " . config('app.currency', 'Rs.') . number_format($miscPart->cost_price, 2) . ", Selling: " . config('app.currency', 'Rs.') . number_format($miscPart->selling_price, 2),
+            ]);
+        });
+
+        return back()->with('success', "Misc part '{$miscPart->name}' updated.");
+    }
+
+    /**
      * Delete a misc part from a Job Card.
      */
     public function deleteMiscPart(\App\Models\JobCardMiscPart $miscPart)
     {
         $jobCard = $miscPart->jobCard;
 
-        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
             return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can remove misc parts.']);
         }
 
-        Activity::create([
-            'job_card_id' => $jobCard->id,
-            'user_id'     => Auth::id(),
-            'action'      => 'misc_part_removed',
-            'details'     => "Misc part removed: {$miscPart->name}",
-        ]);
+        DB::transaction(function () use ($jobCard, $miscPart) {
+            $partName = $miscPart->name;
+            $miscPart->delete();
 
-        $miscPart->delete();
+            if ($jobCard && $jobCard->bill) {
+                $billItem = $jobCard->bill->items()->where('type', 'part')->where('description', 'like', $partName . '%')->first();
+                if ($billItem) {
+                    $billItem->delete();
+                }
+                $this->syncJobCardBill($jobCard);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'misc_part_removed',
+                'details'     => "Misc part removed: {$partName}",
+            ]);
+        });
 
         return back()->with('success', 'Misc part removed.');
     }
@@ -849,7 +1059,7 @@ class JobCardController extends Controller
 
             // Re-post bill if it exists to reconcile
             if ($jobCard->bill) {
-                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+                $this->syncJobCardBill($jobCard);
             }
 
             Activity::create([
@@ -863,6 +1073,53 @@ class JobCardController extends Controller
         });
 
         return back()->with('success', 'Advanced payment recorded successfully.');
+    }
+
+    /**
+     * Update an advanced payment on a Job Card.
+     */
+    public function updateAdvancedPayment(Request $request, \App\Models\JobCardAdvancedPayment $payment)
+    {
+        $jobCard = $payment->jobCard;
+
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify advanced payments.']);
+        }
+
+        $data = $request->validate([
+            'amount'                => 'required|numeric|min:0.01',
+            'payment_method'        => 'required|in:cash,card,bank_transfer',
+            'transaction_reference' => 'nullable|string|max:255',
+            'notes'                 => 'nullable|string|max:255',
+            'paid_at'               => 'required|date',
+        ]);
+
+        DB::transaction(function () use ($payment, $jobCard, $data) {
+            $payment->update([
+                'amount'                => $data['amount'],
+                'payment_method'        => $data['payment_method'],
+                'transaction_reference' => $data['transaction_reference'],
+                'notes'                 => $data['notes'],
+                'paid_at'               => \Carbon\Carbon::parse($data['paid_at']),
+            ]);
+
+            // Sync to double entry bookkeeping system
+            \App\Services\DoubleEntryService::postAdvancedPayment($payment);
+
+            // Re-post bill if it exists to reconcile
+            if ($jobCard && $jobCard->bill) {
+                $this->syncJobCardBill($jobCard);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'advanced_payment_updated',
+                'details'     => "Advanced payment updated to " . config('app.currency', 'Rs.') . number_format($payment->amount, 2) . " received via " . strtoupper($payment->payment_method)
+            ]);
+        });
+
+        return back()->with('success', 'Advanced payment updated successfully.');
     }
 
     /**
@@ -880,11 +1137,14 @@ class JobCardController extends Controller
                 'details' => "Advanced payment of " . config('app.currency', 'Rs.') . number_format($payment->amount, 2) . " removed"
             ]);
 
+            // Delete associated journal entry if any
+            \App\Models\JournalEntry::where('reference', 'ADV-PAY-' . $payment->id)->delete();
+
             $payment->delete();
 
             // Re-post bill if it exists to reconcile
             if ($jobCard->bill) {
-                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+                $this->syncJobCardBill($jobCard);
             }
         });
 
@@ -916,18 +1176,58 @@ class JobCardController extends Controller
 
             // Re-post bill if it exists to reconcile
             if ($jobCard->bill) {
-                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+                $this->syncJobCardBill($jobCard);
             }
 
             Activity::create([
                 'job_card_id' => $jobCard->id,
                 'user_id' => Auth::id(),
                 'action' => 'transportation_added',
-                'details' => "Transportation log added: {$trans->description} (" . ucfirst($trans->type) . ") - " . config('app.currency', 'Rs.') . number_format($trans->amount, 2)
+                'details' => "Transportation log added: {$trans->description} (" . ($trans->type === 'provided' ? 'Company Provided' : 'Third-Party Hire') . ") - " . config('app.currency', 'Rs.') . number_format($trans->amount, 2)
             ]);
         });
 
         return back()->with('success', 'Transportation details recorded successfully.');
+    }
+
+    /**
+     * Update a Towing / Transportation log line on a Job Card.
+     */
+    public function updateTransportation(Request $request, \App\Models\JobCardTransportation $transportation)
+    {
+        $jobCard = $transportation->jobCard;
+
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify transportation details.']);
+        }
+
+        $data = $request->validate([
+            'description' => 'required|string|max:255',
+            'amount'      => 'required|numeric|min:0.01',
+            'type'        => 'required|in:provided,hire',
+        ]);
+
+        DB::transaction(function () use ($jobCard, $transportation, $data) {
+            $transportation->update([
+                'description' => $data['description'],
+                'amount'      => $data['amount'],
+                'type'        => $data['type'],
+            ]);
+
+            // Re-post bill if it exists to reconcile (including -HIRE posting or deletion)
+            if ($jobCard && $jobCard->bill) {
+                $this->syncJobCardBill($jobCard);
+            }
+
+            Activity::create([
+                'job_card_id' => $jobCard->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'transportation_updated',
+                'details'     => "Transportation log updated: {$transportation->description} (" . ($transportation->type === 'provided' ? 'Company Provided' : 'Third-Party Hire') . ") - " . config('app.currency', 'Rs.') . number_format($transportation->amount, 2)
+            ]);
+        });
+
+        return back()->with('success', 'Transportation details updated successfully.');
     }
 
     /**
@@ -937,7 +1237,7 @@ class JobCardController extends Controller
     {
         $jobCard = $transportation->jobCard;
 
-        if ($jobCard->bill && !Auth::user()->isSuperManager()) {
+        if ($jobCard && $jobCard->bill && !Auth::user()->isSuperManager()) {
             return back()->withErrors(['bill' => 'This job card has already been billed. Only super admins can modify transportation details.']);
         }
 
@@ -953,7 +1253,7 @@ class JobCardController extends Controller
 
             // Re-post bill if it exists to reconcile
             if ($jobCard->bill) {
-                \App\Services\DoubleEntryService::postBillTransaction($jobCard->bill);
+                $this->syncJobCardBill($jobCard);
             }
         });
 

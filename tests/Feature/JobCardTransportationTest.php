@@ -152,4 +152,156 @@ class JobCardTransportationTest extends TestCase
         $this->assertNotNull($transCreditItem);
         $this->assertEquals(12000.00, floatval($transCreditItem->credit));
     }
+
+    public function test_transportation_update_on_unbilled_job_card()
+    {
+        $this->actingAs($this->superManager);
+
+        $trans = JobCardTransportation::create([
+            'job_card_id' => $this->jobCard->id,
+            'description' => 'Original tow',
+            'amount' => 4000.00,
+            'type' => 'provided',
+        ]);
+
+        $response = $this->put(route('job-cards.update-transportation', $trans->id), [
+            'description' => 'Updated tow',
+            'amount' => 6000.00,
+            'type' => 'hire',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('job_card_transportations', [
+            'id' => $trans->id,
+            'description' => 'Updated tow',
+            'amount' => '6000.00',
+            'type' => 'hire',
+        ]);
+    }
+
+    public function test_transportation_update_on_billed_job_card_recalculates_bill_and_ledgers()
+    {
+        $this->actingAs($this->superManager);
+
+        // 1. Create hired transportation log
+        $trans = JobCardTransportation::create([
+            'job_card_id' => $this->jobCard->id,
+            'description' => 'Third-party hire from Kandy',
+            'amount' => 12000.00,
+            'type' => 'hire',
+        ]);
+
+        // 2. Bill job card
+        $billResponse = $this->post(route('billing.store', $this->jobCard->id), [
+            'tax' => 0,
+            'discount_percent' => 0,
+            'status' => 'paid',
+            'labor_desc' => ['General Tune Up'],
+            'labor_cost' => [1000.00],
+            'labor_price' => [3000.00]
+        ]);
+        $billResponse->assertRedirect();
+
+        $bill = Bill::first();
+        $this->assertEquals(15000.00, floatval($bill->total_amount));
+
+        // Verify initial HIRE journal entry exists
+        $this->assertNotNull(JournalEntry::where('reference', $bill->bill_number . '-HIRE')->first());
+
+        // 3. Update transportation: switch from 'hire' to 'provided' and change amount to 8000.00
+        $updateResponse = $this->put(route('job-cards.update-transportation', $trans->id), [
+            'description' => 'Company recovery truck',
+            'amount' => 8000.00,
+            'type' => 'provided',
+        ]);
+        $updateResponse->assertRedirect();
+
+        // 4. Verify JobCardTransportation updated in DB
+        $this->assertDatabaseHas('job_card_transportations', [
+            'id' => $trans->id,
+            'description' => 'Company recovery truck',
+            'amount' => '8000.00',
+            'type' => 'provided',
+        ]);
+
+        // 5. Verify Bill and BillItem updated
+        $bill->refresh();
+        // New total: 3000 (labor) + 8000 (transport) = 11000.00
+        $this->assertEquals(11000.00, floatval($bill->total_amount));
+        $this->assertDatabaseHas('bill_items', [
+            'bill_id' => $bill->id,
+            'description' => 'Company recovery truck',
+            'total_price' => '8000.00',
+            'type' => 'transport',
+        ]);
+
+        // 6. Verify HIRE journal entry is now deleted since there are no more hired towings
+        $this->assertNull(JournalEntry::where('reference', $bill->bill_number . '-HIRE')->first());
+
+        // 7. Verify Payment Entry (-PAY) is updated with new totals
+        $paymentEntry = JournalEntry::where('reference', $bill->bill_number . '-PAY')->first();
+        $this->assertNotNull($paymentEntry);
+
+        $transDebitItem = $paymentEntry->items()->where('account_id', Account::where('code', '1030')->first()->id)->first();
+        $this->assertNotNull($transDebitItem);
+        $this->assertEquals(8000.00, floatval($transDebitItem->debit));
+
+        $receivableCreditItem = $paymentEntry->items()->where('account_id', Account::where('code', '1200')->first()->id)->first();
+        $this->assertNotNull($receivableCreditItem);
+        $this->assertEquals(11000.00, floatval($receivableCreditItem->credit));
+
+        // 8. Verify invoice entry has 4200 (Transportation Revenue) updated to 8000.00
+        $invoiceEntry = JournalEntry::where('reference', $bill->bill_number)->first();
+        $this->assertNotNull($invoiceEntry);
+        $transRevItem = $invoiceEntry->items()->where('account_id', Account::where('code', '4200')->first()->id)->first();
+        $this->assertNotNull($transRevItem);
+        $this->assertEquals(8000.00, floatval($transRevItem->credit));
+    }
+
+    public function test_transportation_update_from_provided_to_hire_on_billed_job_card()
+    {
+        $this->actingAs($this->superManager);
+
+        // 1. Create provided transportation log
+        $trans = JobCardTransportation::create([
+            'job_card_id' => $this->jobCard->id,
+            'description' => 'Company flatbed',
+            'amount' => 5000.00,
+            'type' => 'provided',
+        ]);
+
+        // 2. Bill job card
+        $this->post(route('billing.store', $this->jobCard->id), [
+            'tax' => 0,
+            'discount_percent' => 0,
+            'status' => 'paid',
+            'labor_desc' => ['Brake repair'],
+            'labor_cost' => [1000.00],
+            'labor_price' => [4000.00]
+        ]);
+
+        $bill = Bill::first();
+        $this->assertEquals(9000.00, floatval($bill->total_amount));
+        // No HIRE journal entry initially
+        $this->assertNull(JournalEntry::where('reference', $bill->bill_number . '-HIRE')->first());
+
+        // 3. Update transportation to 'hire' for 7000.00
+        $this->put(route('job-cards.update-transportation', $trans->id), [
+            'description' => 'Subcontracted flatbed',
+            'amount' => 7000.00,
+            'type' => 'hire',
+        ]);
+
+        // 4. Verify Bill updated: 4000 (labor) + 7000 (transport) = 11000.00
+        $bill->refresh();
+        $this->assertEquals(11000.00, floatval($bill->total_amount));
+
+        // 5. Verify HIRE journal entry created
+        $hireEntry = JournalEntry::where('reference', $bill->bill_number . '-HIRE')->first();
+        $this->assertNotNull($hireEntry);
+        $expenseDebitItem = $hireEntry->items()->where('account_id', Account::where('code', '5500')->first()->id)->first();
+        $this->assertEquals(7000.00, floatval($expenseDebitItem->debit));
+        $transCreditItem = $hireEntry->items()->where('account_id', Account::where('code', '1030')->first()->id)->first();
+        $this->assertEquals(7000.00, floatval($transCreditItem->credit));
+    }
 }
