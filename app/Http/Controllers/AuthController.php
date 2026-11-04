@@ -19,6 +19,14 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
+            if (Auth::user()->is_archived) {
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+                return redirect()->route('login')->withErrors([
+                    'email' => 'This account has been deactivated/archived. Please contact management.',
+                ]);
+            }
             return redirect()->route('dashboard');
         }
         return view('auth.login');
@@ -34,7 +42,17 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        $user = User::where('email', $credentials['email'])->first();
+
+        // Disallow login for archived/deactivated employee accounts
+        if ($user && $user->is_archived) {
+            return back()->withErrors([
+                'email' => 'This account has been deactivated/archived. Please contact management.',
+            ])->onlyInput('email');
+        }
+
+        // Explicitly authenticate only active accounts
+        if (Auth::attempt(array_merge($credentials, ['is_archived' => false]), $request->boolean('remember'))) {
             $request->session()->regenerate();
             return redirect()->intended(route('dashboard'));
         }
@@ -74,6 +92,13 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email|exists:users,email',
         ]);
+
+        $user = User::where('email', $request->email)->first();
+        if ($user && $user->is_archived) {
+            return back()->withErrors([
+                'email' => 'This account has been deactivated/archived. Password reset is not permitted.',
+            ])->withInput();
+        }
 
         $code = rand(100000, 999999);
 
@@ -141,6 +166,13 @@ class AuthController extends Controller
 
         // Reset password
         $user = User::where('email', $request->email)->firstOrFail();
+
+        if ($user->is_archived) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'This account has been deactivated/archived. Password reset is not permitted.',
+            ]);
+        }
+
         $user->update([
             'password' => Hash::make($request->password)
         ]);

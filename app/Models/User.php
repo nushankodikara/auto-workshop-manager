@@ -64,6 +64,21 @@ class User extends Authenticatable
         return $this->role === 'worker';
     }
 
+    public function isArchived(): bool
+    {
+        return (bool) $this->is_archived;
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_archived', false);
+    }
+
+    public function scopeArchived($query)
+    {
+        return $query->where('is_archived', true);
+    }
+
     public function hasModuleAccess(string $module): bool
     {
         if ($this->role === 'super-manager') {

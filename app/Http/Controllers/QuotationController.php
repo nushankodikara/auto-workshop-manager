@@ -51,6 +51,7 @@ class QuotationController extends Controller
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'vehicle_number' => 'nullable|string|max:50',
             'customer_address' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:50',
             'customer_email' => 'nullable|email|max:255',
@@ -70,9 +71,10 @@ class QuotationController extends Controller
             $quotation = Quotation::create([
                 'quotation_number' => $quotationNumber,
                 'customer_name' => $data['customer_name'],
-                'customer_address' => $data['customer_address'],
-                'customer_phone' => $data['customer_phone'],
-                'customer_email' => $data['customer_email'],
+                'vehicle_number' => !empty($data['vehicle_number']) ? trim($data['vehicle_number']) : null,
+                'customer_address' => $data['customer_address'] ?? null,
+                'customer_phone' => $data['customer_phone'] ?? null,
+                'customer_email' => $data['customer_email'] ?? null,
                 'tax' => $data['tax'] ?? 0.00,
                 'discount_percent' => $data['discount_percent'] ?? 0.00,
                 'total_amount' => 0.00, // We will update this after adding items
@@ -160,6 +162,7 @@ class QuotationController extends Controller
 
         $data = $request->validate([
             'customer_name' => 'required|string|max:255',
+            'vehicle_number' => 'nullable|string|max:50',
             'customer_address' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:50',
             'customer_email' => 'nullable|email|max:255',
@@ -182,6 +185,7 @@ class QuotationController extends Controller
             // 2. Prepare JSON snapshot of the current state of the quotation
             $snapshot = [
                 'customer_name' => $quotation->customer_name,
+                'vehicle_number' => $quotation->vehicle_number,
                 'customer_address' => $quotation->customer_address,
                 'customer_phone' => $quotation->customer_phone,
                 'customer_email' => $quotation->customer_email,
@@ -215,9 +219,10 @@ class QuotationController extends Controller
             // 5. Update parent fields
             $quotation->update([
                 'customer_name' => $data['customer_name'],
-                'customer_address' => $data['customer_address'],
-                'customer_phone' => $data['customer_phone'],
-                'customer_email' => $data['customer_email'],
+                'vehicle_number' => !empty($data['vehicle_number']) ? trim($data['vehicle_number']) : null,
+                'customer_address' => $data['customer_address'] ?? null,
+                'customer_phone' => $data['customer_phone'] ?? null,
+                'customer_email' => $data['customer_email'] ?? null,
                 'tax' => $data['tax'] ?? 0.00,
                 'discount_percent' => $data['discount_percent'] ?? 0.00,
             ]);

@@ -209,6 +209,7 @@ class PasswordResetTest extends TestCase
             'email' => 'tech@totaldrivecare.com',
             'role' => 'worker',
             'basic_salary' => 50000,
+            'total_salary' => 65000,
             'required_days' => 26,
             'overtime_rate' => 300,
             'password' => 'NewAdminResetPass1!'
@@ -254,6 +255,7 @@ class PasswordResetTest extends TestCase
             'email' => 'tech@totaldrivecare.com',
             'role' => 'worker',
             'basic_salary' => 50000,
+            'total_salary' => 65000,
             'required_days' => 26,
             'overtime_rate' => 300,
             'password' => 'ForbiddenPass1!'
@@ -269,6 +271,7 @@ class PasswordResetTest extends TestCase
             'email' => 'tech@totaldrivecare.com',
             'role' => 'super-manager', // forbidden
             'basic_salary' => 50000,
+            'total_salary' => 65000,
             'required_days' => 26,
             'overtime_rate' => 300
         ]);

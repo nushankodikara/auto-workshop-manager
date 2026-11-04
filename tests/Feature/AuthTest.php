@@ -97,4 +97,95 @@ class AuthTest extends TestCase
         $response = $this->actingAs($admin)->get('/settings');
         $response->assertStatus(200);
     }
+
+    /**
+     * Test archived user cannot login even with valid password.
+     */
+    public function test_archived_user_cannot_login()
+    {
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        $user = User::create([
+            'name' => 'Archived Worker',
+            'email' => 'archived@test.com',
+            'password' => Hash::make('Password123!'),
+            'role' => 'worker',
+            'is_archived' => true,
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => 'archived@test.com',
+            'password' => 'Password123!',
+        ]);
+
+        $response->assertSessionHasErrors(['email' => 'This account has been deactivated/archived. Please contact management.']);
+        $this->assertGuest();
+    }
+
+    /**
+     * Test active session is invalidated immediately when user is archived.
+     */
+    public function test_archived_user_session_is_invalidated_by_middleware()
+    {
+        $user = User::create([
+            'name' => 'Active Worker',
+            'email' => 'active@test.com',
+            'password' => Hash::make('Password123!'),
+            'role' => 'worker',
+            'is_archived' => false,
+        ]);
+
+        // User can access dashboard when active
+        $response = $this->actingAs($user)->get('/');
+        $response->assertStatus(200);
+
+        // Account gets archived
+        $user->update(['is_archived' => true]);
+
+        // Subsequent request triggers EnsureUserNotArchived middleware
+        $response = $this->actingAs($user)->get('/');
+        $response->assertRedirect('/login');
+        $response->assertSessionHasErrors(['email' => 'Your account has been deactivated/archived. Please contact management.']);
+        $this->assertGuest();
+    }
+
+    /**
+     * Test archived user visiting login page with active session is logged out.
+     */
+    public function test_archived_user_visiting_login_page_clears_session()
+    {
+        $user = User::create([
+            'name' => 'Archived Staff',
+            'email' => 'staff@test.com',
+            'password' => Hash::make('Password123!'),
+            'role' => 'worker',
+            'is_archived' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get('/login');
+        $response->assertRedirect('/login');
+        $this->assertGuest();
+    }
+
+    /**
+     * Test archived user cannot request password reset code.
+     */
+    public function test_archived_user_cannot_request_password_reset()
+    {
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+
+        $user = User::create([
+            'name' => 'Archived User',
+            'email' => 'archived_reset@test.com',
+            'password' => Hash::make('Password123!'),
+            'role' => 'worker',
+            'is_archived' => true,
+        ]);
+
+        $response = $this->post('/forgot-password', [
+            'email' => 'archived_reset@test.com',
+        ]);
+
+        $response->assertSessionHasErrors(['email' => 'This account has been deactivated/archived. Password reset is not permitted.']);
+    }
 }

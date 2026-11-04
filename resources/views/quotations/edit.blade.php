@@ -49,6 +49,13 @@
                 </div>
 
                 <div>
+                    <label for="vehicle_number" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Vehicle Number <span class="text-slate-400 font-normal lowercase">(optional)</span></label>
+                    <input type="text" name="vehicle_number" id="vehicle_number" placeholder="e.g. WP CAA-1234 / 65-4321"
+                           value="{{ old('vehicle_number', $quotation->vehicle_number) }}"
+                           class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm font-mono uppercase">
+                </div>
+
+                <div>
                     <label for="customer_phone" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Phone Number</label>
                     <input type="text" name="customer_phone" id="customer_phone" placeholder="e.g. 0711144444"
                            value="{{ old('customer_phone', $quotation->customer_phone) }}"
@@ -62,7 +69,7 @@
                            class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
                 </div>
 
-                <div>
+                <div class="md:col-span-2">
                     <label for="customer_address" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Billing Address</label>
                     <input type="text" name="customer_address" id="customer_address" placeholder="e.g. 123 Galle Road, Colombo"
                            value="{{ old('customer_address', $quotation->customer_address) }}"

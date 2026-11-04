@@ -23,6 +23,11 @@ class BillingController extends Controller
      */
     public function showWorkspace(JobCard $jobCard)
     {
+        if ($jobCard->status === 'abandoned') {
+            return redirect()->route('job-cards.show', $jobCard->id)
+                ->withErrors(['status' => 'Billing is disabled for an abandoned job card. Re-activate the ticket first.']);
+        }
+
         $jobCard->load(['vehicle.client', 'bill.items', 'stockMovements.inventory', 'services',
                         'outsourcingItems.outsourcingCompany', 'miscParts']);
 
@@ -47,6 +52,11 @@ class BillingController extends Controller
      */
     public function store(Request $request, JobCard $jobCard)
     {
+        if ($jobCard->status === 'abandoned') {
+            return redirect()->route('job-cards.show', $jobCard->id)
+                ->withErrors(['status' => 'Cannot generate an invoice for an abandoned job card.']);
+        }
+
         $data = $request->validate([
             'tax' => 'nullable|numeric|min:0',
             'discount_percent' => 'nullable|numeric|min:0|max:100',

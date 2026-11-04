@@ -40,7 +40,13 @@
                             {{ $q->quotation_number }}
                         </td>
                         <td class="py-4 px-6 font-semibold text-slate-850 dark:text-slate-200">
-                            {{ $q->customer_name }}
+                            <div>{{ $q->customer_name }}</div>
+                            @if($q->vehicle_number)
+                                <div class="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-normal mt-0.5 flex items-center gap-1">
+                                    <i data-lucide="car" class="w-3 h-3 text-slate-400 shrink-0"></i>
+                                    <span>{{ $q->vehicle_number }}</span>
+                                </div>
+                            @endif
                         </td>
                         <td class="py-4 px-6 text-xs space-y-0.5">
                             @if($q->customer_phone)

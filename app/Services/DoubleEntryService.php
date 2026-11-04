@@ -802,4 +802,96 @@ class DoubleEntryService
             Log::error("DoubleEntryService postOutsourcingTransaction Error: " . $e->getMessage());
         }
     }
+
+    /**
+     * Post accounting entries when a Job Card is marked abandoned.
+     * Incurred costs (allocated stock parts) are recognized as real COGS expenses,
+     * while any existing bills/revenues/profits are voided and diminished.
+     */
+    public static function postJobCardAbandonedTransaction($jobCard)
+    {
+        try {
+            $reference = 'ABANDONED-JC-' . $jobCard->id;
+
+            // 1. Delete previous abandoned entry if exists
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+
+            // 2. If a bill exists, delete its journal entries and cancel the bill so no profit/revenue remains
+            if ($jobCard->bill) {
+                $bill = $jobCard->bill;
+                $billEntries = JournalEntry::where('reference', 'like', $bill->bill_number . '%')->get();
+                foreach ($billEntries as $bEntry) {
+                    $bEntry->delete();
+                }
+                $bill->update(['status' => 'cancelled']);
+            }
+
+            // 3. Post cost of allocated stock parts (COGS debit, Parts Inventory credit)
+            $cogsCode = \App\Models\Setting::get('account_cogs', '5000');
+            $inventoryCode = \App\Models\Setting::get('account_inventory', '1300');
+
+            $cogsAccount = Account::where('code', $cogsCode)->first();
+            $inventoryAccount = Account::where('code', $inventoryCode)->first();
+
+            if (!$cogsAccount || !$inventoryAccount) {
+                Log::warning("DoubleEntryService: COGS or Inventory accounts not seeded for abandoned job card.");
+                return;
+            }
+
+            // Calculate actual cost of stock parts consumed on this ticket
+            $stockMovements = $jobCard->stockMovements()->where('type', 'out')->get();
+            $allocatedStockCost = 0.00;
+            foreach ($stockMovements as $mov) {
+                $allocatedStockCost += abs(floatval($mov->quantity)) * floatval($mov->cost_price);
+            }
+
+            if ($allocatedStockCost > 0) {
+                $client = $jobCard->vehicle->client ?? null;
+                $customerMobile = $client->phone ?? null;
+
+                $entry = JournalEntry::create([
+                    'entry_date' => now()->format('Y-m-d'),
+                    'reference' => $reference,
+                    'description' => "Cost write-off for abandoned Job Card " . ($jobCard->card_number ?? "#{$jobCard->id}") . " (Vehicle: " . ($jobCard->vehicle->plate_number ?? 'Unknown') . ")"
+                ]);
+
+                // Debit COGS (5000)
+                $entry->items()->create([
+                    'account_id' => $cogsAccount->id,
+                    'debit' => $allocatedStockCost,
+                    'credit' => 0.00,
+                    'customer_mobile' => $customerMobile
+                ]);
+
+                // Credit Parts Inventory (1300)
+                $entry->items()->create([
+                    'account_id' => $inventoryAccount->id,
+                    'debit' => 0.00,
+                    'credit' => $allocatedStockCost,
+                    'customer_mobile' => $customerMobile
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService postJobCardAbandonedTransaction Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reverse abandoned accounting entries if job card status is changed back from abandoned.
+     */
+    public static function reverseJobCardAbandonedTransaction($jobCard)
+    {
+        try {
+            $reference = 'ABANDONED-JC-' . $jobCard->id;
+            $oldEntry = JournalEntry::where('reference', $reference)->first();
+            if ($oldEntry) {
+                $oldEntry->delete();
+            }
+        } catch (\Exception $e) {
+            Log::error("DoubleEntryService reverseJobCardAbandonedTransaction Error: " . $e->getMessage());
+        }
+    }
 }

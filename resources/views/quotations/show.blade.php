@@ -58,11 +58,6 @@
                 <div class="text-xs text-slate-655 dark:text-slate-400 print:text-black/70 font-sans">
                     <div class="font-bold text-slate-800 dark:text-slate-300 print:text-black">{{ $shop->name }}</div>
                     <div>{{ $shop->address }}</div>
-                    <div class="mt-2 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 print:text-black/70 font-mono">
-                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Official:</span> 071 114 4444</div>
-                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Kodikara:</span> 077 728 4077</div>
-                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Nushan:</span> 077 399 6538</div>
-                    </div>
                 </div>
             </div>
 
@@ -70,8 +65,14 @@
             <div>
                 <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 print:text-black/45">Quoted To</h4>
                 <div class="font-bold text-slate-850 dark:text-slate-200 print:text-black">{{ $quotation->customer_name }}</div>
+                @if($quotation->vehicle_number)
+                    <div class="text-xs text-slate-500 dark:text-slate-450 mt-1.5 print:text-black/70">
+                        <span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Vehicle No:</span> 
+                        <span class="font-mono font-bold text-slate-800 dark:text-slate-200 uppercase print:text-black">{{ $quotation->vehicle_number }}</span>
+                    </div>
+                @endif
                 @if($quotation->customer_phone)
-                    <div class="text-xs text-slate-500 dark:text-slate-450 mt-1.5 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Phone:</span> {{ $quotation->customer_phone }}</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-450 mt-1 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Phone:</span> {{ $quotation->customer_phone }}</div>
                 @endif
                 @if($quotation->customer_email)
                     <div class="text-xs text-slate-500 dark:text-slate-450 print:text-black/70"><span class="font-semibold text-slate-700 dark:text-slate-450 print:text-black">Email:</span> {{ $quotation->customer_email }}</div>

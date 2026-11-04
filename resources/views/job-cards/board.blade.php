@@ -108,7 +108,7 @@
     </script>
 
     <!-- Kanban Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4 items-start">
 
         <!-- Column Loop -->
         @php
@@ -118,6 +118,7 @@
                 'blocked' => ['label' => 'Blocked', 'icon' => 'alert-triangle', 'iconColor' => 'text-red-500', 'border' => 'border-red-500/20', 'badge' => 'bg-red-500/10 text-red-500'],
                 'testing' => ['label' => 'Testing', 'icon' => 'shield-alert', 'iconColor' => 'text-indigo-500', 'border' => 'border-indigo-500/20', 'badge' => 'bg-indigo-500/10 text-indigo-500'],
                 'waiting-to-pickup' => ['label' => 'Ready', 'icon' => 'check-square', 'iconColor' => 'text-green-600 dark:text-green-400', 'border' => 'border-green-500/20', 'badge' => 'bg-green-500/10 text-green-600 dark:text-green-400'],
+                'abandoned' => ['label' => 'Abandoned', 'icon' => 'ban', 'iconColor' => 'text-rose-500', 'border' => 'border-rose-500/20', 'badge' => 'bg-rose-500/10 text-rose-500'],
             ];
         @endphp
 
@@ -184,18 +185,26 @@
                                     </span>
 
                                     <!-- Status quick change dropdown -->
-                                    <form action="{{ route('job-cards.update-status', $jobCard->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        @method('PATCH')
-                                        <select name="status" onchange="this.form.submit()" 
-                                                class="text-[10px] bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300 font-semibold py-1 px-1.5 rounded border border-slate-300 dark:border-slate-700/80 focus:outline-none cursor-pointer">
-                                            @foreach(array_keys($columns) as $s)
-                                                <option value="{{ $s }}" {{ $jobCard->status === $s ? 'selected' : '' }}>
-                                                    {{ $columns[$s]['label'] }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </form>
+                                    @if($jobCard->status === 'abandoned' && !auth()->user()->isSuperManager())
+                                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                            Abandoned
+                                        </span>
+                                    @else
+                                        <form action="{{ route('job-cards.update-status', $jobCard->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <select name="status" onchange="this.form.submit()" 
+                                                    class="text-[10px] bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300 font-semibold py-1 px-1.5 rounded border border-slate-300 dark:border-slate-700/80 focus:outline-none cursor-pointer">
+                                                @foreach(array_keys($columns) as $s)
+                                                    @if($s !== 'abandoned' || auth()->user()->isSuperManager())
+                                                        <option value="{{ $s }}" {{ $jobCard->status === $s ? 'selected' : '' }}>
+                                                            {{ $columns[$s]['label'] }}
+                                                        </option>
+                                                    @endif
+                                                @endforeach
+                                            </select>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
 

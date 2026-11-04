@@ -92,11 +92,6 @@
                 <div class="text-xs text-slate-600 dark:text-slate-400 print:text-black/70">
                     <div class="font-bold text-slate-800 dark:text-slate-300 print:text-black">{{ $jobCard->shop->name }}</div>
                     <div>{{ $jobCard->shop->address }}</div>
-                    <div class="mt-2 space-y-0.5 text-[11px] text-slate-500 dark:text-slate-400 print:text-black/70 font-mono">
-                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Official:</span> 071 114 4444</div>
-                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Kodikara:</span> 077 728 4077</div>
-                        <div><span class="font-sans font-medium text-slate-700 dark:text-slate-300 print:text-black">Nushan:</span> 077 399 6538</div>
-                    </div>
                 </div>
             </div>
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 #[Fillable([
     'quotation_number',
     'customer_name',
+    'vehicle_number',
     'customer_address',
     'customer_phone',
     'customer_email',

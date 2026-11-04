@@ -20,7 +20,7 @@ class DashboardController extends Controller
         // Counts
         $clientsCount = Client::count();
         $vehiclesCount = Vehicle::count();
-        $activeJobCardsCount = JobCard::where('status', '!=', 'waiting-to-pickup')->count();
+        $activeJobCardsCount = JobCard::whereNotIn('status', ['waiting-to-pickup', 'abandoned'])->count();
         
         // Job Cards by Status
         $receivedCount = JobCard::where('status', 'received-vehicle')->count();
@@ -28,6 +28,7 @@ class DashboardController extends Controller
         $blockedCount = JobCard::where('status', 'blocked')->count();
         $testingCount = JobCard::where('status', 'testing')->count();
         $pickupCount = JobCard::where('status', 'waiting-to-pickup')->count();
+        $abandonedCount = JobCard::where('status', 'abandoned')->count();
 
         // Low stock items (using custom alert thresholds, where threshold > 0 and stock <= threshold)
         $lowStockItems = Inventory::where('low_stock_alert_qty', '>', 0)
@@ -540,7 +541,8 @@ class DashboardController extends Controller
 
             $formattedJobs = [];
             foreach ($dayJobCards as $jc) {
-                $income = $jc->bill ? floatval($jc->bill->total_amount) : 0.00;
+                // Abandoned job cards have zero income/revenue (profits diminished) while keeping actual costs
+                $income = ($jc->status === 'abandoned' || !$jc->bill || $jc->bill->status !== 'paid') ? 0.00 : floatval($jc->bill->total_amount);
 
                 $partsCostInventory = floatval($jc->stockMovements
                     ->where('type', 'out')

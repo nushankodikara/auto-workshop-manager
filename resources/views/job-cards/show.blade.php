@@ -24,7 +24,12 @@
                     {{ config('app.currency', 'Rs.') }}{{ number_format($jobCard->ticket_sum, 2) }}
                 </span>
             </div>
-            @if($jobCard->bill)
+            @if($jobCard->status === 'abandoned')
+                <div class="px-3.5 py-1.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                    <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+                    <span>Ticket Abandoned</span>
+                </div>
+            @elseif($jobCard->bill)
                 <a href="{{ route('billing.show', $jobCard->id) }}" 
                    class="px-4 py-2 bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 rounded-lg text-xs font-bold hover:bg-green-500/20 transition flex items-center gap-1.5 shadow-sm">
                     <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
@@ -40,6 +45,24 @@
         </div>
     </div>
 
+    <!-- Abandoned Warning Banner -->
+    @if($jobCard->status === 'abandoned')
+        <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div class="flex items-start sm:items-center gap-2.5 font-medium">
+                <i data-lucide="alert-octagon" class="w-5 h-5 text-rose-500 shrink-0"></i>
+                <div>
+                    <span class="font-bold uppercase tracking-wider text-[11px] block text-rose-600 dark:text-rose-400">Job Card Abandoned (Costs Absorbed)</span>
+                    <span>This ticket was marked as abandoned. Incurred stock, misc part, and specialist costs are recorded as expenses in the ledger, while customer billing/revenues are cancelled.</span>
+                </div>
+            </div>
+            @if(auth()->user()->isSuperManager())
+                <span class="px-2.5 py-1 rounded bg-rose-500/20 text-rose-700 dark:text-rose-200 font-bold uppercase tracking-wider text-[10px] shrink-0 self-start sm:self-auto">
+                    Super Admin Managed
+                </span>
+            @endif
+        </div>
+    @endif
+
     <!-- Main Grid Details -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -54,28 +77,31 @@
                         <span>Diagnostic Info</span>
                     </h3>
                     <div class="flex items-center gap-2">
-                        @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                        @if((!$jobCard->bill || auth()->user()->isSuperManager()) && $jobCard->status !== 'abandoned')
                             <button onclick="document.getElementById('edit-job-details-drawer').classList.remove('hidden')"
                                     class="text-xs text-primary hover:bg-primary/10 font-semibold px-2 py-1 rounded transition border border-transparent hover:border-primary/20 flex items-center gap-1">
                                 <i data-lucide="edit" class="w-3.5 h-3.5"></i>
                                 <span>Edit Details</span>
                             </button>
                         @endif
-                        @if(!$jobCard->bill || auth()->user()->isSuperManager())
+                        @if((!$jobCard->bill || auth()->user()->isSuperManager()) && ($jobCard->status !== 'abandoned' || auth()->user()->isSuperManager()))
                             <form action="{{ route('job-cards.update-status', $jobCard->id) }}" method="POST" class="inline">
                                 @csrf
                                 @method('PATCH')
                                 <select name="status" onchange="this.form.submit()" 
-                                        class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 focus:outline-none cursor-pointer">
+                                        class="px-2.5 py-1.5 text-xs font-bold rounded-lg {{ $jobCard->status === 'abandoned' ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20' : 'bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20' }} focus:outline-none cursor-pointer">
                                     <option value="received-vehicle" {{ $jobCard->status === 'received-vehicle' ? 'selected' : '' }}>Received</option>
                                     <option value="on-going" {{ $jobCard->status === 'on-going' ? 'selected' : '' }}>Ongoing</option>
                                     <option value="blocked" {{ $jobCard->status === 'blocked' ? 'selected' : '' }}>Blocked</option>
                                     <option value="testing" {{ $jobCard->status === 'testing' ? 'selected' : '' }}>Testing</option>
                                     <option value="waiting-to-pickup" {{ $jobCard->status === 'waiting-to-pickup' ? 'selected' : '' }}>Waiting to Pickup</option>
+                                    @if(auth()->user()->isSuperManager())
+                                        <option value="abandoned" {{ $jobCard->status === 'abandoned' ? 'selected' : '' }}>Abandoned</option>
+                                    @endif
                                 </select>
                             </form>
                         @else
-                            <span class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 capitalize">
+                            <span class="px-2.5 py-1.5 rounded-lg text-xs font-bold {{ $jobCard->status === 'abandoned' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700' }} capitalize">
                                 Status: {{ str_replace('-', ' ', $jobCard->status) }}
                             </span>
                         @endif

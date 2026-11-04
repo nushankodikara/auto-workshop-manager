@@ -108,12 +108,12 @@ class JobCardController extends Controller
                 $query->where(function ($dateQuery) use ($start, $end) {
                     // Condition 1: Unfinished tickets created on or before the end of the range
                     $dateQuery->where(function ($q) use ($end) {
-                        $q->where('status', '!=', 'waiting-to-pickup')
+                        $q->whereNotIn('status', ['waiting-to-pickup', 'abandoned'])
                           ->where('created_at', '<=', $end);
                     })
-                    // Condition 2: Finished tickets completed (or created if completed_at is null) within the range
+                    // Condition 2: Closed tickets (Ready or Abandoned) completed (or created if completed_at is null) within the range
                     ->orWhere(function ($q) use ($start, $end) {
-                        $q->where('status', '=', 'waiting-to-pickup')
+                        $q->whereIn('status', ['waiting-to-pickup', 'abandoned'])
                           ->where(function ($sub) use ($start, $end) {
                               $sub->whereBetween('completed_at', [$start, $end])
                                   ->orWhere(function ($sub2) use ($start, $end) {
@@ -137,6 +137,7 @@ class JobCardController extends Controller
             'blocked' => $jobCards->where('status', 'blocked'),
             'testing' => $jobCards->where('status', 'testing'),
             'waiting-to-pickup' => $jobCards->where('status', 'waiting-to-pickup'),
+            'abandoned' => $jobCards->where('status', 'abandoned'),
         ];
 
         $vehicles = Vehicle::with('client')->latest()->get();
@@ -327,7 +328,7 @@ class JobCardController extends Controller
         }
 
         $data = $request->validate([
-            'status' => 'required|in:received-vehicle,on-going,blocked,testing,waiting-to-pickup'
+            'status' => 'required|in:received-vehicle,on-going,blocked,testing,waiting-to-pickup,abandoned'
         ]);
 
         $oldStatus = $jobCard->status;
@@ -335,6 +336,11 @@ class JobCardController extends Controller
 
         if ($oldStatus === $newStatus) {
             return back();
+        }
+
+        // Only super-managers (super admins) can mark tickets as abandoned or modify abandoned tickets
+        if (($newStatus === 'abandoned' || $oldStatus === 'abandoned') && !Auth::user()->isSuperManager()) {
+            return back()->withErrors(['status' => 'Only super admins can mark a job card as abandoned or update an abandoned ticket.']);
         }
 
         DB::transaction(function () use ($jobCard, $oldStatus, $newStatus) {
@@ -348,12 +354,27 @@ class JobCardController extends Controller
                 \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)
                     ->whereNull('unassigned_at')
                     ->update(['unassigned_at' => $now]);
+            } elseif ($newStatus === 'abandoned') {
+                $jobCard->completed_at = \Illuminate\Support\Carbon::instance($now);
+
+                // End all active assignments
+                \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)
+                    ->whereNull('unassigned_at')
+                    ->update(['unassigned_at' => $now]);
+
+                // Recognize actual costs incurred and eliminate any bills/revenues/profits
+                \App\Services\DoubleEntryService::postJobCardAbandonedTransaction($jobCard);
             }
 
-            // Re-open active assignments if transitioned out of waiting-to-pickup
-            if ($oldStatus === 'waiting-to-pickup' && $newStatus !== 'waiting-to-pickup') {
+            // Re-open active assignments if transitioned out of waiting-to-pickup or abandoned
+            if (in_array($oldStatus, ['waiting-to-pickup', 'abandoned']) && !in_array($newStatus, ['waiting-to-pickup', 'abandoned'])) {
                 $jobCard->completed_at = null;
                 
+                if ($oldStatus === 'abandoned') {
+                    // Revert abandoned write-off entry
+                    \App\Services\DoubleEntryService::reverseJobCardAbandonedTransaction($jobCard);
+                }
+
                 foreach ($jobCard->workers as $worker) {
                     \App\Models\JobCardAssignment::create([
                         'job_card_id' => $jobCard->id,
@@ -374,8 +395,10 @@ class JobCardController extends Controller
             ]);
         });
 
-        // Send status updates alert to client (SMS & Email)
-        $this->sendJobCardStatusNotification($jobCard, $newStatus);
+        // Send status updates alert to client (SMS & Email) - not sent for abandoned
+        if ($newStatus !== 'abandoned') {
+            $this->sendJobCardStatusNotification($jobCard, $newStatus);
+        }
 
         $statusLabels = [
             'received-vehicle' => 'Received',
@@ -383,8 +406,13 @@ class JobCardController extends Controller
             'blocked' => 'Blocked/Delayed',
             'testing' => 'Testing',
             'waiting-to-pickup' => 'Ready for Pickup',
+            'abandoned' => 'Abandoned',
         ];
         $statusText = $statusLabels[$newStatus];
+
+        if ($newStatus === 'abandoned') {
+            return back()->with('success', "Job card marked as Abandoned by Super Admin. Incurred costs have been recorded to the ledger as expenses and bill revenues diminished.");
+        }
 
         return back()->with('success', "Job status updated to: {$statusText}. Alert sent to client.");
     }
