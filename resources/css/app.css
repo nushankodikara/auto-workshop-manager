@@ -4,25 +4,40 @@
 @source '../../storage/framework/views/*.php';
 
 @theme {
-    --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
     --color-primary: var(--primary-color);
     --color-primary-hover: var(--primary-hover);
 
-    --color-slate-250: #d6dee8;
-    --color-slate-350: #afbccc;
-    --color-slate-450: #7c8ba1;
-    --color-slate-550: #55647a;
-    --color-slate-650: #3d4b5f;
-    --color-slate-850: #162032;
+    /* True Monochromatic Dark & Minimal Light Scale (zero blue tint) */
+    --color-slate-50: #fafafa;
+    --color-slate-100: #f4f4f5;
+    --color-slate-150: #ececed;
+    --color-slate-200: #e4e4e7;
+    --color-slate-250: #d4d4d8;
+    --color-slate-300: #d4d4d8;
+    --color-slate-350: #a1a1aa;
+    --color-slate-400: #a1a1aa;
+    --color-slate-450: #71717a;
+    --color-slate-500: #71717a;
+    --color-slate-550: #52525b;
+    --color-slate-600: #52525b;
+    --color-slate-650: #3f3f46;
+    --color-slate-700: #3f3f46;
+    --color-slate-750: #27272a;
+    --color-slate-800: #202023;
+    --color-slate-850: #161618;
+    --color-slate-900: #0f0f11;
+    --color-slate-950: #000000;
 }
 
 @variant dark (&:where(.dark, .dark *));
 
 /* Corporate Accent Colors */
 :root {
-    --primary-color: #2563eb; /* default blue-650 */
+    --primary-color: #2563eb; /* default blue */
     --primary-hover: #1d4ed8;
 }
 
@@ -48,31 +63,47 @@
 }
 
 .accent-slate {
-    --primary-color: #475569;
-    --primary-hover: #334155;
+    --primary-color: #52525b;
+    --primary-hover: #3f3f46;
 }
 
-/* Base custom classes to match light/dark styles */
+/* Base custom classes to match modern minimal light/dark styles */
 .app-card {
-    background-color: var(--color-white);
-    border: 1px solid var(--color-slate-200);
+    background-color: #ffffff;
+    border: 1px solid #e4e4e7;
 }
 .dark .app-card {
-    background-color: var(--color-slate-900);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: #0d0d0f;
+    border: 1px solid #202023;
 }
 
 .app-input {
-    background-color: var(--color-white);
-    border: 1px solid var(--color-slate-350);
+    background-color: #ffffff;
+    border: 1px solid #d4d4d8;
+    color: #09090b;
 }
 .dark .app-input {
-    background-color: var(--color-slate-950);
-    border: 1px solid var(--color-slate-800);
+    background-color: #050506;
+    border: 1px solid #27272a;
+    color: #f4f4f5;
 }
 
 /* Printable views print styling adjustments */
 @media print {
+    /* Suppress status messages, flash alerts, mock toasts, buttons, and navigation elements */
+    .print\:hidden,
+    #mock-toast-container,
+    [role="alert"],
+    .alert,
+    .flash-alert,
+    .notification-toast,
+    header,
+    aside,
+    button:not(.print\:inline-block),
+    nav {
+        display: none !important;
+    }
+
     /* Remove card borders, shadows, backgrounds, and padding issues */
     .app-card {
         border: none !important;
@@ -99,7 +130,7 @@
     }
     
     /* Ensure text stands out in black */
-    body, h2, h3, h4, span, div, p, td, th {
+    body, h1, h2, h3, h4, span, div, p, td, th {
         color: #000000 !important;
     }
 }

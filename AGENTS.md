@@ -9,8 +9,9 @@ Welcome to **Auto Workshop Manager**! This guide describes the AI agent pair-pro
 All system architectures, product decisions, and developer handoff documentations are located in the [docs](file:///Users/nushan/Projects/TDC%20Laravel/docs) directory:
 
 1. **[AI_HANDOFF.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/AI_HANDOFF.md)**: Product scope, confirmed default services (Laravel 11, TailwindCSS v4, FitSMS, etc.), and outstanding bootstrap items.
-2. **[ARCHITECTURE.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/ARCHITECTURE.md)**: Service layout, database mappings, and core logic constraints.
-3. **[FEATURES.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/FEATURES.md)**: Scope breakdown and suggested rollout order for next modules.
+2. **[DESIGN.md](file:///Users/nushan/Projects/TDC%20Laravel/DESIGN.md)**: Design system specifications, typography architecture, true-black color tokens, and UI component standards.
+3. **[ARCHITECTURE.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/ARCHITECTURE.md)**: Service layout, database mappings, and core logic constraints.
+4. **[FEATURES.md](file:///Users/nushan/Projects/TDC%20Laravel/docs/FEATURES.md)**: Scope breakdown and suggested rollout order for next modules.
 
 ---
 

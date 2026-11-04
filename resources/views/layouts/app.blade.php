@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Workspace') | {{ config('app.name', 'Auto Workshop Manager') }}</title>
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts: Plus Jakarta Sans (UI) & JetBrains Mono (Technical/Tabular Data) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
     
     <!-- Theme & Accent setup (Prevents Flash of Unstyled Theme) -->
     <script>
@@ -54,7 +54,8 @@
             color: #64748b;
         }
         .dark .datatable-top, .dark .datatable-bottom {
-            color: #94a3b8;
+            color: #a1a1aa;
+            border-color: #202023;
         }
         .datatable-top {
             border-bottom: 1px solid rgba(148, 163, 184, 0.1);
@@ -76,9 +77,9 @@
             transition: border-color 0.2s !important;
         }
         .dark .datatable-search input, .dark .datatable-dropdown select {
-            background-color: rgba(15, 23, 42, 0.3) !important;
-            border: 1px solid rgba(148, 163, 184, 0.2) !important;
-            color: #f1f5f9 !important;
+            background-color: #050506 !important;
+            border: 1px solid #27272a !important;
+            color: #f4f4f5 !important;
         }
         .datatable-search input:focus, .datatable-dropdown select:focus {
             border-color: var(--color-primary, #3b82f6) !important;
@@ -110,14 +111,14 @@
             text-transform: none !important;
         }
         .dark .datatable-pagination a {
-            border-color: rgba(148, 163, 184, 0.1);
-            color: #cbd5e1;
+            border-color: #222225;
+            color: #a1a1aa;
         }
         .datatable-pagination a:hover {
             background-color: #f1f5f9;
         }
         .dark .datatable-pagination a:hover {
-            background-color: rgba(148, 163, 184, 0.1);
+            background-color: #161618;
         }
         .datatable-pagination .active a {
             background-color: var(--primary-color, #3b82f6) !important;
@@ -182,14 +183,14 @@
         }
     </style>
 </head>
-<body class="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+<body class="h-full flex flex-col md:flex-row bg-[#fafafa] dark:bg-[#000000] text-slate-900 dark:text-slate-100 transition-colors duration-150 antialiased font-sans">
 
 
     <!-- Sidebar Navigation -->
-    <aside class="w-full md:w-64 bg-slate-100 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 transition-all duration-300 md:h-screen md:sticky md:top-0">
+    <aside class="w-full md:w-64 bg-white dark:bg-[#09090b] border-r border-slate-200 dark:border-[#202023] flex flex-col justify-between shrink-0 transition-all duration-300 md:h-screen md:sticky md:top-0 print:hidden">
         <div class="flex flex-col flex-1 min-h-0">
             <!-- Branding -->
-            <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 shrink-0 branding-container">
+            <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-[#202023] bg-white dark:bg-[#09090b] shrink-0 branding-container">
                 @if(file_exists(public_path('images/logo.png')))
                     <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="Logo" class="w-8 h-8 object-contain rounded-lg shrink-0">
                 @else
@@ -204,7 +205,7 @@
                 <span class="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
                     {{ config('app.name', 'Auto Workshop Manager') }}
                 </span>
-                <button onclick="toggleSidebarCollapse()" class="hidden md:flex p-1.5 hover:bg-slate-250 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer ml-auto shrink-0 transition" title="Toggle Sidebar Width">
+                <button onclick="toggleSidebarCollapse()" class="hidden md:flex p-1.5 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer ml-auto shrink-0 transition" title="Toggle Sidebar Width">
                     <i id="collapse-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -347,17 +348,17 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col min-w-0">
         <!-- Top bar -->
-        <header class="h-16 flex items-center justify-between px-8 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md transition-colors duration-200">
-            <h1 class="text-lg font-semibold text-slate-850 dark:text-slate-200">@yield('title')</h1>
+        <header class="h-16 flex items-center justify-between px-8 bg-white dark:bg-[#09090b] border-b border-slate-200 dark:border-[#202023] transition-colors duration-150 print:hidden">
+            <h1 class="text-lg font-semibold text-slate-850 dark:text-slate-100">@yield('title')</h1>
             
             <div class="flex items-center gap-4">
                 <!-- Theme Toggle Button -->
-                <button onclick="toggleTheme()" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition" title="Toggle Light/Dark Theme">
+                <button onclick="toggleTheme()" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer" title="Toggle Light/Dark Theme">
                     <i id="theme-icon" data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
                     <i id="theme-icon-light" data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
                 </button>
 
-                <div class="text-xs text-slate-500 hidden sm:block">
+                <div class="text-xs text-slate-500 font-mono hidden sm:block">
                     Date: {{ date('Y-m-d') }}
                 </div>
             </div>
@@ -365,16 +366,16 @@
 
         <!-- Dynamic Content Body -->
         <main class="flex-1 overflow-y-auto p-8">
-            <!-- Flash message alerts -->
+            <!-- Flash message alerts (suppressed on print) -->
             @if(session('success'))
-                <div class="mb-6 p-4 rounded-lg bg-green-550/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm flex items-center gap-2">
+                <div class="mb-6 p-4 rounded-lg bg-green-550/10 border border-green-500/20 text-green-600 dark:text-green-400 text-sm flex items-center gap-2 print:hidden" role="alert">
                     <i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i>
                     <span>{{ session('success') }}</span>
                 </div>
             @endif
 
             @if($errors->any())
-                <div class="mb-6 p-4 rounded-lg bg-red-550/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
+                <div class="mb-6 p-4 rounded-lg bg-red-550/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm print:hidden" role="alert">
                     <div class="flex items-center gap-2 mb-2 font-semibold">
                         <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
                         <span>Please fix the errors below:</span>
@@ -387,9 +388,9 @@
                 </div>
             @endif
 
-            <!-- Mock Notification Toasts -->
+            <!-- Mock Notification Toasts (suppressed on print) -->
             @if($mockNotifs = session()->pull('mock_notifications'))
-                <div class="space-y-4 mb-6" id="mock-toast-container">
+                <div class="space-y-4 mb-6 print:hidden" id="mock-toast-container">
                     @foreach($mockNotifs as $notif)
                         <div id="mock-toast-{{ $loop->index }}" 
                              class="p-4 rounded-xl border border-primary/20 bg-primary/10 text-slate-800 dark:text-slate-200 text-sm flex flex-col gap-1.5 shadow-sm relative overflow-hidden transition-all duration-300 transform scale-100 opacity-100">
