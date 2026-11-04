@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'allowed_modules', 'basic_salary', 'total_salary', 'required_days', 'overtime_rate', 'is_archived', 'contact_number', 'attendance_allowance', 'performance_allowance'])]
+#[Fillable(['name', 'preferred_name', 'email', 'password', 'role', 'allowed_modules', 'basic_salary', 'total_salary', 'required_days', 'overtime_rate', 'is_archived', 'contact_number', 'attendance_allowance', 'performance_allowance'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -20,6 +20,14 @@ class User extends Authenticatable
     }
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * Get preferred name if set, otherwise return full legal name.
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return !empty($this->preferred_name) ? $this->preferred_name : $this->name;
+    }
 
     /**
      * Get the attributes that should be cast.

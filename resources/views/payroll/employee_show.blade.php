@@ -27,8 +27,12 @@
             
             <div class="space-y-3 text-sm">
                 <div>
-                    <span class="text-slate-500 block text-xs font-semibold">Full Name</span>
-                    <span class="font-bold text-slate-800 dark:text-slate-200 mt-0.5 block capitalize">{{ $user->name }}</span>
+                    <span class="text-slate-500 block text-xs font-semibold">Preferred Name (Display)</span>
+                    <span class="font-bold text-slate-800 dark:text-slate-200 mt-0.5 block capitalize">{{ $user->display_name }}</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-xs font-semibold">Full Legal Name (Payroll)</span>
+                    <span class="font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block capitalize">{{ $user->name }}</span>
                 </div>
                 <div>
                     <span class="text-slate-500 block text-xs font-semibold">Email Address</span>

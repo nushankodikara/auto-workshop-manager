@@ -19,26 +19,45 @@
         </button>
     </div>
 
-    <!-- Date Filter Bar -->
-    <div class="app-card rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <form action="{{ route('job-cards.board') }}" method="GET" class="w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div class="flex flex-wrap items-center gap-4 text-xs">
+    <!-- Search & Date Filter Bar -->
+    <div class="app-card rounded-2xl p-4 shadow-xs">
+        <form action="{{ route('job-cards.board') }}" method="GET" id="board-filter-form" class="w-full flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4 text-xs flex-1">
+                <!-- Search Input: Card ID, Plate, Model, Client -->
+                <div class="flex flex-col gap-1 w-full sm:w-72">
+                    <label for="board-search" class="font-semibold text-slate-505 dark:text-slate-400 flex items-center justify-between">
+                        <span>Search Job Cards</span>
+                        <span class="text-[10px] text-slate-400 font-normal">ID, Plate, Model, Client</span>
+                    </label>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+                        <input type="text" name="search" id="board-search" value="{{ $search ?? '' }}" autocomplete="off"
+                               placeholder="Search ID, Plate, Model, Client..."
+                               class="w-full pl-9 pr-8 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
+                        <button type="button" id="clear-search-btn" onclick="clearBoardSearch()" 
+                                class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold {{ empty($search) ? 'hidden' : '' }}"
+                                title="Clear search">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Start Date -->
                 <div class="flex flex-col gap-1">
                     <label for="start_date" class="font-semibold text-slate-505 dark:text-slate-400">Start Date</label>
-                    <input type="date" name="start_date" id="start_date" value="{{ $startDate }}"
+                    <input type="date" name="start_date" id="start_date" value="{{ $startDate ?? '' }}"
                            class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
                 </div>
 
                 <!-- End Date -->
                 <div class="flex flex-col gap-1">
                     <label for="end_date" class="font-semibold text-slate-550 dark:text-slate-400">End Date</label>
-                    <input type="date" name="end_date" id="end_date" value="{{ $endDate }}"
+                    <input type="date" name="end_date" id="end_date" value="{{ $endDate ?? '' }}"
                            class="px-3 py-1.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-xs">
                 </div>
 
                 <!-- Quick Selection Buttons -->
-                <div class="flex items-center gap-2 pt-4">
+                <div class="flex items-center gap-1.5 pt-4">
                     <button type="button" onclick="setQuickDates('{{ date('Y-m-d') }}', '{{ date('Y-m-d') }}')"
                             class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] font-bold rounded text-slate-700 dark:text-slate-300 transition cursor-pointer">
                         Today
@@ -47,10 +66,15 @@
                             class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] font-bold rounded text-slate-700 dark:text-slate-300 transition cursor-pointer">
                         Last 7 Days
                     </button>
+                    <button type="button" onclick="setQuickDates('', '')"
+                            class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] font-bold rounded text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                            title="Show cards across all time">
+                        All Time
+                    </button>
                 </div>
 
                 <!-- Unpaid Filter Checkbox -->
-                <div class="flex items-center gap-2 pt-4 pl-2">
+                <div class="flex items-center gap-2 pt-4 pl-1">
                     <label class="flex items-center gap-2 font-semibold text-slate-550 dark:text-slate-400 cursor-pointer">
                         <input type="checkbox" name="unpaid" id="unpaid" value="1" {{ $unpaid ? 'checked' : '' }}
                                class="h-4 w-4 rounded text-primary focus:ring-primary border-slate-350 dark:border-slate-800 cursor-pointer"
@@ -60,8 +84,8 @@
                 </div>
             </div>
 
-            <div class="flex gap-2">
-                @if($startDate !== date('Y-m-d') || $endDate !== date('Y-m-d') || $unpaid)
+            <div class="flex items-center gap-2">
+                @if(($startDate && $startDate !== date('Y-m-d')) || ($endDate && $endDate !== date('Y-m-d')) || $unpaid || !empty($search))
                     <a href="{{ route('job-cards.board') }}" 
                        class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs flex items-center justify-center transition">
                         Reset
@@ -105,7 +129,7 @@
                         <i data-lucide="{{ $col['icon'] }}" class="w-4 h-4 {{ $col['iconColor'] }}"></i>
                         <span>{{ $col['label'] }}</span>
                     </span>
-                    <span class="text-xs px-2 py-0.5 rounded {{ $col['badge'] }} font-bold">
+                    <span class="text-xs px-2 py-0.5 rounded {{ $col['badge'] }} font-bold" data-column-badge="{{ $statusKey }}">
                         {{ $boardData[$statusKey]->count() }}
                     </span>
                 </div>
@@ -113,7 +137,12 @@
                 <!-- Cards list -->
                 <div class="space-y-3 flex-1 overflow-y-auto">
                     @forelse($boardData[$statusKey] as $jobCard)
-                        <div class="p-4 bg-slate-50/50 hover:bg-slate-100/50 dark:bg-slate-950/40 dark:hover:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl transition shadow-xs flex flex-col justify-between group">
+                        <div class="job-card-item p-4 bg-slate-50/50 hover:bg-slate-100/50 dark:bg-slate-950/40 dark:hover:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 rounded-xl transition shadow-xs flex flex-col justify-between group"
+                             data-column="{{ $statusKey }}"
+                             data-search-id="{{ $jobCard->id }} #{{ str_pad($jobCard->id, 4, '0', STR_PAD_LEFT) }} {{ $jobCard->card_number ?? '' }}"
+                             data-search-plate="{{ strtolower($jobCard->vehicle->plate_number) }}"
+                             data-search-model="{{ strtolower($jobCard->vehicle->make . ' ' . $jobCard->vehicle->model) }}"
+                             data-search-client="{{ strtolower($jobCard->vehicle->client->name) }}">
                             
                             <div>
                                 <!-- Card Header -->
@@ -139,8 +168,8 @@
                                 <!-- Technicians list -->
                                 <div class="flex flex-wrap gap-1">
                                     @forelse($jobCard->workers as $worker)
-                                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold capitalize">
-                                            {{ explode(' ', $worker->name)[0] }}
+                                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold capitalize" title="{{ $worker->name }}">
+                                            {{ $worker->preferred_name ?: explode(' ', $worker->name)[0] }}
                                         </span>
                                     @empty
                                         <span class="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 font-semibold uppercase tracking-wider">Unassigned</span>
@@ -172,10 +201,11 @@
 
                         </div>
                     @empty
-                        <div class="text-[11px] text-slate-500 text-center py-8">
-                            No job cards
-                        </div>
                     @endforelse
+
+                    <div class="column-empty-state text-[11px] text-slate-500 text-center py-8 {{ $boardData[$statusKey]->isEmpty() ? '' : 'hidden' }}">
+                        No job cards
+                    </div>
                 </div>
             </div>
         @endforeach
@@ -276,7 +306,7 @@
                                 @foreach($workers as $worker)
                                     <label class="flex items-center text-sm text-slate-700 dark:text-slate-350 cursor-pointer">
                                         <input type="checkbox" name="workers[]" value="{{ $worker->id }}" class="h-4 w-4 text-primary focus:ring-primary rounded border border-slate-350 dark:border-slate-800">
-                                        <span class="ml-2 capitalize">{{ $worker->name }}</span>
+                                        <span class="ml-2 capitalize">{{ $worker->display_name }}{{ $worker->preferred_name ? ' (' . $worker->name . ')' : '' }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -366,6 +396,80 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+    }
+
+    // Live Search Filtering for Job Cards Board
+    const boardSearch = document.getElementById('board-search');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+
+    window.filterBoardCards = function() {
+        const term = (boardSearch ? boardSearch.value : '').trim().toLowerCase();
+        if (clearSearchBtn) {
+            clearSearchBtn.classList.toggle('hidden', term === '');
+        }
+
+        const columns = ['received-vehicle', 'on-going', 'blocked', 'testing', 'waiting-to-pickup'];
+        const columnCounts = {};
+        columns.forEach(col => columnCounts[col] = 0);
+
+        const cards = document.querySelectorAll('.job-card-item');
+        cards.forEach(card => {
+            const col = card.getAttribute('data-column');
+            if (!term) {
+                card.classList.remove('hidden');
+                columnCounts[col]++;
+                return;
+            }
+
+            const idText = (card.getAttribute('data-search-id') || '').toLowerCase();
+            const plateText = (card.getAttribute('data-search-plate') || '').toLowerCase();
+            const modelText = (card.getAttribute('data-search-model') || '').toLowerCase();
+            const clientText = (card.getAttribute('data-search-client') || '').toLowerCase();
+
+            const matches = idText.includes(term) ||
+                            plateText.includes(term) ||
+                            modelText.includes(term) ||
+                            clientText.includes(term);
+
+            if (matches) {
+                card.classList.remove('hidden');
+                columnCounts[col]++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        // Update column count badges and empty states
+        columns.forEach(col => {
+            const badge = document.querySelector(`[data-column-badge="${col}"]`);
+            if (badge) {
+                badge.textContent = columnCounts[col];
+            }
+            const colContainer = badge ? badge.closest('.app-card') : null;
+            if (colContainer) {
+                const emptyState = colContainer.querySelector('.column-empty-state');
+                if (emptyState) {
+                    emptyState.classList.toggle('hidden', columnCounts[col] > 0);
+                    if (columnCounts[col] === 0 && term) {
+                        emptyState.textContent = 'No matching cards';
+                    } else if (columnCounts[col] === 0) {
+                        emptyState.textContent = 'No job cards';
+                    }
+                }
+            }
+        });
+    };
+
+    window.clearBoardSearch = function() {
+        if (boardSearch) {
+            boardSearch.value = '';
+            window.filterBoardCards();
+            boardSearch.focus();
+        }
+    };
+
+    if (boardSearch) {
+        boardSearch.addEventListener('input', window.filterBoardCards);
     }
 });
 </script>

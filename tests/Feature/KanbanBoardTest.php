@@ -265,4 +265,164 @@ class KanbanBoardTest extends TestCase
 
         $this->assertContains('TDC-9011', $totalJobCards); // Included
     }
+
+    /**
+     * Test searching kanban board by Job Card ID or Card Number.
+     */
+    public function test_kanban_board_search_by_card_id_or_number()
+    {
+        $jc1 = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'on-going',
+            'card_number' => 'TDC-SRCH-001'
+        ]);
+
+        $jc2 = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'on-going',
+            'card_number' => 'TDC-SRCH-002'
+        ]);
+
+        // Search for jc1 by card_number
+        $response = $this->actingAs($this->superManager)->get(route('job-cards.board', [
+            'search' => 'SRCH-001'
+        ]));
+        $response->assertStatus(200);
+
+        $boardData = $response->viewData('boardData');
+        $totalJobCards = collect($boardData)->flatMap(fn($col) => $col)->pluck('card_number');
+
+        $this->assertContains('TDC-SRCH-001', $totalJobCards);
+        $this->assertNotContains('TDC-SRCH-002', $totalJobCards);
+
+        // Search for jc2 by primary key ID
+        $responseId = $this->actingAs($this->superManager)->get(route('job-cards.board', [
+            'search' => (string)$jc2->id
+        ]));
+        $responseId->assertStatus(200);
+
+        $boardDataId = $responseId->viewData('boardData');
+        $totalCardsId = collect($boardDataId)->flatMap(fn($col) => $col)->pluck('card_number');
+
+        $this->assertContains('TDC-SRCH-002', $totalCardsId);
+    }
+
+    /**
+     * Test searching kanban board by vehicle plate number.
+     */
+    public function test_kanban_board_search_by_plate_number()
+    {
+        $otherClient = Client::create([
+            'name' => 'Alice Walker',
+            'email' => 'alice@test.com',
+            'phone' => '0712223333'
+        ]);
+
+        $otherVehicle = Vehicle::create([
+            'client_id' => $otherClient->id,
+            'make' => 'Honda',
+            'model' => 'Civic',
+            'year' => 2020,
+            'plate_number' => 'WP-XYZ-9999'
+        ]);
+
+        $jcTarget = JobCard::create([
+            'vehicle_id' => $otherVehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'on-going',
+            'card_number' => 'TDC-HONDA-01'
+        ]);
+
+        $jcOther = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'on-going',
+            'card_number' => 'TDC-TOYOTA-01'
+        ]);
+
+        $response = $this->actingAs($this->superManager)->get(route('job-cards.board', [
+            'search' => 'XYZ-9999'
+        ]));
+        $response->assertStatus(200);
+
+        $boardData = $response->viewData('boardData');
+        $cards = collect($boardData)->flatMap(fn($col) => $col)->pluck('card_number');
+
+        $this->assertContains('TDC-HONDA-01', $cards);
+        $this->assertNotContains('TDC-TOYOTA-01', $cards);
+    }
+
+    /**
+     * Test searching kanban board by vehicle model and client name.
+     */
+    public function test_kanban_board_search_by_model_and_client_name()
+    {
+        $uniqueClient = Client::create([
+            'name' => 'Saman Perera',
+            'email' => 'saman@perera.lk',
+            'phone' => '0779998877'
+        ]);
+
+        $uniqueVehicle = Vehicle::create([
+            'client_id' => $uniqueClient->id,
+            'make' => 'Mitsubishi',
+            'model' => 'Montero',
+            'year' => 2015,
+            'plate_number' => 'CP-MON-7777'
+        ]);
+
+        $jc = JobCard::create([
+            'vehicle_id' => $uniqueVehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'on-going',
+            'card_number' => 'TDC-MONTERO-01'
+        ]);
+
+        // Search by vehicle model
+        $responseModel = $this->actingAs($this->superManager)->get(route('job-cards.board', [
+            'search' => 'Montero'
+        ]));
+        $responseModel->assertStatus(200);
+        $cardsModel = collect($responseModel->viewData('boardData'))->flatMap(fn($c) => $c)->pluck('card_number');
+        $this->assertContains('TDC-MONTERO-01', $cardsModel);
+
+        // Search by client name
+        $responseClient = $this->actingAs($this->superManager)->get(route('job-cards.board', [
+            'search' => 'Saman Perera'
+        ]));
+        $responseClient->assertStatus(200);
+        $cardsClient = collect($responseClient->viewData('boardData'))->flatMap(fn($c) => $c)->pluck('card_number');
+        $this->assertContains('TDC-MONTERO-01', $cardsClient);
+    }
+
+    /**
+     * Test vehicle history report displays ticket and invoice links.
+     */
+    public function test_vehicle_history_displays_ticket_and_invoice_links()
+    {
+        $jc = JobCard::create([
+            'vehicle_id' => $this->vehicle->id,
+            'shop_id' => $this->shop->id,
+            'status' => 'waiting-to-pickup',
+            'card_number' => 'TDC-HIST-001'
+        ]);
+
+        $bill = \App\Models\Bill::create([
+            'job_card_id' => $jc->id,
+            'bill_number' => 'INV-HIST-001',
+            'total_amount' => 5000,
+            'status' => 'paid'
+        ]);
+
+        $response = $this->actingAs($this->superManager)->get(route('vehicles.history', $this->vehicle->id));
+        $response->assertStatus(200);
+
+        // Should include link to the job card ticket
+        $response->assertSee(route('job-cards.show', $jc->id));
+
+        // Should include link to the invoice
+        $response->assertSee(route('billing.show', $jc->id));
+    }
 }

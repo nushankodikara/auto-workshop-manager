@@ -101,12 +101,22 @@
         @forelse($vehicle->jobCards as $jc)
             <div class="app-card rounded-2xl p-6 space-y-4 shadow-xs page-break-inside-avoid print:border print:border-black/20 print:p-6 print:shadow-none print:bg-transparent">
                 <!-- Job Card Header -->
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 print:border-black/10">
-                    <div>
-                        <span class="font-bold text-slate-800 dark:text-slate-200 text-sm print:text-black">Job Card #{{ str_pad($jc->id, 4, '0', STR_PAD_LEFT) }}</span>
-                        <span class="text-xs text-slate-500 ml-2 print:text-black/60">{{ $jc->created_at->format('Y-m-d') }}</span>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 print:border-black/10">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <a href="{{ route('job-cards.show', $jc->id) }}" 
+                           class="font-bold text-slate-800 dark:text-slate-200 text-sm hover:text-primary transition flex items-center gap-1.5 print:text-black"
+                           title="Visit Job Card / Ticket">
+                            <span>Job Card #{{ $jc->card_number ?? str_pad($jc->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <i data-lucide="external-link" class="w-3.5 h-3.5 text-slate-400 hover:text-primary print:hidden"></i>
+                        </a>
+                        <span class="text-xs text-slate-500 print:text-black/60">{{ $jc->created_at->format('Y-m-d') }}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded capitalize font-semibold border 
+                            {{ $jc->status === 'waiting-to-pickup' ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : ($jc->status === 'on-going' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700') }} print:border-black/20 print:text-black">
+                            {{ str_replace('-', ' ', $jc->status) }}
+                        </span>
                     </div>
-                    <div class="flex items-center gap-3 text-xs text-slate-500 print:text-black/60">
+
+                    <div class="flex items-center gap-3 text-xs text-slate-500 print:text-black/60 flex-wrap">
                         @if($jc->mileage)
                             <span class="font-semibold flex items-center gap-1">
                                 <i data-lucide="gauge" class="w-3.5 h-3.5 print:hidden"></i>
@@ -115,6 +125,31 @@
                             <span>•</span>
                         @endif
                         <span class="capitalize">Shop: {{ $jc->shop->name }}</span>
+
+                        <!-- Action Links: Ticket & Invoice (Screen only) -->
+                        <div class="flex items-center gap-1.5 ml-2 print:hidden">
+                            <a href="{{ route('job-cards.show', $jc->id) }}" 
+                               class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-md text-[11px] transition flex items-center gap-1 border border-slate-200 dark:border-slate-700"
+                               title="Open Job Card Ticket">
+                                <i data-lucide="clipboard-list" class="w-3 h-3 text-primary"></i>
+                                <span>Ticket</span>
+                            </a>
+                            @if($jc->bill)
+                                <a href="{{ route('billing.show', $jc->id) }}" 
+                                   class="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold rounded-md text-[11px] transition flex items-center gap-1 border border-emerald-500/20"
+                                   title="Open Invoice">
+                                    <i data-lucide="file-check" class="w-3 h-3"></i>
+                                    <span>Invoice</span>
+                                </a>
+                            @else
+                                <a href="{{ route('billing.workspace', $jc->id) }}" 
+                                   class="px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary font-semibold rounded-md text-[11px] transition flex items-center gap-1 border border-primary/20"
+                                   title="Open Billing Workspace">
+                                    <i data-lucide="receipt" class="w-3 h-3"></i>
+                                    <span>Billing</span>
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 </div>
 
@@ -190,14 +225,30 @@
                 <!-- Job Cost Summary (Only shown when price is enabled) -->
                 @if($jc->bill)
                     <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950/20 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs price-element print:bg-transparent print:border-black/10 print:p-3">
-                        <span class="font-bold text-slate-500 uppercase tracking-wider print:text-black/70">Invoice: {{ $jc->bill->bill_number }} ({{ ucfirst($jc->bill->status) }})</span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-500 uppercase tracking-wider print:text-black/70">Invoice: {{ $jc->bill->bill_number }} ({{ ucfirst($jc->bill->status) }})</span>
+                            <a href="{{ route('billing.show', $jc->id) }}" 
+                               class="text-primary hover:underline font-semibold flex items-center gap-1 print:hidden"
+                               title="Open Invoice #{{ $jc->bill->bill_number }}">
+                                <i data-lucide="external-link" class="w-3 h-3"></i>
+                                <span>Open Invoice</span>
+                            </a>
+                        </div>
                         <span class="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono print:text-black">
                             Total Bill: {{ config('app.currency', '$') }}{{ number_format($jc->bill->total_amount, 2) }}
                         </span>
                     </div>
                 @elseif($jc->ticket_sum > 0)
                     <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-950/20 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800/80 text-xs price-element print:bg-transparent print:border-black/10 print:p-3">
-                        <span class="font-bold text-slate-500 uppercase tracking-wider print:text-black/70">Ticket Sum</span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-500 uppercase tracking-wider print:text-black/70">Ticket Sum</span>
+                            <a href="{{ route('billing.workspace', $jc->id) }}" 
+                               class="text-primary hover:underline font-semibold flex items-center gap-1 print:hidden"
+                               title="Open Billing Workspace">
+                                <i data-lucide="receipt" class="w-3 h-3"></i>
+                                <span>Billing Workspace</span>
+                            </a>
+                        </div>
                         <span class="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono print:text-black">
                             {{ config('app.currency', 'Rs.') }}{{ number_format($jc->ticket_sum, 2) }}
                         </span>

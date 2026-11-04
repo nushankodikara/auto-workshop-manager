@@ -35,15 +35,47 @@ class JobCardController extends Controller
      */
     public function board(Request $request)
     {
-        $startDate = $request->input('start_date', date('Y-m-d'));
-        $endDate = $request->input('end_date', date('Y-m-d'));
+        $search = trim($request->input('search', ''));
+        $hasSearch = !empty($search);
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        // Default to today if neither date is explicitly passed and no search query is active
+        if (!$request->has('start_date') && !$request->has('end_date') && !$hasSearch) {
+            $startDate = date('Y-m-d');
+            $endDate = date('Y-m-d');
+        }
+
         $unpaid = $request->boolean('unpaid');
 
-        $start = \Carbon\Carbon::parse($startDate)->startOfDay();
-        $end = \Carbon\Carbon::parse($endDate)->endOfDay();
+        $start = $startDate ? \Carbon\Carbon::parse($startDate)->startOfDay() : null;
+        $end = $endDate ? \Carbon\Carbon::parse($endDate)->endOfDay() : null;
+
+        // Search scope matching card ID / card_number, vehicle plate, model/make, or client name
+        $applySearch = function ($query) use ($search) {
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $cleanId = ltrim(ltrim($search, '#'), '0');
+                    if (is_numeric($cleanId) && $cleanId > 0) {
+                        $q->orWhere('job_cards.id', intval($cleanId));
+                    }
+                    $q->orWhere('job_cards.id', 'like', "%{$search}%")
+                      ->orWhere('job_cards.card_number', 'like', "%{$search}%")
+                      ->orWhereHas('vehicle', function ($vq) use ($search) {
+                          $vq->where('plate_number', 'like', "%{$search}%")
+                             ->orWhere('model', 'like', "%{$search}%")
+                             ->orWhere('make', 'like', "%{$search}%")
+                             ->orWhereHas('client', function ($cq) use ($search) {
+                                 $cq->where('name', 'like', "%{$search}%");
+                             });
+                      });
+                });
+            }
+        };
 
         if ($unpaid) {
-            $jobCards = JobCard::with([
+            $query = JobCard::with([
                 'vehicle.client',
                 'shop',
                 'workers',
@@ -51,17 +83,18 @@ class JobCardController extends Controller
                 'services',
                 'stockMovements.inventory',
                 'stockMovements.purchaseBatch'
-            ])
-                ->whereNotIn('status', ['received-vehicle', 'on-going'])
-                ->get()
-                ->filter(function ($jc) {
-                    if ($jc->bill) {
-                        return $jc->bill->status !== 'paid';
-                    }
-                    return $jc->ticket_sum > 0;
-                });
+            ])->whereNotIn('status', ['received-vehicle', 'on-going']);
+
+            $applySearch($query);
+
+            $jobCards = $query->get()->filter(function ($jc) {
+                if ($jc->bill) {
+                    return $jc->bill->status !== 'paid';
+                }
+                return $jc->ticket_sum > 0;
+            });
         } else {
-            $jobCards = JobCard::with([
+            $query = JobCard::with([
                 'vehicle.client',
                 'shop',
                 'workers',
@@ -69,10 +102,12 @@ class JobCardController extends Controller
                 'services',
                 'stockMovements.inventory',
                 'stockMovements.purchaseBatch'
-            ])
-                ->where(function ($query) use ($start, $end) {
+            ]);
+
+            if ($start && $end) {
+                $query->where(function ($dateQuery) use ($start, $end) {
                     // Condition 1: Unfinished tickets created on or before the end of the range
-                    $query->where(function ($q) use ($end) {
+                    $dateQuery->where(function ($q) use ($end) {
                         $q->where('status', '!=', 'waiting-to-pickup')
                           ->where('created_at', '<=', $end);
                     })
@@ -87,8 +122,12 @@ class JobCardController extends Controller
                                   });
                           });
                     });
-                })
-                ->get();
+                });
+            }
+
+            $applySearch($query);
+
+            $jobCards = $query->get();
         }
         
         // Group by status
@@ -105,7 +144,7 @@ class JobCardController extends Controller
         $workers = User::where('role', 'worker')->where('is_archived', false)->get();
         $managers = User::whereIn('role', ['super-manager', 'manager'])->where('is_archived', false)->get();
 
-        return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers', 'startDate', 'endDate', 'unpaid'));
+        return view('job-cards.board', compact('boardData', 'vehicles', 'shops', 'workers', 'managers', 'startDate', 'endDate', 'unpaid', 'search'));
     }
 
     /**

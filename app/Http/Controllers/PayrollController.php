@@ -699,6 +699,7 @@ class PayrollController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'preferred_name' => 'nullable|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
             'role' => 'required|exists:roles,name',
@@ -738,6 +739,7 @@ class PayrollController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'preferred_name' => 'nullable|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|exists:roles,name',
             'basic_salary' => 'required|numeric|min:0',

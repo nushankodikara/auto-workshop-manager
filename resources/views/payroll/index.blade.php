@@ -340,8 +340,11 @@
                         <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-900/30 transition">
                             <td class="py-4 px-6 font-semibold text-slate-800 dark:text-slate-200 capitalize">
                                 <a href="{{ route('employees.show', $emp->id) }}" class="text-primary hover:underline">
-                                    {{ $emp->name }}
+                                    {{ $emp->display_name }}
                                 </a>
+                                @if($emp->preferred_name && $emp->preferred_name !== $emp->name)
+                                    <span class="block text-[10px] text-slate-500 font-normal">Legal: {{ $emp->name }}</span>
+                                @endif
                             </td>
                             <td class="py-4 px-6 text-slate-650 dark:text-slate-400 font-mono text-xs">{{ $emp->email }}</td>
                             <td class="py-4 px-6 text-slate-650 dark:text-slate-400 font-mono text-xs">{{ $emp->contact_number ?? '-' }}</td>
@@ -408,8 +411,11 @@
                                 <tr class="hover:bg-slate-100/10 dark:hover:bg-slate-900/10 transition opacity-70">
                                     <td class="py-4 px-6 font-semibold text-slate-700 dark:text-slate-350 capitalize">
                                         <a href="{{ route('employees.show', $emp->id) }}" class="text-primary hover:underline">
-                                            {{ $emp->name }}
+                                            {{ $emp->display_name }}
                                         </a>
+                                        @if($emp->preferred_name && $emp->preferred_name !== $emp->name)
+                                            <span class="block text-[10px] text-slate-500 font-normal">Legal: {{ $emp->name }}</span>
+                                        @endif
                                     </td>
                                     <td class="py-4 px-6 text-slate-505 font-mono text-xs">{{ $emp->email }}</td>
                                     <td class="py-4 px-6 text-slate-505 font-mono text-xs">{{ $emp->contact_number ?? '-' }}</td>
@@ -468,9 +474,16 @@
                         @csrf
 
                         <div>
-                            <label for="emp_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Full Name</label>
-                            <input type="text" name="name" id="emp_name" required placeholder="Alice Smith"
+                            <label for="emp_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Full Legal Name (Payroll & Official)</label>
+                            <input type="text" name="name" id="emp_name" required placeholder="Alice Samantha Smith"
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="emp_preferred_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Preferred Name (Job Cards & Workshop System)</label>
+                            <input type="text" name="preferred_name" id="emp_preferred_name" placeholder="e.g. Alice"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                            <p class="text-[11px] text-slate-400 mt-1">If specified, this name is displayed in job cards and operational views instead of the full name.</p>
                         </div>
 
                         <div>
@@ -581,9 +594,16 @@
                         @method('PUT')
 
                         <div>
-                            <label for="edit_emp_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Full Name</label>
+                            <label for="edit_emp_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Full Legal Name (Payroll & Official)</label>
                             <input type="text" name="name" id="edit_emp_name" required
                                    class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                        </div>
+
+                        <div>
+                            <label for="edit_emp_preferred_name" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Preferred Name (Job Cards & Workshop System)</label>
+                            <input type="text" name="preferred_name" id="edit_emp_preferred_name" placeholder="Leave empty to use full name"
+                                   class="w-full px-4 py-2.5 app-input rounded-lg text-slate-900 dark:text-slate-200 focus:outline-none focus:border-primary text-sm">
+                            <p class="text-[11px] text-slate-400 mt-1">Used across job cards and operational views instead of full legal name.</p>
                         </div>
 
                         <div>
@@ -930,6 +950,7 @@
     function openEditEmployeeDrawer(emp) {
         document.getElementById('edit-employee-form').action = `/employees/${emp.id}`;
         document.getElementById('edit_emp_name').value = emp.name;
+        document.getElementById('edit_emp_preferred_name').value = emp.preferred_name || '';
         document.getElementById('edit_emp_email').value = emp.email;
         document.getElementById('edit_emp_contact_number').value = emp.contact_number || '';
         document.getElementById('edit_emp_role').value = emp.role;

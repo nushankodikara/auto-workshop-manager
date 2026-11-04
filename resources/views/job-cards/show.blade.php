@@ -762,7 +762,9 @@
                 <!-- Active & Historical Workers list -->
                 <div class="space-y-2">
                     @php
-                        $historicalWorkerIds = \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)->pluck('user_id')->unique();
+                        $historicalWorkerIds = \App\Models\JobCardAssignment::where('job_card_id', $jobCard->id)->pluck('user_id')
+                            ->merge($jobCard->workers->pluck('id'))
+                            ->unique();
                         $historicalWorkers = \App\Models\User::whereIn('id', $historicalWorkerIds)->get();
                     @endphp
                     @forelse($historicalWorkers as $worker)
@@ -773,9 +775,12 @@
                             <span class="h-2 w-2 rounded-full {{ $isCurrentlyAssigned ? 'bg-green-500' : 'bg-slate-400' }} text-xs inline-block shrink-0"
                                   title="{{ $isCurrentlyAssigned ? 'Currently Assigned' : 'Previously Assigned (Inactive)' }}"></span>
                             <span class="text-slate-750 dark:text-slate-350 font-bold">
-                                <a href="{{ route('employees.show', $worker->id) }}" class="text-primary hover:underline">
-                                    {{ $worker->name }}
+                                <a href="{{ route('employees.show', $worker->id) }}" class="text-primary hover:underline" title="{{ $worker->name }}">
+                                    {{ $worker->display_name }}
                                 </a>
+                                @if($worker->preferred_name && $worker->preferred_name !== $worker->name)
+                                    <span class="text-[10px] text-slate-450 normal-case ml-1 font-normal">({{ $worker->name }})</span>
+                                @endif
                                 @if(!$isCurrentlyAssigned)
                                     <span class="text-[9px] text-slate-500 dark:text-slate-450 normal-case ml-1 font-semibold bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded">(inactive)</span>
                                 @endif
@@ -811,7 +816,7 @@
                                     <input type="checkbox" name="workers[]" value="{{ $worker->id }}" 
                                            {{ $jobCard->workers->contains($worker->id) ? 'checked' : '' }}
                                            class="h-3.5 w-3.5 text-primary focus:ring-primary rounded border border-slate-355 dark:border-slate-800">
-                                    <span class="ml-2 capitalize">{{ $worker->name }}</span>
+                                    <span class="ml-2 capitalize">{{ $worker->display_name }}{{ $worker->preferred_name ? ' (' . $worker->name . ')' : '' }}</span>
                                 </label>
                             @endforeach
                         </div>
